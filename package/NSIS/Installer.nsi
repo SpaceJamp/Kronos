@@ -94,13 +94,21 @@ RequestExecutionLevel highest
 ; App version information
 Name "Unofficial DLSS Swapper"
 !define MUI_ICON "..\..\src\Assets\icon.ico"
-!define MUI_VERSION "1.2.6.1"
 !define MUI_PRODUCT "Unofficial DLSS Swapper"
-VIProductVersion "1.2.6.1"
+
+; Defined once here rather than repeated per key, which is how the version used to drift out of
+; step between ProductVersion, FileVersion and the uninstall registry entry. Keep in step with
+; <Version> in the csproj and app_version in ..\config.cmd.
+; NSIS requires VIProductVersion to be a 4 part number, and the assembly version is APP_VERSION
+; with an implied trailing .0, so the two forms are both spelled out here.
+!define APP_VERSION "1.3.0"
+!define APP_VERSION_4PART "1.3.0.0"
+
+VIProductVersion "${APP_VERSION_4PART}"
 VIAddVersionKey "ProductName" "Unofficial DLSS Swapper"
-VIAddVersionKey "ProductVersion" "1.2.6.1"
+VIAddVersionKey "ProductVersion" "${APP_VERSION}"
 VIAddVersionKey "FileDescription" "Unofficial DLSS Swapper installer"
-VIAddVersionKey "FileVersion" "1.2.6.1"
+VIAddVersionKey "FileVersion" "${APP_VERSION_4PART}"
 ; Shown as "Company" in Explorer's file Properties. Matches the Publisher written
 ; during install; this fork is not published by the original maintainer.
 VIAddVersionKey "CompanyName" "SpaceJamp"
@@ -207,7 +215,7 @@ Section
   CreateShortcut "$SMPROGRAMS\Unofficial DLSS Swapper.lnk" "$INSTDIR\Unofficial DLSS Swapper.exe"
 
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Unofficial DLSS Swapper"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "1.2.6.1"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "${APP_VERSION}"
   ; Publisher shown in Windows "Installed apps" and Add/Remove Programs.
   ; This is an unofficial fork, so it must not claim to be published by the
   ; original maintainer. Change the string below to your own name or handle.

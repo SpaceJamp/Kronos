@@ -60,7 +60,7 @@ internal class GitHubUpdater
             {
                 using (var memoryStream = new MemoryStream())
                 {
-                    var fileDownloader = new FileDownloader("https://api.github.com/repos/beeradmoore/dlss-swapper/releases/latest", 0);
+                    var fileDownloader = new FileDownloader("https://api.github.com/repos/SpaceJamp/unofficial-dlss-swapper/releases/latest", 0);
                     await fileDownloader.DownloadFileToStreamAsync(memoryStream).ConfigureAwait(false);
 
                     memoryStream.Position = 0;
@@ -99,7 +99,7 @@ internal class GitHubUpdater
         {
             using (var memoryStream = new MemoryStream())
             {
-                var fileDownloader = new FileDownloader($"https://api.github.com/repos/beeradmoore/dlss-swapper/releases/tags/{tag}", 0);
+                var fileDownloader = new FileDownloader($"https://api.github.com/repos/SpaceJamp/unofficial-dlss-swapper/releases/tags/{tag}", 0);
                 await fileDownloader.DownloadFileToStreamAsync(memoryStream).ConfigureAwait(false);
                 memoryStream.Position = 0;
                 var githubRelease = JsonSerializer.Deserialize(memoryStream, SourceGenerationContext.Default.GitHubRelease);
