@@ -33,6 +33,13 @@ internal class DLLManager
 
     readonly ReaderWriterLockSlim _knownDLLsReadWriterLock = new ReaderWriterLockSlim();
 
+    /// <summary>
+    /// Hash index over <see cref="KnownDLLs"/>, rebuilt every time the manifest is (re)loaded and
+    /// guarded by <see cref="_knownDLLsReadWriterLock"/>. IsInKnownGameAsset used to do a linear
+    /// FirstOrDefault over the known-DLL list for every asset of every game on every load.
+    /// </summary>
+    Dictionary<GameAssetType, Dictionary<string, HashedKnownDLL>> _knownDLLHashIndex = new();
+
     internal Manifest? Manifest { get; private set; }
     internal Manifest? ImportedManifest { get; private set; }
 
@@ -219,6 +226,21 @@ internal class DLLManager
         try
         {
             KnownDLLs = Manifest.KnownDLLs;
+
+            // NOTE: DLL type
+            var index = new Dictionary<GameAssetType, Dictionary<string, HashedKnownDLL>>();
+            foreach (var info in DLLAssetTypes.All)
+            {
+                var byHash = new Dictionary<string, HashedKnownDLL>(StringComparer.OrdinalIgnoreCase);
+                foreach (var knownDll in info.KnownDLLRecords(KnownDLLs))
+                {
+                    byHash[knownDll.Hash] = knownDll;
+                }
+
+                index[info.AssetType] = byHash;
+            }
+
+            _knownDLLHashIndex = index;
         }
         finally
         {
@@ -227,39 +249,21 @@ internal class DLLManager
 
         // NOTE: DLL type
         // Cancel downloading of all current DLL records
-        CancelDownloads(DLSSRecords);
-        CancelDownloads(DLSSGRecords);
-        CancelDownloads(DLSSDRecords);
-        CancelDownloads(FSR31DX12Records);
-        CancelDownloads(FSR31VKRecords);
-        CancelDownloads(XeSSRecords);
-        CancelDownloads(XeSSFGRecords);
-        CancelDownloads(XeSSDX11Records);
-        CancelDownloads(XeLLRecords);
+        foreach (var info in DLLAssetTypes.All)
+        {
+            CancelDownloads(info.Records(this));
+        }
 
         // NOTE: DLL type
         // Update incoming DLL record game asset types
-        SetGameAssetType(Manifest.DLSS, GameAssetType.DLSS);
-        SetGameAssetType(Manifest.DLSS_D, GameAssetType.DLSS_D);
-        SetGameAssetType(Manifest.DLSS_G, GameAssetType.DLSS_G);
-        SetGameAssetType(Manifest.FSR_31_DX12, GameAssetType.FSR_31_DX12);
-        SetGameAssetType(Manifest.FSR_31_VK, GameAssetType.FSR_31_VK);
-        SetGameAssetType(Manifest.XeSS, GameAssetType.XeSS);
-        SetGameAssetType(Manifest.XeSS_FG, GameAssetType.XeSS_FG);
-        SetGameAssetType(Manifest.XeLL, GameAssetType.XeLL);
-        SetGameAssetType(Manifest.XeSS_DX11, GameAssetType.XeSS_DX11);
-        if (ImportedManifest is not null)
+        foreach (var info in DLLAssetTypes.All)
         {
-            // NOTE: DLL type
-            SetGameAssetType(ImportedManifest.DLSS, GameAssetType.DLSS);
-            SetGameAssetType(ImportedManifest.DLSS_D, GameAssetType.DLSS_D);
-            SetGameAssetType(ImportedManifest.DLSS_G, GameAssetType.DLSS_G);
-            SetGameAssetType(ImportedManifest.FSR_31_DX12, GameAssetType.FSR_31_DX12);
-            SetGameAssetType(ImportedManifest.FSR_31_VK, GameAssetType.FSR_31_VK);
-            SetGameAssetType(ImportedManifest.XeSS, GameAssetType.XeSS);
-            SetGameAssetType(ImportedManifest.XeSS_FG, GameAssetType.XeSS_FG);
-            SetGameAssetType(ImportedManifest.XeLL, GameAssetType.XeLL);
-            SetGameAssetType(ImportedManifest.XeSS_DX11, GameAssetType.XeSS_DX11);
+            SetGameAssetType(info.ManifestRecords(Manifest), info.AssetType);
+
+            if (ImportedManifest is not null)
+            {
+                SetGameAssetType(info.ManifestRecords(ImportedManifest), info.AssetType);
+            }
         }
 
         // Migrate records from zip to raw dlls
@@ -272,15 +276,11 @@ internal class DLLManager
                 App.CurrentApp.MainWindow.ViewModel.LoadingMessage = ResourceHelper.GetString("DllManager_MigratingDlls");
             });
 
-            CheckDllRecordsForMigration_117(Manifest.DLSS, ImportedManifest?.DLSS);
-            CheckDllRecordsForMigration_117(Manifest.DLSS_D, ImportedManifest?.DLSS_D);
-            CheckDllRecordsForMigration_117(Manifest.DLSS_G, ImportedManifest?.DLSS_G);
-            CheckDllRecordsForMigration_117(Manifest.FSR_31_DX12, ImportedManifest?.FSR_31_DX12);
-            CheckDllRecordsForMigration_117(Manifest.FSR_31_VK, ImportedManifest?.FSR_31_VK);
-            CheckDllRecordsForMigration_117(Manifest.XeSS, ImportedManifest?.XeSS);
-            CheckDllRecordsForMigration_117(Manifest.XeSS_FG, ImportedManifest?.XeSS_FG);
-            CheckDllRecordsForMigration_117(Manifest.XeLL, ImportedManifest?.XeLL);
-            CheckDllRecordsForMigration_117(Manifest.XeSS_DX11, ImportedManifest?.XeSS_DX11);
+            // NOTE: DLL type
+            foreach (var info in DLLAssetTypes.All)
+            {
+                CheckDllRecordsForMigration_117(info.ManifestRecords(Manifest), ImportedManifest is null ? null : info.ManifestRecords(ImportedManifest));
+            }
 
             App.CurrentApp.RunOnUIThread(() =>
             {
@@ -289,40 +289,26 @@ internal class DLLManager
         }
 
         // Load local records
-        LoadLocalRecords(Manifest.DLSS);
-        LoadLocalRecords(Manifest.DLSS_D);
-        LoadLocalRecords(Manifest.DLSS_G);
-        LoadLocalRecords(Manifest.FSR_31_DX12);
-        LoadLocalRecords(Manifest.FSR_31_VK);
-        LoadLocalRecords(Manifest.XeSS);
-        LoadLocalRecords(Manifest.XeSS_FG);
-        LoadLocalRecords(Manifest.XeLL);
-        LoadLocalRecords(Manifest.XeSS_DX11);
-        if (ImportedManifest is not null)
+        // NOTE: DLL type
+        foreach (var info in DLLAssetTypes.All)
         {
-            LoadLocalRecords(ImportedManifest.DLSS, true);
-            LoadLocalRecords(ImportedManifest.DLSS_D, true);
-            LoadLocalRecords(ImportedManifest.DLSS_G, true);
-            LoadLocalRecords(ImportedManifest.FSR_31_DX12, true);
-            LoadLocalRecords(ImportedManifest.FSR_31_VK, true);
-            LoadLocalRecords(ImportedManifest.XeSS, true);
-            LoadLocalRecords(ImportedManifest.XeSS_FG, true);
-            LoadLocalRecords(ImportedManifest.XeLL, true);
-            LoadLocalRecords(ImportedManifest.XeSS_DX11, true);
+            LoadLocalRecords(info.ManifestRecords(Manifest));
+
+            if (ImportedManifest is not null)
+            {
+                LoadLocalRecords(info.ManifestRecords(ImportedManifest), true);
+            }
         }
 
         // See if there is any imported manifest items that are to be migrated to downloaded
         // CheckImportedManifestForCleanUp needs to be called after LoadLocalRecords
         var didChangeImportedManifest = false;
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.DLSS, ImportedManifest?.DLSS);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.DLSS_D, ImportedManifest?.DLSS_D);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.DLSS_G, ImportedManifest?.DLSS_G);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.FSR_31_DX12, ImportedManifest?.FSR_31_DX12);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.FSR_31_VK, ImportedManifest?.FSR_31_VK);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.XeSS, ImportedManifest?.XeSS);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.XeSS_FG, ImportedManifest?.XeSS_FG);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.XeLL, ImportedManifest?.XeLL);
-        didChangeImportedManifest |= CheckImportedManifestForCleanUp(Manifest.XeSS_DX11, ImportedManifest?.XeSS_DX11);
+
+        // NOTE: DLL type
+        foreach (var info in DLLAssetTypes.All)
+        {
+            didChangeImportedManifest |= CheckImportedManifestForCleanUp(info.ManifestRecords(Manifest), ImportedManifest is null ? null : info.ManifestRecords(ImportedManifest));
+        }
 
         if (didChangeImportedManifest == true)
         {
@@ -333,15 +319,10 @@ internal class DLLManager
         {
             // NOTE: DLL type
             // Merge each of the manifests into the master DLL record list
-            MergeManifestsIntoMasterList(DLSSRecords, Manifest.DLSS, ImportedManifest?.DLSS);
-            MergeManifestsIntoMasterList(DLSSGRecords, Manifest.DLSS_G, ImportedManifest?.DLSS_G);
-            MergeManifestsIntoMasterList(DLSSDRecords, Manifest.DLSS_D, ImportedManifest?.DLSS_D);
-            MergeManifestsIntoMasterList(FSR31DX12Records, Manifest.FSR_31_DX12, ImportedManifest?.FSR_31_DX12);
-            MergeManifestsIntoMasterList(FSR31VKRecords, Manifest.FSR_31_VK, ImportedManifest?.FSR_31_VK);
-            MergeManifestsIntoMasterList(XeSSRecords, Manifest.XeSS, ImportedManifest?.XeSS);
-            MergeManifestsIntoMasterList(XeSSFGRecords, Manifest.XeSS_FG, ImportedManifest?.XeSS_FG);
-            MergeManifestsIntoMasterList(XeSSDX11Records, Manifest.XeSS_DX11, ImportedManifest?.XeSS_DX11);
-            MergeManifestsIntoMasterList(XeLLRecords, Manifest.XeLL, ImportedManifest?.XeLL);
+            foreach (var info in DLLAssetTypes.All)
+            {
+                MergeManifestsIntoMasterList(info.Records(this), info.ManifestRecords(Manifest), ImportedManifest is null ? null : info.ManifestRecords(ImportedManifest));
+            }
         });
     }
 
@@ -374,7 +355,7 @@ internal class DLLManager
     /// <param name="dllRecords"></param>
     /// <param name="importedDllRecords"></param>
     /// <returns></returns>
-    static void CheckDllRecordsForMigration_117(List<DLLRecord> dllRecords, List<DLLRecord>? importedDllRecords)
+    internal static void CheckDllRecordsForMigration_117(List<DLLRecord> dllRecords, List<DLLRecord>? importedDllRecords)
     {
         foreach (var dllRecord in dllRecords)
         {
@@ -383,7 +364,7 @@ internal class DLLManager
 
         if (importedDllRecords is not null)
         {
-            foreach (var dllRecord in dllRecords)
+            foreach (var dllRecord in importedDllRecords)
             {
                 CheckDllRecordForMigration_117(dllRecord, true);
             }
@@ -582,7 +563,7 @@ internal class DLLManager
                 foreach (var dllRecord in importedDllRecordsToDelete)
                 {
                     var dllRecordPath = dllRecord.LocalRecord?.ExpectedPath;
-                    if (string.IsNullOrWhiteSpace(dllRecordPath) == true && File.Exists(dllRecordPath))
+                    if (string.IsNullOrWhiteSpace(dllRecordPath) == false && File.Exists(dllRecordPath))
                     {
                         try
                         {
@@ -733,7 +714,7 @@ internal class DLLManager
         }
     }
 
-    static string GetExpectedDllFileName(DLLRecord dllRecord, bool isImported)
+    internal static string GetExpectedDllFileName(DLLRecord dllRecord, bool isImported)
     {
         var dllPath = GetExpectedDllPath(dllRecord, isImported);
         if (string.IsNullOrWhiteSpace(dllPath))
@@ -772,38 +753,14 @@ internal class DLLManager
     public string GetAssetTypeName(GameAssetType assetType)
     {
         // NOTE: DLL type
-        return assetType switch
-        {
-            GameAssetType.DLSS => ResourceHelper.GetString("General_Name_DLSS"),
-            GameAssetType.DLSS_G => ResourceHelper.GetString("General_Name_DLSS_G"),
-            GameAssetType.DLSS_D => ResourceHelper.GetString("General_Name_DLSS_D"),
-            GameAssetType.FSR_31_DX12 => ResourceHelper.GetString("General_Name_FSR_31_DX12"),
-            GameAssetType.FSR_31_VK => ResourceHelper.GetString("General_Name_FSR_31_VK"),
-            GameAssetType.XeSS => ResourceHelper.GetString("General_Name_XeSS"),
-            GameAssetType.XeSS_FG => ResourceHelper.GetString("General_Name_XeSS_FG"),
-            GameAssetType.XeSS_DX11 => ResourceHelper.GetString("General_Name_XeSS_DX11"),
-            GameAssetType.XeLL => ResourceHelper.GetString("General_Name_XeLL"),
-            _ => throw new Exception($"Unknown AssetType: {assetType}"),
-        };
+        return ResourceHelper.GetString(DLLAssetTypes.Get(assetType).DisplayNameResourceKey);
     }
 
 
     public GameAssetType GetAssetBackupType(GameAssetType assetType)
     {
         // NOTE: DLL type
-        return assetType switch
-        {
-            GameAssetType.DLSS => GameAssetType.DLSS_BACKUP,
-            GameAssetType.DLSS_G => GameAssetType.DLSS_G_BACKUP,
-            GameAssetType.DLSS_D => GameAssetType.DLSS_D_BACKUP,
-            GameAssetType.FSR_31_DX12 => GameAssetType.FSR_31_DX12_BACKUP,
-            GameAssetType.FSR_31_VK => GameAssetType.FSR_31_VK_BACKUP,
-            GameAssetType.XeSS => GameAssetType.XeSS_BACKUP,
-            GameAssetType.XeSS_FG => GameAssetType.XeSS_FG_BACKUP,
-            GameAssetType.XeSS_DX11 => GameAssetType.XeSS_DX11_BACKUP,
-            GameAssetType.XeLL => GameAssetType.XeLL_BACKUP,
-            _ => throw new Exception($"Unknown AssetType: {assetType}"),
-        };
+        return DLLAssetTypes.Get(assetType).BackupAssetType;
     }
 
     /// <summary>
@@ -816,301 +773,55 @@ internal class DLLManager
     public bool IsInKnownGameAsset(GameAsset gameAsset, Game game)
     {
         // NOTE: DLL type
-        // For each asset type first check if is in the DLSS Swapper manifest
-        if (gameAsset.AssetType == GameAssetType.DLSS || gameAsset.AssetType == GameAssetType.DLSS_BACKUP)
+        // Look the asset type up in the registry instead of a nine branch if/else chain that had to
+        // be kept in sync by hand. Backup types resolve to their non-backup entry automatically.
+        var info = DLLAssetTypes.Find(gameAsset.AssetType);
+        if (info is null)
         {
-            if (DLSSRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.DLSS.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
             return false;
         }
-        else if (gameAsset.AssetType == GameAssetType.DLSS_D || gameAsset.AssetType == GameAssetType.DLSS_D_BACKUP)
+
+        // Is this hash a DLL we know about and can download? Ordinal is both correct (these are hex
+        // hashes, not natural language) and considerably cheaper than InvariantCultureIgnoreCase.
+        foreach (var record in info.Records(this))
         {
-            if (DLSSDRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
+            if (string.Equals(gameAsset.Hash, record.MD5Hash, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
+        }
 
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
+        // Otherwise check the manifest of known DLL hashes for this specific game.
+        HashedKnownDLL? hashedKnownDLL = null;
+        _knownDLLsReadWriterLock.EnterReadLock();
+        try
+        {
+            if (_knownDLLHashIndex.TryGetValue(info.AssetType, out var byHash) == true)
             {
-                hashedKnownDLL = KnownDLLs.DLSS_D.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
+                byHash.TryGetValue(gameAsset.Hash, out hashedKnownDLL);
             }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
+        }
+        finally
+        {
+            _knownDLLsReadWriterLock.ExitReadLock();
+        }
 
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
+        if (hashedKnownDLL is null)
+        {
             return false;
         }
-        else if (gameAsset.AssetType == GameAssetType.DLSS_G || gameAsset.AssetType == GameAssetType.DLSS_G_BACKUP)
+
+        if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
         {
-            if (DLSSGRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
+            if (gameHashes.Contains(game.TitleBase64) == true)
             {
                 return true;
             }
-
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.DLSS_G.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.FSR_31_DX12 || gameAsset.AssetType == GameAssetType.FSR_31_DX12_BACKUP)
-        {
-            if (FSR31DX12Records.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.FSR_31_DX12.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.FSR_31_VK || gameAsset.AssetType == GameAssetType.FSR_31_VK_BACKUP)
-        {
-            if (FSR31VKRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.FSR_31_VK.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.XeSS || gameAsset.AssetType == GameAssetType.XeSS_BACKUP)
-        {
-            if (XeSSRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.XeSS.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.XeLL || gameAsset.AssetType == GameAssetType.XeLL_BACKUP)
-        {
-            if (XeLLRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.XeLL.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.XeSS_DX11 || gameAsset.AssetType == GameAssetType.XeSS_DX11_BACKUP)
-        {
-            if (XeSSDX11Records.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.XeSS_DX11.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        else if (gameAsset.AssetType == GameAssetType.XeSS_FG || gameAsset.AssetType == GameAssetType.XeSS_FG_BACKUP)
-        {
-            if (XeSSFGRecords.Any(x => gameAsset.Hash.Equals(x.MD5Hash, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return true;
-            }
-            HashedKnownDLL? hashedKnownDLL = null;
-            _knownDLLsReadWriterLock.EnterReadLock();
-            try
-            {
-                hashedKnownDLL = KnownDLLs.XeSS_FG.FirstOrDefault(x => gameAsset.Hash.Equals(x.Hash, StringComparison.InvariantCultureIgnoreCase));
-            }
-            finally
-            {
-                _knownDLLsReadWriterLock.ExitReadLock();
-            }
-
-            if (hashedKnownDLL is null)
-            {
-                return false;
-            }
-
-            if (hashedKnownDLL.Sources.TryGetValue(game.GameLibrary.ToString(), out var gameHashes) == true)
-            {
-                if (gameHashes.Contains(game.TitleBase64) == true)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         return false;
     }
+
 
     /// <summary>
     /// 
@@ -1129,70 +840,18 @@ internal class DLLManager
 
         var fileName = overrideFileName ?? Path.GetFileName(filePath);
 
-        ObservableCollection<DLLRecord>? recordList = null;
-        List<DLLRecord>? importedRecordList = null;
-        GameAssetType? gameAssetType = null;
-
         // NOTE: DLL type
-        if (fileName == "nvngx_dlss.dll")
-        {
-            gameAssetType = GameAssetType.DLSS;
-            recordList = DLSSRecords;
-            importedRecordList = ImportedManifest.DLSS;
-        }
-        else if (fileName == "nvngx_dlssg.dll")
-        {
-            gameAssetType = GameAssetType.DLSS_G;
-            recordList = DLSSGRecords;
-            importedRecordList = ImportedManifest.DLSS_G;
-        }
-        else if (fileName == "nvngx_dlssd.dll")
-        {
-            gameAssetType = GameAssetType.DLSS_D;
-            recordList = DLSSDRecords;
-            importedRecordList = ImportedManifest.DLSS_D;
-        }
-        else if (fileName == "amd_fidelityfx_dx12.dll")
-        {
-            gameAssetType = GameAssetType.FSR_31_DX12;
-            recordList = FSR31DX12Records;
-            importedRecordList = ImportedManifest.FSR_31_DX12;
-        }
-        else if (fileName == "amd_fidelityfx_vk.dll")
-        {
-            gameAssetType = GameAssetType.FSR_31_VK;
-            recordList = FSR31VKRecords;
-            importedRecordList = ImportedManifest.FSR_31_VK;
-        }
-        else if (fileName == "libxess.dll")
-        {
-            gameAssetType = GameAssetType.XeSS;
-            recordList = XeSSRecords;
-            importedRecordList = ImportedManifest.XeSS;
-        }
-        else if (fileName == "libxell.dll")
-        {
-            gameAssetType = GameAssetType.XeLL;
-            recordList = XeLLRecords;
-            importedRecordList = ImportedManifest.XeLL;
-        }
-        else if (fileName == "libxess_dx11.dll")
-        {
-            gameAssetType = GameAssetType.XeSS_DX11;
-            recordList = XeSSDX11Records;
-            importedRecordList = ImportedManifest.XeSS_DX11;
-        }
-        else if (fileName == "libxess_fg.dll")
-        {
-            gameAssetType = GameAssetType.XeSS_FG;
-            recordList = XeSSFGRecords;
-            importedRecordList = ImportedManifest.XeSS_FG;
-        }
-
-        if (gameAssetType is null || recordList is null || importedRecordList is null)
+        // Resolve the DLL name to its asset type via the registry instead of a nine branch if/else
+        // chain. The lookup is OrdinalIgnoreCase to match the case insensitive file checks below.
+        var info = DLLAssetTypes.FindByDllName(fileName);
+        if (info is null)
         {
             return DLLImportResult.FromFail(zippedDllFullName ?? filePath, ResourceHelper.GetString("DllManager_UnknownTypeDll"));
         }
+
+        var gameAssetType = info.AssetType;
+        var recordList = info.Records(this);
+        var importedRecordList = info.ManifestRecords(ImportedManifest);
 
         var versionInfo = FileVersionInfo.GetVersionInfo(filePath);
         var isTrusted = WinTrust.VerifyEmbeddedSignature(filePath);
@@ -1231,7 +890,7 @@ internal class DLLManager
                 ZipFileSize = 0,
                 ZipMD5Hash = string.Empty,
                 IsSignatureValid = isTrusted,
-                AssetType = gameAssetType.Value,
+                AssetType = gameAssetType,
             };
 
 
@@ -1293,83 +952,37 @@ internal class DLLManager
 
     internal void DeleteImportedDllRecord(DLLRecord dllRecord)
     {
-        ObservableCollection<DLLRecord>? recordList = null;
-        List<DLLRecord>? importedRecordList = null;
-
         // NOTE: DLL type
-        if (dllRecord.AssetType == GameAssetType.DLSS)
-        {
-            recordList = DLSSRecords;
-            importedRecordList = ImportedManifest?.DLSS;
-        }
-        else if (dllRecord.AssetType == GameAssetType.DLSS_G)
-        {
-            recordList = DLSSGRecords;
-            importedRecordList = ImportedManifest?.DLSS_G;
-        }
-        else if (dllRecord.AssetType == GameAssetType.DLSS_D)
-        {
-            recordList = DLSSDRecords;
-            importedRecordList = ImportedManifest?.DLSS_D;
-        }
-        else if (dllRecord.AssetType == GameAssetType.FSR_31_DX12)
-        {
-            recordList = FSR31DX12Records;
-            importedRecordList = ImportedManifest?.FSR_31_DX12;
-        }
-        else if (dllRecord.AssetType == GameAssetType.FSR_31_VK)
-        {
-            recordList = FSR31VKRecords;
-            importedRecordList = ImportedManifest?.FSR_31_VK;
-        }
-        else if (dllRecord.AssetType == GameAssetType.XeSS)
-        {
-            recordList = XeSSRecords;
-            importedRecordList = ImportedManifest?.XeSS;
-        }
-        else if (dllRecord.AssetType == GameAssetType.XeSS_FG)
-        {
-            recordList = XeSSFGRecords;
-            importedRecordList = ImportedManifest?.XeSS_FG;
-        }
-        else if (dllRecord.AssetType == GameAssetType.XeSS_DX11)
-        {
-            recordList = XeSSDX11Records;
-            importedRecordList = ImportedManifest?.XeSS_DX11;
-        }
-        else if (dllRecord.AssetType == GameAssetType.XeLL)
-        {
-            recordList = XeLLRecords;
-            importedRecordList = ImportedManifest?.XeLL;
-        }
-
-        if (recordList is null)
+        var info = DLLAssetTypes.Find(dllRecord.AssetType);
+        if (info is null)
         {
             // For some reason we couldn't get the recordList, is this a new DLL type?
-            Debugger.Break();
+            Logger.Error($"Could not delete imported DLL record, unknown asset type {dllRecord.AssetType}.");
             return;
         }
 
+        var recordList = info.Records(this);
         recordList.Remove(dllRecord);
-        importedRecordList?.Remove(dllRecord);
+
+        if (ImportedManifest is not null)
+        {
+            info.ManifestRecords(ImportedManifest).Remove(dllRecord);
+        }
     }
 
     internal static string DllNameForGameAssetType(GameAssetType gameAssetType)
     {
         // NOTE: DLL type
-        return gameAssetType switch
+        // Only non-backup types have a file name of their own. This deliberately does not use
+        // DLLAssetTypes.Find (which resolves backup types to their parent) so that a backup record
+        // still yields an empty name, as it did before the registry was introduced.
+        var info = DLLAssetTypes.Find(gameAssetType);
+        if (info is null || info.AssetType != gameAssetType)
         {
-            GameAssetType.DLSS => "nvngx_dlss.dll",
-            GameAssetType.DLSS_G => "nvngx_dlssg.dll",
-            GameAssetType.DLSS_D => "nvngx_dlssd.dll",
-            GameAssetType.FSR_31_DX12 => "amd_fidelityfx_dx12.dll",
-            GameAssetType.FSR_31_VK => "amd_fidelityfx_vk.dll",
-            GameAssetType.XeSS => "libxess.dll",
-            GameAssetType.XeSS_FG => "libxess_fg.dll",
-            GameAssetType.XeLL => "libxell.dll",
-            GameAssetType.XeSS_DX11 => "libxess_dx11.dll",
-            _ => string.Empty,
-        };
+            return string.Empty;
+        }
+
+        return info.DllName;
     }
 
     /// <summary>

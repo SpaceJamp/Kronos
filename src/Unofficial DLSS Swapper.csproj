@@ -1,9 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <AssemblyName>DLSS Swapper</AssemblyName>
+    <AssemblyName>Unofficial DLSS Swapper</AssemblyName>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <!--
+      RootNamespace is deliberately left as DLSS_Swapper even though AssemblyName changed, so that
+      renaming the product does not churn every namespace/using in the codebase. The storage folder
+      in Storage.cs is likewise left as "DLSS Swapper" so existing users keep their settings and
+      game history instead of appearing to lose everything.
+    -->
     <RootNamespace>DLSS_Swapper</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
@@ -376,6 +382,11 @@
           <Generator>MSBuild:Compile</Generator>
         </Page>
     </ItemGroup>
+
+  <!-- Let the unit test project exercise the internal helpers (DLLManager, DLLAssetTypes, ...). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="DLSS_Swapper.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />

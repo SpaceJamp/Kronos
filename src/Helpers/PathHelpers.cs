@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +28,20 @@ internal static class PathHelpers
     {
         // Via https://stackoverflow.com/a/21058152
         //new Uri(path).LocalPath
-        return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(path);
+
+        // Never trim the trailing separator off a drive root. "C:\" trimmed becomes "C:", which
+        // Windows treats as *drive relative* (relative to the current directory on that drive)
+        // rather than the root. Directory.Exists("C:") is false, so a game installed at a drive
+        // root was treated as missing.
+        var root = Path.GetPathRoot(fullPath);
+        if (string.IsNullOrEmpty(root) == false &&
+            string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase))
+        {
+            return fullPath;
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
 }

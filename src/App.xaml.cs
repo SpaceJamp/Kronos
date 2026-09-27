@@ -373,51 +373,58 @@ public sealed partial class App : Application
         return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
     }
 
+    /// <summary>
+    /// Gets the dispatcher queue of the main window, if it is available.
+    /// </summary>
+    DispatcherQueue? _dispatcherQueue => _mainWindow?.DispatcherQueue;
+
     public bool RunOnUIThread(Action action)
     {
-        if (Environment.CurrentManagedThreadId == 1)
+        var dispatcherQueue = _dispatcherQueue;
+
+        // HasThreadAccess is the supported way to test for the UI thread. Testing
+        // Environment.CurrentManagedThreadId == 1 is unreliable for unpackaged apps and
+        // caused us to marshal asynchronously even when we were already on the UI thread.
+        if (dispatcherQueue is null || dispatcherQueue.HasThreadAccess)
         {
             action();
             return true;
         }
 
-        if (_mainWindow?.DispatcherQueue is not null)
+        if (dispatcherQueue.TryEnqueue(new DispatcherQueueHandler(action)))
         {
-            var didEnqueue = _mainWindow.DispatcherQueue.TryEnqueue(new DispatcherQueueHandler(action));
-
-            if (didEnqueue == false)
-            {
-                try
-                {
-                    // I am sure there is a better way to fill out a stacktrace than throwing an exception
-                    throw new Exception("TryEnqueue failed.");
-                }
-                catch (Exception err)
-                {
-                    Logger.Error(err);
-                }
-            }
-
-            return didEnqueue;
+            return true;
         }
 
+        // TryEnqueue failed. Previously this was swallowed (and the action was never run),
+        // which left objects such as Game.Processing stuck at true forever. Running inline is
+        // the best remaining option; there is no UI left to marshal to at this point.
+        Logger.Error("Could not enqueue action to the UI thread. Running it inline instead.");
+        action();
         return false;
     }
 
 
     public Task RunOnUIThreadAsync(Func<Task> function)
     {
-        if (Environment.CurrentManagedThreadId == 1)
+        var dispatcherQueue = _dispatcherQueue;
+
+        if (dispatcherQueue is null || dispatcherQueue.HasThreadAccess)
         {
             return function();
         }
 
-        if (_mainWindow?.DispatcherQueue is not null)
+        // Never silently drop the callback. Callers use this in finally blocks to reset state
+        // (e.g. Game.Processing), so dropping it would permanently break the game entry.
+        try
         {
-            return _mainWindow.DispatcherQueue.EnqueueAsync(function);
+            return dispatcherQueue.EnqueueAsync(function);
         }
-
-        return Task.CompletedTask;
+        catch (Exception err)
+        {
+            Logger.Error(err, "Could not enqueue async function to the UI thread. Running it inline instead.");
+            return function();
+        }
     }
 
 }

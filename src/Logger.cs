@@ -53,8 +53,10 @@ internal static class Logger
 
     public static void ChangeLoggingLevel(LoggingLevel loggingLevel)
     {
-        // Off is secretly fatal as I don't know how to turn off logging :|
-        levelSwitch.MinimumLevel = Settings.Instance.LoggingLevel switch
+        // This used to read Settings.Instance.LoggingLevel instead of the parameter, which made
+        // the argument dead code. Serilog has no level below Fatal, so "Off" maps to Fatal --
+        // if we ever need true silence we should dispose/replace the logger instead.
+        levelSwitch.MinimumLevel = loggingLevel switch
         {
             LoggingLevel.Verbose => LogEventLevel.Verbose,
             LoggingLevel.Debug => LogEventLevel.Debug,

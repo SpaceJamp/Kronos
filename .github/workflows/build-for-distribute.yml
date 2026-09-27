@@ -1,4 +1,4 @@
-name: Build DLSS Swapper
+name: Build DLSS Swapper (fork, unsigned)
 
 on:
   push:
@@ -10,8 +10,6 @@ on:
 jobs:
   build:
     runs-on: windows-2025
-    env:
-      SHOULD_SIGN: ${{ startsWith(github.ref, 'refs/tags/') }}
 
     steps:
 
@@ -21,7 +19,9 @@ jobs:
     - name: Check static_manifest.json is up to date
       shell: pwsh
       run: |
-        # Calculate the current static manifest hash
+        # NOTE (fork): this check compares the bundled fallback manifest against the upstream
+        # maintainer's manifest builder. It is informational only and never fails the build, so it
+        # is kept for reference. Remove this step if you would rather not depend on that repo.
         $staticManifestPath = "src\Assets\static_manifest.json"
         $currentHash = Get-FileHash -Path $staticManifestPath -Algorithm SHA1
 
@@ -31,27 +31,23 @@ jobs:
           exit 1
         }
 
-        # Download a fresh copy and calculate its hash
-        $url = " https://raw.githubusercontent.com/beeradmoore/dlss-swapper-manifest-builder/refs/heads/main/manifest.json"
-        $tempStaticManifestPath =  Join-Path $env:TEMP "temp_static_manifest.json"
+        $url = "https://raw.githubusercontent.com/beeradmoore/dlss-swapper-manifest-builder/refs/heads/main/manifest.json"
+        $tempStaticManifestPath = Join-Path $env:TEMP "temp_static_manifest.json"
 
-        Invoke-WebRequest -Uri $url -OutFile $tempStaticManifestPath
-
-        $remoteHash = Get-FileHash -Path $tempStaticManifestPath -Algorithm SHA1
-
-        if (-not $remoteHash)
+        try
         {
-          Write-Host "Could not get sha1 hash of $tempStaticManifestPath"
-          exit 1
-        }
+          Invoke-WebRequest -Uri $url -OutFile $tempStaticManifestPath
+          $remoteHash = Get-FileHash -Path $tempStaticManifestPath -Algorithm SHA1
 
-        # If they don't match abort the build
-        if ($currentHash.Hash -eq $remoteHash.Hash) {
-            Write-Host "static_manifest.json is up to date."
-        } else {
-            Write-Host "static_manifest.json is out of date. In future this will abort the build."
-            #Write-Host "static_manifest.json is out of date. Aborting build."
-            #exit 1
+          if ($currentHash.Hash -eq $remoteHash.Hash) {
+              Write-Host "static_manifest.json matches the upstream manifest."
+          } else {
+              Write-Host "static_manifest.json differs from the upstream manifest. Informational only."
+          }
+        }
+        catch
+        {
+          Write-Host "Could not reach the upstream manifest builder, skipping comparison."
         }
       working-directory: ${{ github.workspace }}\
     
@@ -97,7 +93,7 @@ jobs:
     - name: Extract version from csproj
       shell: pwsh
       run: |
-        $ver = Select-String '<Version>(.+?)</Version>' "${{ github.workspace }}\src\DLSS Swapper.csproj" | % { $_.Matches[0].Groups[1].Value }
+        $ver = Select-String '<Version>(.+?)</Version>' "${{ github.workspace }}\src\Unofficial DLSS Swapper.csproj" | % { $_.Matches[0].Groups[1].Value }
         echo "VERSION=$ver" >> $env:GITHUB_ENV
           
     - name: Build DLSS Swapper portable
@@ -108,95 +104,36 @@ jobs:
       run: ${{ github.workspace }}\package\build_Installer.cmd
       working-directory: ${{ github.workspace }}\package\
     
-    - name: Upload unsigned artifacts to be signed
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      id: upload-unsigned-artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: pre-signed-packages
-        retention-days: 1
-        path: |
-          ${{ github.workspace }}\src\bin\publish\installer\DLSS Swapper.dll
-          ${{ github.workspace }}\src\bin\publish\installer\DLSS Swapper.exe
-          ${{ github.workspace }}\src\bin\publish\portable\DLSS Swapper.dll
-          ${{ github.workspace }}\src\bin\publish\portable\DLSS Swapper.exe
-        if-no-files-found: error
-
-    - name: Sign with SignPath 
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      id: sign-with-signpath
-      uses: signpath/github-action-submit-signing-request@v1.2
-      with:
-        api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-        organization-id: '9b913506-76ef-4356-b93a-0fe60061013c'
-        project-slug: 'dlss-swapper'
-        signing-policy-slug: 'release-signing'
-        artifact-configuration-slug: 'installer-and-portable-raw-files'
-        github-artifact-id: '${{ steps.upload-unsigned-artifacts.outputs.artifact-id }}'
-        wait-for-completion: true
-        output-artifact-directory: '${{ github.workspace }}\src\bin\signed\'
-
-    - name: Move signed assets into original built position
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      shell: pwsh
-      run: |
-        Move-Item -Path "${{ github.workspace }}\src\bin\signed\installer\DLSS Swapper.dll" -Destination "${{ github.workspace }}\src\bin\publish\installer\" -Force
-        Move-Item -Path "${{ github.workspace }}\src\bin\signed\installer\DLSS Swapper.exe" -Destination "${{ github.workspace }}\src\bin\publish\installer\" -Force
-        Move-Item -Path "${{ github.workspace }}\src\bin\signed\portable\DLSS Swapper.dll" -Destination "${{ github.workspace }}\src\bin\publish\portable\" -Force
-        Move-Item -Path "${{ github.workspace }}\src\bin\signed\portable\DLSS Swapper.exe" -Destination "${{ github.workspace }}\src\bin\publish\portable\" -Force
+    # NOTE: Code signing was removed from this workflow.
+    #
+    # This is a fork. The original workflow submitted artifacts to SignPath using the upstream
+    # project's organisation id, project slug and signing policy. Running that here would attempt to
+    # sign with someone else's certificate configuration, so it has been deleted rather than
+    # repointed. Releases from this fork are UNSIGNED.
+    #
+    # If you want signed builds, set up your own signing (a self-signed cert for local testing, or
+    # your own HSM/cloud signing service) and add a step here. Do not reuse the upstream SignPath
+    # identifiers.
 
     - name: Package DLSS Swapper portable
       run: ${{ github.workspace }}\package\package_Portable.cmd
       working-directory: ${{ github.workspace }}\package\
 
-    - name: Upload completed signed portable build artifact
+    - name: Upload portable build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: DLSS.Swapper-${{ env.VERSION }}-portable
-        path: ${{ github.workspace }}\package\Output\DLSS.Swapper-${{ env.VERSION }}-portable.zip
+        name: Unofficial.DLSS.Swapper-${{ env.VERSION }}-portable
+        path: ${{ github.workspace }}\package\Output\Unofficial.DLSS.Swapper-${{ env.VERSION }}-portable.zip
         if-no-files-found: error
 
     - name: Package DLSS Swapper installer
       run: ${{ github.workspace }}\package\package_Installer.cmd
       working-directory: ${{ github.workspace }}\package\
 
-    - name: Upload installer artifact to be signed
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      id: upload-unsigned-installer-artifacts
+    - name: Upload installer build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: unsigned-installer-artifacts
-        retention-days: 1
-        path: ${{ github.workspace }}\package\Output\DLSS.Swapper-${{ env.VERSION }}-installer.exe
-        if-no-files-found: error
-  
-    - name: Sign installer with SignPath
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      id: sign-installer-with-signpath
-      uses: signpath/github-action-submit-signing-request@v1.2
-      with:
-        api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-        organization-id: '9b913506-76ef-4356-b93a-0fe60061013c'
-        project-slug: 'dlss-swapper'
-        signing-policy-slug: 'release-signing'
-        artifact-configuration-slug: 'installer'
-        github-artifact-id: '${{ steps.upload-unsigned-installer-artifacts.outputs.artifact-id }}'
-        wait-for-completion: true
-        output-artifact-directory: '${{ github.workspace }}\src\bin\signed_installer\'
-
-    - name: Upload completed signed installer build artifact
-      if: ${{ env.SHOULD_SIGN == 'true' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: DLSS.Swapper-${{ env.VERSION }}-installer
-        path: ${{ github.workspace }}\src\bin\signed_installer\DLSS.Swapper-${{ env.VERSION }}-installer.exe
-        if-no-files-found: error
-
-    - name: Upload completed unsigned installer build artifact
-      if: ${{ env.SHOULD_SIGN == 'false' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: DLSS.Swapper-${{ env.VERSION }}-installer
-        path: ${{ github.workspace }}\package\Output\DLSS.Swapper-${{ env.VERSION }}-installer.exe
+        name: Unofficial.DLSS.Swapper-${{ env.VERSION }}-installer
+        path: ${{ github.workspace }}\package\Output\Unofficial.DLSS.Swapper-${{ env.VERSION }}-installer.exe
         if-no-files-found: error
 
