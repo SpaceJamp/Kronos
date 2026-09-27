@@ -51,6 +51,21 @@
             <CheckBox Content="This is a repack (scene release)"
                       Margin="0,16,0,0"
                       IsChecked="{Binding Game.IsRepack, Mode=TwoWay}" />
+
+            <!--
+                A manually added game has no store page to fetch artwork from, so the tile is
+                blank unless the user supplies an image. Linking the store appid borrows that
+                game's cover instead. A dropped image still wins over this, see
+                ManuallyAddedGame.UpdateCacheImageAsync.
+            -->
+            <TextBlock Text="Store app id (optional)" FontWeight="Bold" Padding="0,20,0,0" />
+            <TextBox Text="{Binding Game.LinkedAppId, Mode=TwoWay}"
+                     PlaceholderText="e.g. 3669870" />
+            <TextBlock TextWrapping="Wrap"
+                       Opacity="0.7"
+                       FontSize="12"
+                       Padding="0,4,0,0"
+                       Text="Paste the Steam app id of the game this is a copy of to use its cover art." />
         </StackPanel>
     </Grid>
 </UserControl>

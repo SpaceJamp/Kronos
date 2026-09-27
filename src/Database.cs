@@ -146,6 +146,10 @@ internal class Database
                 AddColumn(syncConnection, gameTable, "is_repack", "INTEGER NOT NULL DEFAULT 0");
             }
 
+            // Same story for the optional store link on a manually added game, which is what lets
+            // a repack borrow the artwork of the game it is a copy of.
+            AddColumn(syncConnection, "manually_added_game", "linked_app_id", "TEXT NOT NULL DEFAULT ''");
+
             // Delete old indexes if they exist.
             syncConnection.Execute("DROP INDEX IF EXISTS GameAsset_id");
             syncConnection.Execute("DROP INDEX IF EXISTS GameHistory_game_id");
@@ -204,6 +208,7 @@ internal class Database
                 "launcher",
                 "hash",
                 "repack",
+                "linked",
             };
 
             var hasIssues = false;
