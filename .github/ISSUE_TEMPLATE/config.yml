@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Official DLSS Swapper (this is a fork)
+    url: https://github.com/beeradmoore/dlss-swapper
+    about: Bug reports and feature requests for the official app belong upstream. Only file issues here for problems caused by this fork's own changes.
+  - name: Report a malicious site impersonating DLSS Swapper
+    url: https://github.com/beeradmoore/dlss-swapper/issues/new?template=other_issue.yml
+    about: Impersonation reports go to the upstream maintainer, who can act on them.

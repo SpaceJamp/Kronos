@@ -95,34 +95,50 @@ public partial class LibraryPageModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    async Task RefreshAsync()
+    [RelayCommand(IncludeCancelCommand = true)]
+    async Task RefreshAsync(CancellationToken cancellationToken)
     {
-        IsRefreshing = true;
-
-        var didUpdate = await DLLManager.Instance.UpdateManifestAsync();
-
-        if (didUpdate)
+        // IsRefreshing was previously cleared on the happy path only, so any failure left the
+        // refresh button permanently disabled.
+        try
         {
-            // Reload selected library.
-            if (SelectedSelectorBarItem?.Tag is GameAssetType gameAssetType)
+            IsRefreshing = true;
+
+            var didUpdate = await DLLManager.Instance.UpdateManifestAsync();
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                SelectLibrary(gameAssetType);
+                return;
+            }
+
+            if (didUpdate)
+            {
+                // Reload selected library.
+                if (SelectedSelectorBarItem?.Tag is GameAssetType gameAssetType)
+                {
+                    SelectLibrary(gameAssetType);
+                }
+            }
+            else
+            {
+                var errorDialog = new EasyContentDialog(_libraryPage.XamlRoot)
+                {
+                    Title = ResourceHelper.GetString("General_Error"),
+                    CloseButtonText = ResourceHelper.GetString("General_Okay"),
+                    DefaultButton = ContentDialogButton.Close,
+                    Content = ResourceHelper.GetString("LibraryPage_UnableToUpdateDllRecord"),
+                };
+                await errorDialog.ShowAsync();
             }
         }
-        else
+        catch (OperationCanceledException)
         {
-            var errorDialog = new EasyContentDialog(_libraryPage.XamlRoot)
-            {
-                Title = ResourceHelper.GetString("General_Error"),
-                CloseButtonText = ResourceHelper.GetString("General_Okay"),
-                DefaultButton = ContentDialogButton.Close,
-                Content = ResourceHelper.GetString("LibraryPage_UnableToUpdateDllRecord"),
-            };
-            await errorDialog.ShowAsync();
+            Logger.Info("Refreshing the manifest was cancelled.");
         }
-
-        IsRefreshing = false;
+        finally
+        {
+            IsRefreshing = false;
+        }
     }
 
     [RelayCommand]
@@ -371,9 +387,11 @@ public partial class LibraryPageModel : ObservableObject
     }
 
 
-    [RelayCommand]
-    async Task ImportAsync()
+    [RelayCommand(IncludeCancelCommand = true)]
+    async Task ImportAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (DLLManager.Instance.ImportedManifest is null)
         {
             var couldNotImportDialog = new EasyContentDialog(_libraryPage.XamlRoot)
@@ -452,10 +470,24 @@ public partial class LibraryPageModel : ObservableObject
             Title = ResourceHelper.GetString("LibraryPage_Importing"),
             // I would like this to be a progress ring but for some reason the ring will not show.
             Content = progressStackPanel,
+            // Importing a large selection takes minutes, so this needs to be cancellable. Without a
+            // button here the user had no way out of the dialog at all.
+            CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
         };
-        _ = loadingDialog.ShowAsync();
 
-        var taskCompletionSource = new TaskCompletionSource<List<DLLImportResult>>();
+        loadingDialog.Closing += (sender, args) =>
+        {
+            // Request cancellation rather than tearing the dialog down immediately, so the user can
+            // still see the progress settle instead of the dialog vanishing mid-import.
+            if (cancellationToken.IsCancellationRequested == false)
+            {
+                args.Cancel = true;
+                ImportCancelCommand.Execute(null);
+            }
+        };
+
+        _ = loadingDialog.ShowAsync();
 
         bool HandleLocalDLLRecordZip(string importedPath, DLLRecord dllRecord, List<DLLImportResult> importResults)
         {
@@ -527,7 +559,11 @@ public partial class LibraryPageModel : ObservableObject
         var selectedFilesProcessed = 0;
         var totalDllsProcessed = 0;
 
-        ThreadPool.QueueUserWorkItem((stateInfo) =>
+        // NOTE: this was ThreadPool.QueueUserWorkItem plus a TaskCompletionSource. Nothing caught
+        // exceptions thrown by the work item, so a failure (e.g. Storage.CreateDirectoryIfNotExists
+        // at the top of the body) either killed the process or left this method awaiting a task that
+        // would never complete, with the modal dialog stuck on screen and no way out.
+        var importResults = await Task.Run(() =>
         {
             var importResults = new List<DLLImportResult>();
 
@@ -535,40 +571,48 @@ public partial class LibraryPageModel : ObservableObject
             var tempExtractPath = Path.Combine(Storage.GetTemp(), "import", Guid.NewGuid().ToString("D"));
             Storage.CreateDirectoryIfNotExists(tempExtractPath);
 
-
-            foreach (var importFile in openFileList)
+            try
             {
-                ++selectedFilesProcessed;
-                App.CurrentApp.RunOnUIThread(() =>
+                foreach (var importFile in openFileList)
                 {
-                    filesProgressBar.Value = selectedFilesProcessed;
-                });
-
-                if (importFile is null || File.Exists(importFile) == false)
-                {
-                    importResults.Add(DLLImportResult.FromFail(importFile ?? string.Empty, ResourceHelper.GetString("LibraryPage_FileNotFound")));
-                    continue;
-                }
-
-                try
-                {
-                    if (importFile.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase))
+                    // Stop between files rather than mid-file so we never leave a half written DLL.
+                    if (cancellationToken.IsCancellationRequested)
                     {
-                        // If we are importing a zip, first check if its hash is one
-                        // that we expect.Then we can just bypass everything.
-                        var newZipHash = string.Empty;
-                        using (var fileStream = File.OpenRead(importFile))
+                        Logger.Info("Import cancelled by the user.");
+                        break;
+                    }
+
+                    ++selectedFilesProcessed;
+                    App.CurrentApp.RunOnUIThread(() =>
+                    {
+                        filesProgressBar.Value = selectedFilesProcessed;
+                    });
+
+                    if (importFile is null || File.Exists(importFile) == false)
+                    {
+                        importResults.Add(DLLImportResult.FromFail(importFile ?? string.Empty, ResourceHelper.GetString("LibraryPage_FileNotFound")));
+                        continue;
+                    }
+
+                    try
+                    {
+                        if (importFile.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase))
                         {
-                            newZipHash = fileStream.GetMD5Hash();
-                        }
-
-                        if (string.IsNullOrWhiteSpace(newZipHash) == false)
-                        {
-                            // NOTE: DLL type
-                            var dlssRecord = DLLManager.Instance.DLSSRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (dlssRecord is not null)
+                            // If we are importing a zip, first check if its hash is one
+                            // that we expect.Then we can just bypass everything.
+                            var newZipHash = string.Empty;
+                            using (var fileStream = File.OpenRead(importFile))
                             {
-                                if (HandleLocalDLLRecordZip(importFile, dlssRecord, importResults))
+                                newZipHash = fileStream.GetMD5Hash();
+                            }
+
+                            if (string.IsNullOrWhiteSpace(newZipHash) == false)
+                            {
+                                // NOTE: DLL type
+                                // Was nine copy/pasted FirstOrDefault + HandleLocalDLLRecordZip
+                                // blocks that had to be kept in sync by hand.
+                                var knownRecord = FindRecordByZipHash(newZipHash);
+                                if (knownRecord is not null && HandleLocalDLLRecordZip(importFile, knownRecord, importResults))
                                 {
                                     ++totalDllsProcessed;
                                     App.CurrentApp.RunOnUIThread(() =>
@@ -579,222 +623,121 @@ public partial class LibraryPageModel : ObservableObject
                                 }
                             }
 
-                            var dlssDRecord = DLLManager.Instance.DLSSDRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (dlssDRecord is not null)
+
+                            // Now that we know the zip itself is not a known zip we will extract each DLL and import them.
+                            using (var archive = ZipFile.OpenRead(importFile))
                             {
-                                if (HandleLocalDLLRecordZip(importFile, dlssDRecord, importResults))
+                                var zippedDlls = archive.Entries.Where(x => x.Name.EndsWith(".dll")).ToArray();
+                                if (zippedDlls.Length == 0)
                                 {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
+                                    throw new Exception(ResourceHelper.GetString("LibraryPage_ZipDidNotContainAnyDlls"));
                                 }
-                            }
 
-                            var dlssGRecord = DLLManager.Instance.DLSSGRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (dlssGRecord is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, dlssGRecord, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
+                                var dllsInZip = zippedDlls.Length;
+                                var processedDllsInZip = 0;
 
-                            var fsr31dx12Record = DLLManager.Instance.FSR31DX12Records.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (fsr31dx12Record is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, fsr31dx12Record, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-
-                            var fsr32vkRecord = DLLManager.Instance.FSR31VKRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (fsr32vkRecord is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, fsr32vkRecord, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-
-                            var xessRecord = DLLManager.Instance.XeSSRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (xessRecord is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, xessRecord, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-
-                            var xellRecord = DLLManager.Instance.XeLLRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (xellRecord is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, xellRecord, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-
-                            var xessDX11Record = DLLManager.Instance.XeSSDX11Records.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (xessDX11Record is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, xessDX11Record, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-
-                            var xessFGRecord = DLLManager.Instance.XeSSFGRecords.FirstOrDefault(x => string.Equals(x.ZipMD5Hash, newZipHash, StringComparison.InvariantCultureIgnoreCase));
-                            if (xessFGRecord is not null)
-                            {
-                                if (HandleLocalDLLRecordZip(importFile, xessFGRecord, importResults))
-                                {
-                                    ++totalDllsProcessed;
-                                    App.CurrentApp.RunOnUIThread(() =>
-                                    {
-                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                                    });
-                                    continue;
-                                }
-                            }
-                        }
-
-
-                        // Now that we know the zip itself is not a known zip we will extract each DLL and import them.
-                        using (var archive = ZipFile.OpenRead(importFile))
-                        {
-                            var zippedDlls = archive.Entries.Where(x => x.Name.EndsWith(".dll")).ToArray();
-                            if (zippedDlls.Length == 0)
-                            {
-                                throw new Exception(ResourceHelper.GetString("LibraryPage_ZipDidNotContainAnyDlls"));
-                            }
-
-                            var dllsInZip = zippedDlls.Length;
-                            var processedDllsInZip = 0;
-
-                            App.CurrentApp.RunOnUIThread(() =>
-                            {
-                                dllInZipProgressBar.IsIndeterminate = false;
-                                dllInZipProgressBar.Value = processedDllsInZip;
-                                dllInZipProgressBar.Maximum = dllsInZip;
-                            });
-
-                            foreach (var zippedDll in zippedDlls)
-                            {
-                                var tempFile = Path.Combine(tempExtractPath, Guid.NewGuid().ToString("D"), zippedDll.Name);
-                                Storage.CreateDirectoryForFileIfNotExists(tempFile);
-
-                                zippedDll.ExtractToFile(tempFile, true);
-
-                                ++processedDllsInZip;
-                                ++totalDllsProcessed;
                                 App.CurrentApp.RunOnUIThread(() =>
                                 {
+                                    dllInZipProgressBar.IsIndeterminate = false;
                                     dllInZipProgressBar.Value = processedDllsInZip;
-                                    progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
+                                    dllInZipProgressBar.Maximum = dllsInZip;
                                 });
 
-
-                                try
+                                foreach (var zippedDll in zippedDlls)
                                 {
-                                    // In future when DLLs will have multiple per bundle we will have to extract them all and pass them as a list.
-                                    importResults.Add(DLLManager.Instance.ImportDll(tempFile, zippedDll.FullName));
-                                }
-                                catch (Exception err)
-                                {
-                                    Logger.Error(err);
-                                    importResults.Add(DLLImportResult.FromFail(zippedDll.FullName, err.Message));
-                                }
+                                    if (cancellationToken.IsCancellationRequested)
+                                    {
+                                        Logger.Info("Import cancelled by the user.");
+                                        return importResults;
+                                    }
 
-                                // Clean up temp file.
-                                File.Delete(tempFile);
+                                    var tempFile = Path.Combine(tempExtractPath, Guid.NewGuid().ToString("D"), zippedDll.Name);
+                                    Storage.CreateDirectoryForFileIfNotExists(tempFile);
+
+                                    zippedDll.ExtractToFile(tempFile, true);
+
+                                    ++processedDllsInZip;
+                                    ++totalDllsProcessed;
+                                    App.CurrentApp.RunOnUIThread(() =>
+                                    {
+                                        dllInZipProgressBar.Value = processedDllsInZip;
+                                        progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
+                                    });
+
+
+                                    try
+                                    {
+                                        // In future when DLLs will have multiple per bundle we will have to extract them all and pass them as a list.
+                                        importResults.Add(DLLManager.Instance.ImportDll(tempFile, zippedDll.FullName));
+                                    }
+                                    catch (Exception err)
+                                    {
+                                        Logger.Error(err);
+                                        importResults.Add(DLLImportResult.FromFail(zippedDll.FullName, err.Message));
+                                    }
+
+                                    // Clean up temp file.
+                                    File.Delete(tempFile);
+                                }
                             }
                         }
+                        else if (importFile.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            try
+                            {
+                                importResults.Add(DLLManager.Instance.ImportDll(importFile));
+                            }
+                            catch (Exception err)
+                            {
+                                Logger.Error(err);
+                                importResults.Add(DLLImportResult.FromFail(importFile, err.Message));
+                            }
+
+                            ++totalDllsProcessed;
+                            App.CurrentApp.RunOnUIThread(() =>
+                            {
+                                progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
+                            });
+                        }
                     }
-                    else if (importFile.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase))
+                    catch (Exception err)
                     {
-                        try
-                        {
-                            importResults.Add(DLLManager.Instance.ImportDll(importFile));
-                        }
-                        catch (Exception err)
-                        {
-                            Logger.Error(err);
-                            importResults.Add(DLLImportResult.FromFail(importFile, err.Message));
-                        }
-
-                        ++totalDllsProcessed;
-                        App.CurrentApp.RunOnUIThread(() =>
-                        {
-                            progressRun.Text = totalDllsProcessed.ToString(CultureInfo.CurrentCulture);
-                        });
+                        Logger.Error(err);
+                        importResults.Add(DLLImportResult.FromFail(importFile, err.Message));
                     }
                 }
-                catch (Exception err)
-                {
-                    Logger.Error(err);
-                    importResults.Add(DLLImportResult.FromFail(importFile, err.Message));
-                }
             }
-
-            // Clean up tempExtractPath if it exists
-            if (Directory.Exists(tempExtractPath))
+            finally
             {
-                try
+                // Clean up tempExtractPath if it exists
+                if (Directory.Exists(tempExtractPath))
                 {
-                    Directory.Delete(tempExtractPath, true);
-                }
-                catch (Exception err2)
-                {
-                    Logger.Error(err2);
+                    try
+                    {
+                        Directory.Delete(tempExtractPath, true);
+                    }
+                    catch (Exception err2)
+                    {
+                        Logger.Error(err2);
+                    }
                 }
             }
 
-            taskCompletionSource.SetResult(importResults);
+            return importResults;
         });
 
-        var importResults = await taskCompletionSource.Task;
+        loadingDialog.Hide();
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
 
         if (importResults.Any(x => x.Success == true))
         {
             await DLLManager.Instance.SaveImportedManifestJsonAsync();
             App.CurrentApp.MainWindow.FilterDLLRecords();
         }
-
-        loadingDialog.Hide();
 
         var dialog = new EasyContentDialog(_libraryPage.XamlRoot)
         {
@@ -806,9 +749,31 @@ public partial class LibraryPageModel : ObservableObject
         await dialog.ShowAsync();
     }
 
-    [RelayCommand]
-    async Task ImportFromNVIDIADriverAsync()
+    /// <summary>
+    /// Finds a record we already know about by the MD5 of its download zip.
+    /// </summary>
+    // NOTE: DLL type
+    DLLRecord? FindRecordByZipHash(string zipHash)
     {
+        foreach (var info in DLLAssetTypes.All)
+        {
+            var record = info.Records(DLLManager.Instance).FirstOrDefault(
+                x => string.Equals(x.ZipMD5Hash, zipHash, StringComparison.OrdinalIgnoreCase));
+
+            if (record is not null)
+            {
+                return record;
+            }
+        }
+
+        return null;
+    }
+
+    [RelayCommand(IncludeCancelCommand = true)]
+    async Task ImportFromNVIDIADriverAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var loadingProgressRing = new ProgressRing()
         {
             IsIndeterminate = true
@@ -819,20 +784,21 @@ public partial class LibraryPageModel : ObservableObject
             Content = loadingProgressRing,
             CloseButtonText = ResourceHelper.GetString("General_Cancel"),
         };
-        using var cancellationTokenSource = new CancellationTokenSource();
         loadingDialog.CloseButtonClick += (ContentDialog sender, ContentDialogButtonClickEventArgs args) => {
-            cancellationTokenSource.Cancel();
+            ImportFromNVIDIADriverCancelCommand.Execute(null);
         };
 
         _ = loadingDialog.ShowAsync();
 
         var models = new List<NGXModel>();
+        // CancellationToken.None: NVAPI's NGX model query is a blocking native call with no
+        // cancellation support, so this phase can only be abandoned once it returns.
         await Task.Run(() =>
         {
             models.AddRange(NVAPIHelper.Instance.GetNGXModels());
-        });
+        }, CancellationToken.None);
 
-        if (cancellationTokenSource.IsCancellationRequested)
+        if (cancellationToken.IsCancellationRequested)
         {
 
             loadingDialog.Hide();
@@ -855,52 +821,72 @@ public partial class LibraryPageModel : ObservableObject
                 
         var ngxModelImporter = new NGXModelImporter(models);
 
+        // CancellationToken.None: the loop body returns early on cancellation.
         await Task.Run(() =>
         {
             foreach (var modelRow in ngxModelImporter.ViewModel.Models)
             {
+                // Hashing every model against every candidate record is slow, and the user has a
+                // Cancel button on screen for this phase.
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 var versionNumber = modelRow.NGXModel.Version.GetVersionNumber();
 
-                var existingRecordsToTest = new List<DLLRecord>();
+                // NOTE: DLL type
+                // Was a three branch if/else over the record collections. The registry resolves the
+                // asset type to the right collection directly.
+                var info = DLLAssetTypes.Find(modelRow.NGXModel.GameAssetType);
+                if (info is null)
+                {
+                    continue;
+                }
 
-                if (modelRow.NGXModel.GameAssetType == GameAssetType.DLSS)
+                var existingRecordsToTest = info.Records(DLLManager.Instance)
+                    .Where(x => x.VersionNumber == versionNumber && x.LocalRecord is not null && x.LocalRecord.IsDownloaded)
+                    .ToList();
+
+                // Open and hash the model file once, then compare it against every candidate,
+                // rather than re-reading and re-hashing it per candidate record.
+                string? md5Hash = null;
+                try
                 {
-                    var existingDLLRecords = DLLManager.Instance.DLSSRecords.Where(x => x.VersionNumber == versionNumber && x.LocalRecord is not null && x.LocalRecord.IsDownloaded);
-                    existingRecordsToTest.AddRange(existingDLLRecords);
+                    using (var fileStream = File.OpenRead(modelRow.NGXModel.FilePath))
+                    {
+                        md5Hash = fileStream.GetMD5Hash();
+                    }
                 }
-                else if (modelRow.NGXModel.GameAssetType == GameAssetType.DLSS_D)
+                catch (Exception ex)
                 {
-                    var existingDLLRecords = DLLManager.Instance.DLSSDRecords.Where(x => x.VersionNumber == versionNumber && x.LocalRecord is not null && x.LocalRecord.IsDownloaded);
-                    existingRecordsToTest.AddRange(existingDLLRecords);
+                    Logger.Error(ex);
                 }
-                else if (modelRow.NGXModel.GameAssetType == GameAssetType.DLSS_G)
+
+                if (md5Hash is null)
                 {
-                    var existingDLLRecords = DLLManager.Instance.DLSSGRecords.Where(x => x.VersionNumber == versionNumber && x.LocalRecord is not null && x.LocalRecord.IsDownloaded);
-                    existingRecordsToTest.AddRange(existingDLLRecords);
+                    continue;
                 }
 
                 foreach (var existingRecordToTest in existingRecordsToTest)
                 {
-                    try
+                    if (string.Equals(md5Hash, existingRecordToTest.MD5Hash, StringComparison.OrdinalIgnoreCase))
                     {
-                        using (var fileStream = File.OpenRead(modelRow.NGXModel.FilePath))
-                        {
-                            var md5Hash = fileStream.GetMD5Hash();
-                            if (string.Equals(md5Hash, existingRecordToTest.MD5Hash))
-                            {
-                                modelRow.IsEnabled = false;
-                                modelRow.StatusMessage = ResourceHelper.GetString("LibraryPage_AlreadyDownloaded");
-                                break;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error(ex);
+                        modelRow.IsEnabled = false;
+                        modelRow.StatusMessage = ResourceHelper.GetString("LibraryPage_AlreadyDownloaded");
+                        break;
                     }
                 }
             }
-        });
+        }, CancellationToken.None);
+
+        // This check was missing entirely, so cancelling during the hash phase still went on to
+        // show the "pick models to import" dialog and import anyway.
+        if (cancellationToken.IsCancellationRequested)
+        {
+            loadingDialog.Hide();
+            return;
+        }
 
         loadingDialog.Hide();
 
@@ -959,6 +945,19 @@ public partial class LibraryPageModel : ObservableObject
             {
                 Title = ResourceHelper.GetString("LibraryPage_Importing"),
                 Content = progressStackPanel,
+                // Importing dozens of multi-megabyte DLLs takes a while and there was previously no
+                // way to stop it once the selection dialog had been confirmed.
+                CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+                DefaultButton = ContentDialogButton.Close,
+            };
+
+            importingDialog.Closing += (sender, args) =>
+            {
+                if (cancellationToken.IsCancellationRequested == false)
+                {
+                    args.Cancel = true;
+                    ImportFromNVIDIADriverCancelCommand.Execute(null);
+                }
             };
 
             filesProgressBar.IsIndeterminate = false;
@@ -970,9 +969,15 @@ public partial class LibraryPageModel : ObservableObject
             var successCount = 0;
             var failedCount = 0;
 
+            // CancellationToken.None: checked in the loop body so the current DLL finishes importing.
             await Task.Run(() => {
                 for (var i = 0; i < modelsToImport.Count; ++i)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
                     try
                     {
                         var didImport = DLLManager.Instance.ImportDll(modelsToImport[i].FilePath, overrideFileName: DLLManager.DllNameForGameAssetType(modelsToImport[i].GameAssetType));
@@ -999,11 +1004,16 @@ public partial class LibraryPageModel : ObservableObject
                         });
                     }
                 }
-            });
+            }, CancellationToken.None);
 
             await DLLManager.Instance.SaveImportedManifestJsonAsync();
 
             importingDialog.Hide();
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
 
             var completeDialog = new EasyContentDialog(_libraryPage.XamlRoot)
             {
@@ -1021,9 +1031,11 @@ public partial class LibraryPageModel : ObservableObject
     [GeneratedRegex(@"^d6e9b45e-d4f6-4a84-a460-bf61decae3e8\/(?<asset_type>dlss|dlssg|dlssd)\/versions\/(?<version_packed>\d*)\/files\/160_E658700\.bin$", RegexOptions.IgnoreCase)]
     private static partial Regex IsNGXModelWeCanUse();
 
-    [RelayCommand]
-    async Task ImportFromNVIDIAServerAsync()
+    [RelayCommand(IncludeCancelCommand = true)]
+    async Task ImportFromNVIDIAServerAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var loadingProgressRing = new ProgressRing()
         {
             IsIndeterminate = true
@@ -1034,9 +1046,8 @@ public partial class LibraryPageModel : ObservableObject
             Content = loadingProgressRing,
             CloseButtonText = ResourceHelper.GetString("General_Cancel"),
         };
-        using var cancellationTokenSource = new CancellationTokenSource();
         loadingDialog.CloseButtonClick += (ContentDialog sender, ContentDialogButtonClickEventArgs args) => {
-            cancellationTokenSource.Cancel();
+            ImportFromNVIDIAServerCancelCommand.Execute(null);
         };
 
         _ = loadingDialog.ShowAsync();
@@ -1050,7 +1061,7 @@ public partial class LibraryPageModel : ObservableObject
         {
             try
             {
-                var didDownload = await xmlDownloader.DownloadFileToStreamAsync(memoryStream, cancellationTokenSource.Token);
+                var didDownload = await xmlDownloader.DownloadFileToStreamAsync(memoryStream, cancellationToken);
                 if (didDownload == false)
                 {
                     throw new Exception("Could not download xml stream.");
@@ -1119,7 +1130,7 @@ public partial class LibraryPageModel : ObservableObject
                 }
 
             }
-            catch (TaskCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // NOOP: User cancelled
                 return;
@@ -1282,7 +1293,7 @@ public partial class LibraryPageModel : ObservableObject
         };
 
         downloadingDialog.CloseButtonClick += (ContentDialog sender, ContentDialogButtonClickEventArgs args) => {
-            cancellationTokenSource.Cancel();
+            ImportFromNVIDIAServerCancelCommand.Execute(null);
         };
 
         _ = downloadingDialog.ShowAsync();
@@ -1290,10 +1301,12 @@ public partial class LibraryPageModel : ObservableObject
         var successCount = 0;
         var failCount = 0;
 
+        // CancellationToken.None: the loop body checks the token between downloads so an in flight
+        // download can finish cleanly rather than being torn out from under a half written file.
         await Task.Run(async () => {
             for (var i = 0; i < modelsToDownload.Count; ++i)
             {
-                if (cancellationTokenSource.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
@@ -1312,7 +1325,7 @@ public partial class LibraryPageModel : ObservableObject
                     using (var fileStream = File.Create(tempFilePath))
                     {
                         var fileDownloader = new FileDownloader(modelsToDownload[i].NGXModel.FilePath);
-                        didDownload = await fileDownloader.DownloadFileToStreamAsync(fileStream, cancellationTokenSource.Token, progressCallback: (DownloadedBytes, TotalBytesToDownload, Percent) =>
+                        didDownload = await fileDownloader.DownloadFileToStreamAsync(fileStream, cancellationToken, progressCallback: (DownloadedBytes, TotalBytesToDownload, Percent) =>
                         {
                             App.CurrentApp.RunOnUIThread(() =>
                             {
@@ -1340,7 +1353,7 @@ public partial class LibraryPageModel : ObservableObject
                         ++failCount;
                     }
                 }
-                catch (TaskCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+                catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // NOOP
                 }
@@ -1358,10 +1371,10 @@ public partial class LibraryPageModel : ObservableObject
                     });
                 }
             }
-        });
+        }, CancellationToken.None);
 
 
-        if (cancellationTokenSource.IsCancellationRequested == false)
+        if (cancellationToken.IsCancellationRequested == false)
         {
             await DLLManager.Instance.SaveImportedManifestJsonAsync();
 
@@ -1434,21 +1447,36 @@ public partial class LibraryPageModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Serialises dialogs so two concurrent downloads that both fail cannot try to show a
+    /// ContentDialog at the same time. WinUI throws "There is already a ContentDialog open" for
+    /// that, and this command runs with AllowConcurrentExecutions.
+    /// </summary>
+    static readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
+
     [RelayCommand(AllowConcurrentExecutions = true)]
     async Task DownloadRecordAsync(DLLRecord record)
     {
         var result = await record.DownloadAsync();
         if (result.Success is false && result.Cancelled is false)
         {
-            var dialog = new EasyContentDialog(_libraryPage.XamlRoot)
+            await _dialogSemaphore.WaitAsync();
+            try
             {
-                Title = ResourceHelper.GetString("General_Error"),
-                CloseButtonText = ResourceHelper.GetString("General_Okay"),
-                DefaultButton = ContentDialogButton.Close,
-                Content = result.Message,
-            };
+                var dialog = new EasyContentDialog(_libraryPage.XamlRoot)
+                {
+                    Title = ResourceHelper.GetString("General_Error"),
+                    CloseButtonText = ResourceHelper.GetString("General_Okay"),
+                    DefaultButton = ContentDialogButton.Close,
+                    Content = result.Message,
+                };
 
-            await dialog.ShowAsync();
+                await dialog.ShowAsync();
+            }
+            finally
+            {
+                _dialogSemaphore.Release();
+            }
         }
     }
 

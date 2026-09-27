@@ -32,10 +32,26 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     [Column("title")]
     public partial string Title { get; set; } = string.Empty;
 
-    // Used to cache the title as a base64 string
+    // Used to cache the title as a base64 string. The cache is keyed on the title it was
+    // generated from so it invalidates itself when Title changes (e.g. via ParentUpdateFromGame).
+    // Previously the cache was never invalidated, so known-DLL lookups compared a stale title
+    // and renamed games were wrongly reported as having unknown DLLs.
     string? _titleBase64;
+    string? _titleBase64Source;
     [Ignore]
-    public string TitleBase64 => _titleBase64 ??= Convert.ToBase64String(Encoding.UTF8.GetBytes(Title));
+    public string TitleBase64
+    {
+        get
+        {
+            if (_titleBase64 is null || _titleBase64Source != Title)
+            {
+                _titleBase64Source = Title;
+                _titleBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(Title));
+            }
+
+            return _titleBase64;
+        }
+    }
 
     [Column("install_path")]
     public string InstallPath { get; set; } = string.Empty;
@@ -271,7 +287,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             HasSwappableItems = false;
         });
 
-        ThreadPool.QueueUserWorkItem(async (stateInfo) =>
+        // NOTE: this used to be ThreadPool.QueueUserWorkItem(async lambda), which binds the lambda to
+        // WaitCallback and therefore runs it as `async void`. Anything thrown from the finally block
+        // below escaped to the thread pool as an unhandled exception and terminated the process.
+        // Task.Run gives us a real Task, so the finally is covered and nothing can crash the app.
+        _ = Task.Run(async () =>
         {
             await processGameSemaphore.WaitAsync().ConfigureAwait(false);
 
@@ -332,18 +352,30 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     Logger.Verbose($"Skipping updating cover for {Title}");
                 }
 
-                var enumerationOptions = new EnumerationOptions();
-                enumerationOptions.RecurseSubdirectories = true;
-                enumerationOptions.AttributesToSkip |= FileAttributes.ReparsePoint;
+                var enumerationOptions = new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    // The default is FileAttributes.Hidden. Assigning (instead of |=) keeps
+                    // ReparsePoint skipping while still skipping hidden files.
+                    AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+                    // Skip directories we cannot read instead of throwing. Without this a single
+                    // ACL protected folder inside a game install aborts the whole scan.
+                    IgnoreInaccessible = true,
+                };
 
                 var oldGameAssets = GameAssets.ToList();
-                GameAssets.Clear();
-                using (await Database.Instance.Mutex.LockAsync())
-                {
-                    await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-                }
+
+                // The new records are built up separately and only swapped into GameAssets once the
+                // scan has completed. Previously GameAssets was cleared and the game_asset rows were
+                // deleted *before* Directory.GetFiles ran, so any failure (an inaccessible folder, an
+                // uninstall mid-scan, a path that is too long) silently wiped everything we knew
+                // about the game's DLLs and left the game showing no swappable items forever.
+                var newGameAssets = new List<GameAsset>();
+
                 // TODO: See if changing these to filter specific files, or getting very *.dll and looking for our specific ones is faster
-                var dllPaths = Directory.GetFiles(InstallPath, "*.dll", enumerationOptions);
+                // EnumerateFiles (not GetFiles) so the walk streams instead of building a string[] of
+                // every DLL in the install tree up front.
+                var dllPaths = Directory.EnumerateFiles(InstallPath, "*.dll", enumerationOptions);
 
                 /*
                 var dlssDllPaths = Directory.GetFiles(InstallPath, "nvngx_dlss.dll", enumerationOptions);
@@ -425,121 +457,57 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                         unknownGameAssets.Add(gameAsset);
                     }
 
-                    LoadBackupForGameAsset(gameAsset);
+                    LoadBackupForGameAsset(gameAsset, newGameAssets);
 
                 }
+
+                // NOTE: DLL type
+                // Only the nine DLL names in the registry are of interest. Match against a HashSet of
+                // those names while streaming the directory, rather than materialising every .dll in the
+                // install tree (tens of thousands of paths on a modern AAA title) and running a chain of
+                // string comparisons over each one.
+                var trackedDllNames = new HashSet<string>(DLLAssetTypes.All.Select(x => x.DllName), StringComparer.OrdinalIgnoreCase);
 
                 foreach (var dllPath in dllPaths)
                 {
                     var dllName = Path.GetFileName(dllPath);
+                    if (trackedDllNames.Contains(dllName) == false)
+                    {
+                        continue;
+                    }
 
                     // NOTE: DLL type
-                    // The case of these files should never change, right?
-                    if (dllName == "nvngx_dlss.dll")
+                    var info = DLLAssetTypes.FindByDllName(dllName);
+                    if (info is null)
                     {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.DLSS,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
+                        continue;
                     }
-                    else if (dllName == "nvngx_dlssg.dll")
+
+                    var gameAsset = new GameAsset()
                     {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.DLSS_G,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "nvngx_dlssd.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.DLSS_D,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "amd_fidelityfx_dx12.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.FSR_31_DX12,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "amd_fidelityfx_vk.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.FSR_31_VK,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "libxess.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.XeSS,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "libxess_dx11.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.XeSS_DX11,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "libxell.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.XeLL,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
-                    else if (dllName == "libxess_fg.dll")
-                    {
-                        var gameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = GameAssetType.XeSS_FG,
-                            Path = dllPath,
-                        };
-                        ProcessGame_ProcessGameAsset(gameAsset);
-                        GameAssets.Add(gameAsset);
-                    }
+                        Id = ID,
+                        AssetType = info.AssetType,
+                        Path = dllPath,
+                    };
+
+                    ProcessGame_ProcessGameAsset(gameAsset);
+                    newGameAssets.Add(gameAsset);
                 }
+
+                // The scan completed successfully, so it is now safe to replace the known records.
+                GameAssets.Clear();
+                GameAssets.AddRange(newGameAssets);
 
                 App.CurrentApp.RunOnUIThread(() =>
                 {
                     UpdateCurrentDLLsFromGameAssets();
                 });
+
+                // Delete the old rows before re-inserting, now that we know we have replacements.
+                using (await Database.Instance.Mutex.LockAsync())
+                {
+                    await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
+                }
 
                 if (GameAssets.Any())
                 {
@@ -566,30 +534,45 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             }
             catch (Exception err)
             {
+                // No Debugger.Break() here. An unreadable subdirectory or a game that was
+                // uninstalled mid-scan is an expected condition, not a developer error.
                 Logger.Error(err);
-                Debugger.Break();
             }
             finally
             {
                 processGameSemaphore.Release();
 
-                // Now update all the data on the UI therad.
-                await App.CurrentApp.RunOnUIThreadAsync(async () =>
+                // Now update all the data on the UI thread.
+                try
                 {
-                    HasSwappableItems = newHasSwappableItems;
-
-                    if (autoSave)
+                    await App.CurrentApp.RunOnUIThreadAsync(async () =>
                     {
-                        await SaveToDatabaseAsync();
-                    }
+                        HasSwappableItems = newHasSwappableItems;
 
-                    Processing = false;
-                });
+                        if (autoSave)
+                        {
+                            await SaveToDatabaseAsync();
+                        }
+                    });
+                }
+                catch (Exception err)
+                {
+                    Logger.Error(err, "Failed to update the game on the UI thread after processing.");
+                }
+                finally
+                {
+                    // Processing has to be reset unconditionally. If it is left true the game
+                    // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
+                    App.CurrentApp.RunOnUIThread(() =>
+                    {
+                        Processing = false;
+                    });
+                }
             }
         });
     }
 
-    void LoadBackupForGameAsset(GameAsset gameAsset)
+    void LoadBackupForGameAsset(GameAsset gameAsset, List<GameAsset> targetCollection)
     {
         var backupPath = $"{gameAsset.Path}.dlsss";
         if (File.Exists(backupPath))
@@ -601,7 +584,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Path = backupPath,
             };
             gameAssetBackup.LoadVersionAndHash();
-            GameAssets.Add(gameAssetBackup);
+            targetCollection.Add(gameAssetBackup);
         }
     }
 
@@ -1201,11 +1184,20 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             }
 
             // Delete the thumbnails.
-            var thumbnailImages = Directory.GetFiles(Storage.GetImageCachePath(), $"{ID}_*", SearchOption.AllDirectories);
+            // This used to use Directory.GetFiles(..., SearchOption.AllDirectories) with a "{ID}_*"
+            // pattern, which walked (and could throw on) the entire shared image cache, and an
+            // exception here aborted DeleteAsync before the game row was removed. Both cover paths
+            // are deterministic, so just delete them directly.
+            var thumbnailImages = new[] { ExpectedCoverImage, ExpectedCustomCoverImage };
             foreach (var thumbnailImage in thumbnailImages)
             {
                 try
                 {
+                    if (File.Exists(thumbnailImage) == false)
+                    {
+                        continue;
+                    }
+
                     Logger.Info($"Deleting {thumbnailImage}");
                     File.Delete(thumbnailImage);
                 }

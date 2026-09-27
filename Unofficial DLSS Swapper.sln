@@ -1,0 +1,49 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33110.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unofficial DLSS Swapper", "src\Unofficial DLSS Swapper.csproj", "{63586228-FDDE-4E35-9138-7FF35ED61EC1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DLSS_Swapper.Tests", "tests\DLSS_Swapper.Tests\DLSS_Swapper.Tests.csproj", "{E61B5348-5805-4E14-8C53-B113000D5665}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug_Portable|x64 = Debug_Portable|x64
+		Release|x64 = Release|x64
+		Release_Portable|x64 = Release_Portable|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Debug|x64.ActiveCfg = Debug|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Debug|x64.Build.0 = Debug|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Debug_Portable|x64.ActiveCfg = Debug_Portable|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Debug_Portable|x64.Build.0 = Debug_Portable|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Release|x64.ActiveCfg = Release|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Release|x64.Build.0 = Release|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Release_Portable|x64.ActiveCfg = Release_Portable|x64
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1}.Release_Portable|x64.Build.0 = Release_Portable|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Debug|x64.ActiveCfg = Debug|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Debug|x64.Build.0 = Debug|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Debug_Portable|x64.ActiveCfg = Debug_Portable|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Debug_Portable|x64.Build.0 = Debug_Portable|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Release|x64.ActiveCfg = Release|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Release|x64.Build.0 = Release|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Release_Portable|x64.ActiveCfg = Release_Portable|x64
+		{E61B5348-5805-4E14-8C53-B113000D5665}.Release_Portable|x64.Build.0 = Release_Portable|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{63586228-FDDE-4E35-9138-7FF35ED61EC1} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{E61B5348-5805-4E14-8C53-B113000D5665} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F184BD5E-34A3-4A6C-BB68-09DAC5BD2093}
+	EndGlobalSection
+EndGlobal

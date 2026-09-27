@@ -1,4 +1,4 @@
-﻿; DLL compiled from https://github.com/aranor01/FindProcDLL
+; DLL compiled from https://github.com/aranor01/FindProcDLL
 !addplugindir /x86-ansi "plugins\x86-ansi"
 !addplugindir /x86-unicode "plugins\x86-unicode"
 
@@ -10,7 +10,7 @@
 ; define name of installer
 OutFile "installer.exe"
 
-!define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\DLSS Swapper"
+!define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Unofficial DLSS Swapper"
 
 !define UninstLog "uninstall.log"
 Var UninstLog
@@ -19,9 +19,9 @@ Var DEFAULT_INSTALL_PATH
 
 Function .onInit
   ; Set default install location
-  StrCpy $INSTDIR "$PROGRAMFILES64\DLSS Swapper\"
+  StrCpy $INSTDIR "$PROGRAMFILES64\Unofficial DLSS Swapper\"
   ; The missing \ is intentional
-  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\DLSS Swapper"
+  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\Unofficial DLSS Swapper"
   ClearErrors
   ReadRegStr $0 SHCTX "${UNINST_KEY}" "InstallLocation"
   ${If} ${Errors}
@@ -30,19 +30,19 @@ Function .onInit
     StrCpy $INSTDIR "$0\"
   ${EndIf}
 
-  FindProcDLL::FindProc "DLSS Swapper.exe"
+  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
 
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONEXCLAMATION "DLSS Swapper is currently running. Please close it before continuing with installation." /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Unofficial DLSS Swapper is currently running. Please close it before continuing with installation." /SD IDOK
   NotRunning:
 FunctionEnd
 
 ; On uninstall, confirm you want to remove downloaded/imported DLSS files.
 Function un.onInit
   
-  FindProcDLL::FindProc "DLSS Swapper.exe"
+  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONSTOP "DLSS Swapper is currently running. Please close it before attempting to uninstall." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Unofficial DLSS Swapper is currently running. Please close it before attempting to uninstall." /SD IDOK
     SetErrorLevel 2
     Quit
   NotRunning:
@@ -60,7 +60,7 @@ Function .onVerifyInstDir
   StrCmp $0 "" badPath
     Goto done
   badPath:
-    StrCpy $INSTDIR "$INSTDIR\DLSS Swapper\"
+    StrCpy $INSTDIR "$INSTDIR\Unofficial DLSS Swapper\"
   done:
 FunctionEnd
 
@@ -73,16 +73,16 @@ Function OnInstFilesPre
   StrCmp $0 "" badPath
     Goto done
   badPath:
-    StrCpy $INSTDIR "$INSTDIR\DLSS Swapper\"
+    StrCpy $INSTDIR "$INSTDIR\Unofficial DLSS Swapper\"
     MessageBox MB_OK "Install path updated to $INSTDIR"
   done:
 FunctionEnd
 
 
 ; This is disabled until I can figure out how to make it launch as admin
-; Used to launch DLSS Swapper after install is complete.
+; Used to launch Unofficial DLSS Swapper after install is complete.
 ;Function LaunchLink
-;  ExecShell "" "$SMPROGRAMS\DLSS Swapper.lnk"
+;  ExecShell "" "$SMPROGRAMS\Unofficial DLSS Swapper.lnk"
 ;FunctionEnd
 
 
@@ -92,14 +92,14 @@ RequestExecutionLevel highest
 
 
 ; App version information
-Name "DLSS Swapper"
+Name "Unofficial DLSS Swapper"
 !define MUI_ICON "..\..\src\Assets\icon.ico"
 !define MUI_VERSION "1.2.6.1"
-!define MUI_PRODUCT "DLSS Swapper"
+!define MUI_PRODUCT "Unofficial DLSS Swapper"
 VIProductVersion "1.2.6.1"
-VIAddVersionKey "ProductName" "DLSS Swapper"
+VIAddVersionKey "ProductName" "Unofficial DLSS Swapper"
 VIAddVersionKey "ProductVersion" "1.2.6.1"
-VIAddVersionKey "FileDescription" "DLSS Swapper installer"
+VIAddVersionKey "FileDescription" "Unofficial DLSS Swapper installer"
 VIAddVersionKey "FileVersion" "1.2.6.1"
 
 ; Pages
@@ -153,9 +153,9 @@ SectionEnd
 ; start default section
 Section
 
-  FindProcDLL::FindProc "DLSS Swapper.exe"
+  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONSTOP "DLSS Swapper is currently running. Please close it and run the installer again." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Unofficial DLSS Swapper is currently running. Please close it and run the installer again." /SD IDOK
     SetErrorLevel 2
     Quit
   NotRunning:
@@ -165,7 +165,7 @@ Section
   
   ; Check if the install already directory exists
   ; We can't just check the directory exists as the directory is created by creating the uninstall.log file
-  IfFileExists "$INSTDIR\DLSS Swapper.exe" InstallProbablyExists Install
+  IfFileExists "$INSTDIR\Unofficial DLSS Swapper.exe" InstallProbablyExists Install
 
   InstallProbablyExists:
 
@@ -198,12 +198,14 @@ Section
   
   # create a shortcut named "new shortcut" in the start menu programs directory
   # point the new shortcut at the program uninstaller
-  CreateShortcut "$SMPROGRAMS\DLSS Swapper.lnk" "$INSTDIR\DLSS Swapper.exe"
+  CreateShortcut "$SMPROGRAMS\Unofficial DLSS Swapper.lnk" "$INSTDIR\Unofficial DLSS Swapper.exe"
 
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "DLSS Swapper"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Unofficial DLSS Swapper"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "1.2.6.1"
-  WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "beeradmoore"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\DLSS Swapper.exe$\""
+  ; NOTE (fork): changed from the upstream publisher "beeradmoore" so this installer does not
+  ; impersonate the original maintainer in Add/Remove Programs. Set this to your own name.
+  WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "fork"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\Unofficial DLSS Swapper.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
   WriteRegStr SHCTX "${UNINST_KEY}" "InstallLocation" $INSTDIR
@@ -264,12 +266,14 @@ Section "Uninstall"
   Pop $R0
 
   ; Remove downloaded and imported DLSS dlls.
-  RMDir /r "$LOCALAPPDATA\DLSS Swapper\"
+  ; NOTE: storage folder intentionally still "Unofficial DLSS Swapper" so existing users keep their data.
+; NOTE: storage folder intentionally still "DLSS Swapper" so existing users keep their data.
+RMDir /r "$LOCALAPPDATA\DLSS Swapper\"
   
   ; Remove registry keys
   DeleteRegKey SHCTX "${UNINST_KEY}"
 
   ; Remove start menu shortcut.
-  Delete "$SMPROGRAMS\DLSS Swapper.lnk"
+  Delete "$SMPROGRAMS\Unofficial DLSS Swapper.lnk"
 
 SectionEnd

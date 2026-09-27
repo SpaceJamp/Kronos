@@ -376,12 +376,19 @@ public partial class SettingsPageModel : ObservableObject
     [RelayCommand]
     async Task CheckForUpdatesAsync()
     {
-        IsCheckingForUpdates = true;
-        var githubUpdater = new Data.GitHub.GitHubUpdater();
-        var newUpdate = await githubUpdater.CheckForNewGitHubRelease(true);
-
-        if (_weakPage.TryGetTarget(out SettingsPage? settingsPage))
+        // IsCheckingForUpdates was only cleared on the two success paths below, so any failure (a
+        // network error, a closed page) left the check button permanently disabled.
+        try
         {
+            IsCheckingForUpdates = true;
+            var githubUpdater = new Data.GitHub.GitHubUpdater();
+            var newUpdate = await githubUpdater.CheckForNewGitHubRelease(true);
+
+            if (_weakPage.TryGetTarget(out SettingsPage? settingsPage) == false)
+            {
+                return;
+            }
+
             if (newUpdate is not null)
             {
                 await githubUpdater.DisplayNewUpdateDialog(newUpdate, settingsPage.XamlRoot);
@@ -395,13 +402,16 @@ public partial class SettingsPageModel : ObservableObject
                     Content = ResourceHelper.GetString("SettingsPage_NoNewUpdatesAvailable"),
                 };
                 await dialog.ShowAsync();
-
-                IsCheckingForUpdates = false;
-                return;
             }
         }
-
-        IsCheckingForUpdates = false;
+        catch (Exception err)
+        {
+            Logger.Error(err, "Failed to check for updates.");
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
     }
 
     [RelayCommand]
