@@ -43,6 +43,14 @@
             <TextBox Text="{Binding Game.Title}" />
             <TextBlock Text="{x:Bind ViewModel.TranslationProperties.InstallPathText, Mode=OneWay}" FontWeight="Bold" Padding="0,20,0,0" />
             <TextBox IsReadOnly="True" Text="{Binding Game.InstallPath}" />
+            <!--
+                Pre-ticked by RepackDetector when the folder carries repack or emulation markers,
+                but it stays an ordinary checkbox the user can untick. Detection is only a
+                suggestion; this flag is what the rest of the app acts on.
+            -->
+            <CheckBox Content="This is a repack (scene release)"
+                      Margin="0,16,0,0"
+                      IsChecked="{Binding Game.IsRepack, Mode=TwoWay}" />
         </StackPanel>
     </Grid>
 </UserControl>

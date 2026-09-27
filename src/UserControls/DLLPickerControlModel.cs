@@ -224,6 +224,26 @@ public partial class DLLPickerControlModel : ObservableObject
             return;
         }
 
+        if (Game.IsRepack)
+        {
+            // A repack bundles its own runtime and often its own launcher, so a swapped dll can be
+            // ignored or make the launcher misbehave. Say so before doing it, but do not block:
+            // plenty of people swap repacks deliberately.
+            var warning = new EasyContentDialog(App.CurrentApp.MainWindow.Content.XamlRoot)
+            {
+                Title = ResourceHelper.GetString("General_Warning"),
+                Content = "This game is flagged as a repack. Repacks often ship their own runtime or launcher, so a swapped DLL may be ignored, or may stop the repack's launcher from working. Swapping may also invalidate the repack's integrity check.\n\nContinue anyway?",
+                PrimaryButtonText = ResourceHelper.GetString("General_Import"),
+                CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+                DefaultButton = ContentDialogButton.Close,
+            };
+
+            if (await warning.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+        }
+
         var didUpdate = await Game.UpdateDllAsync(SelectedDLLRecord);
 
         if (didUpdate.Success == false)
