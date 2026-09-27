@@ -17,6 +17,12 @@
 > The upstream project warns that malicious sites impersonate DLSS Swapper. The rename, this banner
 > and the installer publisher string are all there to make that confusion unlikely.
 
+> [!NOTE]
+> **This fork was developed with AI assistance.** The original upstream code is not AI-generated,
+> but the changes listed below were written with the help of an AI coding assistant (Claude, via
+> OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
+> not involved, and for the things I checked by hand rather than taking on trust.
+
 ## What changed in this fork
 
 This fork exists to carry local modifications. The significant changes relative to upstream are:
@@ -55,6 +61,10 @@ This fork exists to carry local modifications. The significant changes relative 
 - `Logger.ChangeLoggingLevel` no longer ignores its own argument.
 - A cached game title's base64 encoding now invalidates when the title changes, so renamed games
   are no longer misreported as having unknown DLLs.
+- Backups are now created per-DLL rather than all-or-nothing. Previously, if a game had several
+  copies of the same DLL and *any* one of them had a backup, none of the others were backed up
+  before being overwritten, and the original was unrecoverable. A backup file that existed on disk
+  but had no database record was also left orphaned, unusable for reset.
 
 **Cancellation and responsiveness**
 

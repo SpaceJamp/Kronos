@@ -4,6 +4,10 @@ This repository is an **unofficial fork** of
 [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper). See the README for what changed and
 for the licensing/GPL-3.0 section 5(a) modification notice.
 
+The changes in this fork were written with AI assistance. Please read
+[AI_ASSISTED.md](AI_ASSISTED.md) before contributing — it records what was and was not
+AI-generated, and which of the fixes have and have not been verified.
+
 ## Where to file things
 
 | Topic | Where |
