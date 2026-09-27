@@ -1,5 +1,4 @@
 <p align="center">
- <img width="150px" src="https://beeradmoore.github.io/dlss-swapper/logo_250.png" align="center" alt="GitHub Readme Stats" />
  <h2 align="center">Unofficial DLSS Swapper
 </h2>
  <p align="center">A tool that lets you conveniently download, manage, and swap <strong>DLSS</strong>, <strong>FSR</strong> and <strong>XeSS</strong> dlls, letting you upgrade or downgrade the DLSS, FSR and XeSS version in a game without the game needing an update.</p>
@@ -130,10 +129,6 @@ not affiliated with NVIDIA.
     <a href="./readmes/readme_zh-TW.md">繁體中文</a>
 </p>
 
-<p align="center">
-    <img src="https://beeradmoore.github.io/dlss-swapper/images/usage/usage_4.gif" />
-</p>
-
 ## What game libraries are supported?
 
 - [Steam](https://store.steampowered.com/)
@@ -198,10 +193,53 @@ dotnet test ".\tests\DLSS_Swapper.Tests\DLSS_Swapper.Tests.csproj" -c Debug
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to
 build with zero warnings, and the test suite is expected to pass.
 
-There are four configurations: `Debug`, `Release`, `Debug_Portable` and `Release_Portable`. The
-`Debug` configurations write their data to a separate `DEBUG` folder under `%LOCALAPPDATA%\DLSS
+The `Debug` configurations write their data to a separate `DEBUG` folder under `%LOCALAPPDATA%\DLSS
 Swapper`, and the `Portable` configurations keep all data inside the build output, so neither
 touches a real installation's settings or database.
+
+### Building the release artifacts
+
+The `package\` scripts need two extra tools that the CI workflow installs for itself:
+
+```powershell
+winget install Microsoft.PowerShell    # the scripts call pwsh.exe (PowerShell 7)
+winget install NSIS.NSIS               # only needed to build the installer
+```
+
+Then, from the `package` directory:
+
+```powershell
+.\build_all.cmd
+```
+
+This produces `Output\Unofficial.DLSS.Swapper-<version>-portable.zip` and
+`Output\Unofficial.DLSS.Swapper-<version>-installer.exe`.
+
+Two things to know before you use it:
+
+- `build_all.cmd` starts by running `extras\update_manifest.cmd`, which re-downloads
+  `src\Assets\static_manifest.json` from the upstream manifest builder. That modifies a tracked
+  file, so check `git status` afterwards and decide whether you want to keep the refresh. To build
+  without it, call `build_Portable.cmd`, `package_Portable.cmd`, `build_Installer.cmd` and
+  `package_Installer.cmd` individually instead.
+- Everything is **unsigned**, so Windows SmartScreen will warn when a user runs the installer.
+
+## Branding and assets
+
+The application icon is still upstream's original `src\Assets\icon.ico`, and the roughly sixty
+`Assets\*Logo*.png` / `*Tile*.png` files are upstream's MSIX tile set. This fork does not ship its
+own artwork.
+
+- `src\Assets\icon.ico` is the one that matters. It is used by `<ApplicationIcon>` in the csproj and
+  by `MUI_ICON` in `package\NSIS\Installer.nsi`, so it sets the executable's icon and the installer's
+  icon. Replace this file to change both.
+- `src\Assets\icon_256.png` is `<PackageIcon>` and is only used for MSIX packaging. This project sets
+  `WindowsPackageType=None`, so it has no effect on the built exe or installer.
+- The `*Logo*.png` and `*Tile*.png` files follow the MSIX asset-naming convention and are likewise
+  unused by the unpackaged build. They are only relevant if you ever switch to MSIX packaging.
+
+Note that `DLSS`, `FSR` and `XeSS` are NVIDIA trademarks. A fork icon should not imply NVIDIA
+endorsement.
 
 ## How can I contribute?
 
@@ -212,11 +250,12 @@ ones who decide what lands in the official app.
 
 ## Minimum System Requirements
 
-| Requirement | Description                           |
-| ----------- | ------------------------------------- |
-| OS          | Windows 10 64-bit (20H1, build 19041) |
-| GPU         | Any                                   |
-| To build    | .NET 10 SDK, Windows SDK 10.0.26100   |
+| Requirement | Description                                                     |
+| ----------- | --------------------------------------------------------------- |
+| OS          | Windows 10 64-bit (20H1, build 19041)                           |
+| GPU         | Any                                                             |
+| To build    | .NET 10 SDK, Windows SDK 10.0.26100                             |
+| To package  | PowerShell 7 (`pwsh`), and NSIS for the installer               |
 
 ## Upstream project
 
