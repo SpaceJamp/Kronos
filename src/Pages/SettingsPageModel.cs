@@ -270,7 +270,10 @@ public partial class SettingsPageModel : ObservableObject
         }
         else if (e.PropertyName == nameof(SelectedDlssOnScreenIndicator))
         {
-            _dlssSettingsManager.SetShowDlssIndicator(SelectedDlssOnScreenIndicator.Value);
+            // Deliberately not awaited. Writing to the NGXCore key can raise a UAC prompt, and
+            // blocking here froze the whole window until the user answered it. RunRegAdd catches
+            // its own exceptions, so the discarded task cannot fault.
+            _ = _dlssSettingsManager.SetShowDlssIndicatorAsync(SelectedDlssOnScreenIndicator.Value);
         }
         else if (e.PropertyName == nameof(DlssEnableLogging) || e.PropertyName == nameof(DlssVerboseLogging))
         {
@@ -278,21 +281,21 @@ public partial class SettingsPageModel : ObservableObject
             {
                 if (DlssVerboseLogging == true)
                 {
-                    _dlssSettingsManager.SetLogLevel(2);
+                    _ = _dlssSettingsManager.SetLogLevelAsync(2);
                 }
                 else
                 {
-                    _dlssSettingsManager.SetLogLevel(1);
+                    _ = _dlssSettingsManager.SetLogLevelAsync(1);
                 }
             }
             else
             {
-                _dlssSettingsManager.SetLogLevel(0);
+                _ = _dlssSettingsManager.SetLogLevelAsync(0);
             }
         }
         else if (e.PropertyName == nameof(DlssLoggingToWindow))
         {
-            _dlssSettingsManager.SetLoggingWindow(DlssLoggingToWindow);
+            _ = _dlssSettingsManager.SetLoggingWindowAsync(DlssLoggingToWindow);
         }
         else if (e.PropertyName == nameof(AllowUntrusted))
         {

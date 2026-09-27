@@ -82,11 +82,20 @@ internal static class WinTrust
         CRYPT_E_FILE_ERROR = 0x80092003,
     }
 
-    [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = false, CharSet = CharSet.Unicode)]
+    // SetLastError must be true: the TRUST_E_NOSIGNATURE handling below calls
+    // Marshal.GetLastWin32Error() to tell "no signature at all" apart from "signature present but
+    // the subject form is unknown". With SetLastError false that call returns a stale value, so the
+    // branch was effectively a coin flip and the wrong message was logged.
+    //
+    // pWVTData is passed by reference rather than by value. WinVerifyTrust writes the opaque
+    // verification state into hWVTStateData, and that handle has to be handed back on the closing
+    // call. Passing the struct by value let the marshaller copy it, so the handle was written into
+    // the copy and thrown away, and the SIP state was never released.
+    [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
     internal static extern WinVerifyTrustResult WinVerifyTrust(
         [In] IntPtr hwnd,
         [In][MarshalAs(UnmanagedType.LPStruct)] Guid pgActionID,
-        [In] WinTrustData pWVTData
+        ref WinTrustData pWVTData
     );
 
 
@@ -240,8 +249,11 @@ internal static class WinTrust
         WinVerifyTrustResult lStatus;
         uint dwLastError;
 
-        WinTrustFileInfo FileData;
-        WinTrustData WinTrustData;
+        // Initialised to default so the finally block can always dispose them: both Dispose
+        // implementations no-op when their pointer is IntPtr.Zero, so this is safe even if the
+        // constructor or WinVerifyTrust threw before anything was allocated.
+        WinTrustFileInfo FileData = default;
+        WinTrustData WinTrustData = default;
 
         var validSignature = false;
         try
@@ -314,9 +326,9 @@ internal static class WinTrust
 
 
 
-            // WinVerifyTrust verifies signatures as specified by the GUID 
+            // WinVerifyTrust verifies signatures as specified by the GUID
             // and Wintrust_Data.
-            lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, WinTrustData);
+            lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
 
 
             switch (lStatus)
@@ -395,10 +407,12 @@ internal static class WinTrust
                     break;
             }
 
-            // Any hWVTStateData must be released by a call with close.
+            // Any hWVTStateData must be released by a call with close. Because WinTrustData is now
+            // passed by reference, the handle the verify call populated is still here and can be
+            // handed back to release it.
             WinTrustData.dwStateAction = WinTrustDataStateAction.Close;
 
-            lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, WinTrustData);
+            lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
         }
         catch (Exception err)
         {
@@ -406,22 +420,12 @@ internal static class WinTrust
         }
         finally
         {
-            //FileData.Dispose();
-            //WinTrustData.Dispose();
-
-            /*
-            if (FileData is not null)
-            {
-                FileData.Dispose();
-                //winTrustFileInfo = null;
-            }
-
-            if (WinTrustData is not null)
-            {
-                WinTrustData.Dispose();
-                //WinTrustData = null;
-            }
-            */
+            // These allocate unmanaged memory (a CoTaskMem string for the path, and a CoTaskMem
+            // block holding the WINTRUST_FILE_INFO struct) and were never freed, so every signature
+            // check leaked. This runs on every dll swap and every dll import, so it accumulated
+            // over a session.
+            FileData.Dispose();
+            WinTrustData.Dispose();
         }
 
         return validSignature;

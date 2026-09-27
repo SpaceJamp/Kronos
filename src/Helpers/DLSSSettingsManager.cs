@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace DLSS_Swapper.Helpers;
@@ -34,6 +35,10 @@ internal class DLSSSettingsManager
             {
                 if (process is not null)
                 {
+                    // Do not block the UI thread here. This runs with the "runas" verb, so a UAC
+                    // prompt can appear, and WaitForExit would freeze the whole window until the
+                    // user responded to it. This method is only ever called from a background
+                    // thread via the *Async wrappers below.
                     process.WaitForExit();
 
                     if (process.ExitCode == 0)
@@ -41,7 +46,7 @@ internal class DLSSSettingsManager
                         return true;
                     }
 
-                    throw new Exception("Process exit code was {process.ExitCode}");
+                    throw new Exception($"Process exit code was {process.ExitCode}");
                 }
             }
         }
@@ -53,9 +58,23 @@ internal class DLSSSettingsManager
         return false;
     }
 
-    public bool SetShowDlssIndicator(int value)
+    /// <summary>
+    /// Runs <see cref="RunRegAdd"/> off the calling thread.
+    /// </summary>
+    /// <remarks>
+    /// The NGXCore key lives under HKEY_LOCAL_MACHINE, so writing to it needs elevation. Shelling
+    /// out to reg.exe with the "runas" verb raises a UAC prompt, and the process can sit there
+    /// waiting for the user. Blocking the UI thread on it made the application appear to hang
+    /// whenever one of the DLSS settings was toggled.
+    /// </remarks>
+    Task<bool> RunRegAddAsync(string key, string name, string type, string value)
     {
-        return RunRegAdd(NGXCORE_REG_KEY, "ShowDlssIndicator", "REG_DWORD", value.ToString(CultureInfo.InvariantCulture));
+        return Task.Run(() => RunRegAdd(key, name, type, value));
+    }
+
+    public Task<bool> SetShowDlssIndicatorAsync(int value)
+    {
+        return RunRegAddAsync(NGXCORE_REG_KEY, "ShowDlssIndicator", "REG_DWORD", value.ToString(CultureInfo.InvariantCulture));
     }
 
     public int GetShowDlssIndicator()
@@ -69,14 +88,14 @@ internal class DLSSSettingsManager
     }
 
 
-    public bool SetLogLevel(int logLevel)
+    public Task<bool> SetLogLevelAsync(int logLevel)
     {
         if (logLevel == 0 || logLevel == 1 || logLevel == 2)
         {
-            return RunRegAdd(NGXCORE_REG_KEY, "LogLevel", "REG_DWORD", $"{logLevel}");
+            return RunRegAddAsync(NGXCORE_REG_KEY, "LogLevel", "REG_DWORD", $"{logLevel}");
         }
 
-        return false;
+        return Task.FromResult(false);
     }
 
     public int GetLogLevel()
@@ -90,16 +109,9 @@ internal class DLSSSettingsManager
     }
 
 
-    public bool SetLoggingWindow(bool enabled)
+    public Task<bool> SetLoggingWindowAsync(bool enabled)
     {
-        if (enabled)
-        {
-            return RunRegAdd(NGXCORE_REG_KEY, "EnableConsoleLogging", "REG_DWORD", "1");
-        }
-        else
-        {
-            return RunRegAdd(NGXCORE_REG_KEY, "EnableConsoleLogging", "REG_DWORD", "0");
-        }
+        return RunRegAddAsync(NGXCORE_REG_KEY, "EnableConsoleLogging", "REG_DWORD", enabled ? "1" : "0");
     }
 
     public bool GetLoggingWindow()

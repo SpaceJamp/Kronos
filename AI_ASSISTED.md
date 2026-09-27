@@ -89,8 +89,15 @@ Stated plainly, because the AI-assisted fixes above are not all equally proven:
   been run.
 - **Known bugs remain.** The fork fixes a substantial number of defects but not all of them. See the
   conversation history and the code for the ones still outstanding, notably unmanaged memory leaks
-  in `WinTrust.cs` and `FileSystemHelper.cs`, and a `Game.Equals` implementation with no matching
-  `GetHashCode`.
+  in `FileSystemHelper.cs`, and a `Game.Equals` implementation with no matching `GetHashCode`.
+
+  One inherited bug was found while testing the `WinTrust` fix and is pinned by a test rather than
+  fixed: signed `.exe` files such as `cmd.exe` are reported as `Valid` by Windows but rejected by
+  `VerifyEmbeddedSignature`. Stashing the interop changes and re-running produced identical results,
+  so it predates this fork's work. The suspected cause is the object initializer in
+  `VerifyEmbeddedSignature`, which overrides `dwUIContext` with the invalid value `0` and otherwise
+  repeats what the constructor had already done, but that was not confirmed. It does not affect the
+  import flow, which only handles `.dll` files.
 - **The fork is unsigned**, so Windows SmartScreen will warn.
 
 ## Licensing
