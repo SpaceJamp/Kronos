@@ -118,6 +118,23 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     [Column("is_hidden")]
     public partial bool? IsHidden { get; set; } = null;
 
+    /// <summary>
+    /// True when the user has flagged this install as a repack / "scene release" rather than a
+    /// normal store install.
+    /// </summary>
+    /// <remarks>
+    /// In practice only games in the Manually Added library can be repacks, because store
+    /// libraries report their own installed titles. The column lives on the base class anyway so
+    /// that the badge can be bound uniformly for every game, and so the value has somewhere to
+    /// live for all of the per-library tables.
+    ///
+    /// The stored value is the source of truth. RepackDetector only ever *suggests* this flag when
+    /// a game is added, because repack tooling varies too much for detection to be reliable.
+    /// </remarks>
+    [ObservableProperty]
+    [Column("is_repack")]
+    public partial bool IsRepack { get; set; } = false;
+
     [ObservableProperty]
     [Ignore]
     public partial bool Processing { get; set; } = false;

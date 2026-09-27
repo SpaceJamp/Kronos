@@ -26,6 +26,29 @@ internal partial class ManuallyAddGameModel : ObservableObject
             Title = Path.GetFileName(installPath),
             InstallPath = PathHelpers.NormalizePath(installPath),
         };
+
+        // Pre-tick the repack box when the folder carries markers of repack or emulation tooling.
+        // This is only a suggestion the user can untick: detection cannot be reliable enough to
+        // decide this on its own, and the stored flag is what the rest of the app acts on.
+        var detection = RepackDetector.Detect(_game.InstallPath);
+        if (detection.IsLikelyRepack)
+        {
+            _game.IsRepack = true;
+        }
+
+        RepackDetection = detection;
+    }
+
+    RepackDetectionResult _repackDetection = RepackDetectionResult.NotARepack;
+
+    /// <summary>
+    /// What <see cref="RepackDetector"/> found in the chosen folder, so the UI can explain why the
+    /// repack box was pre-ticked.
+    /// </summary>
+    public RepackDetectionResult RepackDetection
+    {
+        get => _repackDetection;
+        private set => SetProperty(ref _repackDetection, value);
     }
 
     [RelayCommand]

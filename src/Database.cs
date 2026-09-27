@@ -71,6 +71,38 @@ internal class Database
             }
         }
 
+        /// <summary>
+        /// Adds a column to a table if it is not already there, and if the table exists at all.
+        /// </summary>
+        void AddColumn(SQLiteConnection connection, string table, string column, string definition)
+        {
+            try
+            {
+                // PRAGMA table_info returns an empty set for a table that does not exist, so this
+                // doubles as the "does the table exist" check. Deliberately avoids SQLiteTableInfo,
+                // which is only declared in DEBUG builds.
+                var columns = connection.Query<SQLiteConnection.ColumnInfo>($"PRAGMA table_info({table})");
+
+                if (columns.Count == 0)
+                {
+                    // CreateTable below will make it with the new column already present.
+                    return;
+                }
+
+                if (columns.Any(c => c.Name == column))
+                {
+                    return;
+                }
+
+                connection.Execute($"ALTER TABLE {table} ADD COLUMN {column} {definition}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                Debugger.Break();
+            }
+        }
+
         // Use a single syncronous connection to make tables
         using (var syncConnection = new SQLiteConnection(Storage.GetDBPath()))
         {
@@ -93,6 +125,26 @@ internal class Database
             RenameColumn(syncConnection, "battlenet_game", "LauncherId", "launcher_id");
             RenameColumn(syncConnection, "gog_game", "FallbackHeaderUrl", "fallback_header_url");
             RenameColumn(syncConnection, "game_asset", "Hash", "hash");
+
+            // Add the repack flag to every per-library game table. sqlite-net's CreateTable is
+            // "CREATE TABLE IF NOT EXISTS", so it will not add a column to a table that already
+            // exists, and an existing install would fail with "no such column: is_repack".
+            string[] gameTables =
+            {
+                "steam_game",
+                "gog_game",
+                "epic_games_store_game",
+                "ubisoft_connect_game",
+                "xbox_game",
+                "manually_added_game",
+                "battlenet_game",
+                "ea_app_game",
+            };
+
+            foreach (var gameTable in gameTables)
+            {
+                AddColumn(syncConnection, gameTable, "is_repack", "INTEGER NOT NULL DEFAULT 0");
+            }
 
             // Delete old indexes if they exist.
             syncConnection.Execute("DROP INDEX IF EXISTS GameAsset_id");
@@ -151,6 +203,7 @@ internal class Database
                 "url",
                 "launcher",
                 "hash",
+                "repack",
             };
 
             var hasIssues = false;
