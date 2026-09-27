@@ -208,4 +208,14 @@ public class GameAsset : IEquatable<GameAsset>
             Version.Equals(other.Version) &&
             Hash.Equals(other.Hash);
     }
+
+    /// <summary>
+    /// Overridden so it agrees with <see cref="Equals(GameAsset?)"/>. Without this the equality
+    /// contract is broken and using GameAsset in a HashSet, Distinct or GroupBy gives undefined
+    /// results.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Id, AssetType, Path, Version, Hash);
+    }
 }

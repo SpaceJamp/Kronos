@@ -133,6 +133,25 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
             return false;
         }
 
-        return string.Equals(ExpectedPath, other.ExpectedPath, StringComparison.InvariantCultureIgnoreCase);
+        if (string.IsNullOrWhiteSpace(ExpectedPath))
+        {
+            return false;
+        }
+
+        // Ordinal, not InvariantCulture: this is a file path, so only case should be ignored, and
+        // culture-sensitive comparison is both slower and wrong for paths containing non-ASCII
+        // characters.
+        return string.Equals(ExpectedPath, other.ExpectedPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Overridden so it agrees with <see cref="Equals(LocalRecord?)"/>, using the same Ordinal
+    /// case-insensitive comparison. Without it, two records that compare equal could land in
+    /// different buckets in a HashSet.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        var path = ExpectedPath ?? string.Empty;
+        return StringComparer.OrdinalIgnoreCase.GetHashCode(path);
     }
 }

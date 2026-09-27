@@ -1024,14 +1024,27 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     }
 
     #region IComparable<Game>
+    /// <summary>
+    /// Orders games by their <see cref="ID"/>.
+    /// </summary>
+    /// <remarks>
+    /// This used to order by Title, which means two entirely different games that happened to
+    /// share a title (or both had none) compared as 0, i.e. equal. Anything routing through
+    /// IComparable - List&lt;Game&gt;.Sort, Comparer&lt;Game&gt;.Default, BinarySearch - treats a 0 as
+    /// "same element" and can silently drop one of them. CompareTo has to agree with
+    /// <see cref="Equals(Game?)"/>, and identity here is the ID.
+    ///
+    /// If you want games ordered by name, ask for it explicitly with OrderBy(g =&gt; g.Title)
+    /// rather than relying on this.
+    /// </remarks>
     public int CompareTo(Game? other)
     {
         if (other is null)
         {
-            return -1;
+            return 1;
         }
 
-        return Title.CompareTo(other.Title);
+        return string.Compare(ID, other.ID, StringComparison.OrdinalIgnoreCase);
     }
     #endregion
 
@@ -1349,6 +1362,23 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
     }
 
+    /// <summary>
+    /// Two games are the same game when they have the same <see cref="ID"/>.
+    /// </summary>
+    /// <remarks>
+    /// ID is the database primary key and is always built as "{library}_{platformId}" by
+    /// SetID(), for every library. That makes it the only field that identifies a game
+    /// unambiguously.
+    ///
+    /// This previously also returned true whenever two games shared a PlatformId, ignoring which
+    /// library they came from. PlatformId is only unique within a library, so a numeric id that
+    /// appeared in two of them made one game compare equal to a different game, and
+    /// GameManager.AddGame silently dropped one of them from the list.
+    ///
+    /// Identity is deliberately ID-only so that GetHashCode can agree with Equals. Mixing in
+    /// PlatformId as a second criterion would break the contract, because SetID() sanitises
+    /// PlatformId, so two different PlatformIds can produce the same ID.
+    /// </remarks>
     public bool Equals(Game? other)
     {
         if (other is null)
@@ -1356,17 +1386,17 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return false;
         }
 
-        if (ID == other.ID)
+        if (ReferenceEquals(this, other))
         {
             return true;
         }
 
-        if (PlatformId == other.PlatformId)
-        {
-            return true;
-        }
+        return string.Equals(ID, other.ID, StringComparison.OrdinalIgnoreCase);
+    }
 
-        return false;
+    public override int GetHashCode()
+    {
+        return StringComparer.OrdinalIgnoreCase.GetHashCode(ID ?? string.Empty);
     }
 
     protected bool ParentUpdateFromGame(Game game)
