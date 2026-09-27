@@ -716,6 +716,59 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     }
 
     /// <summary>
+    /// Works out which of the dlls we are about to overwrite still need their original preserved as
+    /// a backup.
+    /// </summary>
+    /// <remarks>
+    /// Extracted from <see cref="UpdateDllAsync"/> so the decision can be tested without a live
+    /// WinUI Application, a database, or real game files.
+    ///
+    /// The bug this replaces: the caller only backed anything up when *no* backup existed at all,
+    /// so a game with several copies of the same dll where only one had a backup would overwrite
+    /// the rest without preserving them.
+    /// </remarks>
+    /// <param name="existingRecords">The dlls about to be overwritten.</param>
+    /// <param name="allGameAssets">Every asset currently tracked for this game, backups included.</param>
+    /// <param name="backupAssetType">The backup asset type, e.g. DLSS_BACKUP.</param>
+    /// <returns>The paths, one per dll, that need a backup file created. Never null.</returns>
+    internal static HashSet<string> GetPathsNeedingBackup(
+        IEnumerable<GameAsset> existingRecords,
+        IEnumerable<GameAsset> allGameAssets,
+        GameAssetType backupAssetType)
+    {
+        var trackedBackupPaths = new HashSet<string>(
+            allGameAssets
+                .Where(x => x.AssetType == backupAssetType && string.IsNullOrWhiteSpace(x.Path) == false)
+                .Select(x => x.Path),
+            StringComparer.OrdinalIgnoreCase);
+
+        var needsBackup = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var record in existingRecords)
+        {
+            if (string.IsNullOrWhiteSpace(record.Path))
+            {
+                continue;
+            }
+
+            // Backup records store the ".dlsss" path, not the dll path, so compare against that.
+            var backupPath = record.Path + ".dlsss";
+
+            // Only skip when the original is both stored on disk *and* recorded. Either one on its
+            // own is not enough: a file with no record gets orphaned by the database rewrite, and a
+            // record with no file cannot be used to reset.
+            if (trackedBackupPaths.Contains(backupPath) && File.Exists(backupPath))
+            {
+                continue;
+            }
+
+            needsBackup.Add(record.Path);
+        }
+
+        return needsBackup;
+    }
+
+    /// <summary>
     /// Attempts to update a DLSS dll in a given game.
     /// </summary>
     /// <param name="dlssRecord"></param>
@@ -744,7 +797,6 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
         var backupRecordType = DLLManager.Instance.GetAssetBackupType(dllRecord.AssetType);
-        var existingBackupRecords = this.GameAssets.Where(x => x.AssetType == backupRecordType).ToList();
 
         var versionInfo = FileVersionInfo.GetVersionInfo(dllRecord.LocalRecord.ExpectedPath);
         var dllVersion = versionInfo.GetFormattedFileVersion();
@@ -767,55 +819,71 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         var newGameAssets = new List<GameAsset>();
 
-        if (existingBackupRecords.Count == 0)
-        {
-            // Backup old dlls if no backup exists.
-            foreach (var existingRecord in existingRecords)
-            {
-                var dllPath = Path.GetDirectoryName(existingRecord.Path);
-                if (string.IsNullOrEmpty(dllPath))
-                {
-                    Logger.Error("dllPath was null or empty.");
-                    return (false, "Unable to swap dll. Please check your error log for more information.", false);
-                }
+        // Back up every dll we are about to overwrite, checking each one individually rather than
+        // treating "do we have any backups" as a single yes/no question. See GetPathsNeedingBackup
+        // for why that distinction matters.
+        var pathsNeedingBackup = GetPathsNeedingBackup(existingRecords, GameAssets, backupRecordType);
 
-                // Ensure we don't do anything if the target exists.
-                var backupDllPath = $"{existingRecord.Path}.dlsss";
+        foreach (var existingRecord in existingRecords)
+        {
+            var dllPath = Path.GetDirectoryName(existingRecord.Path);
+            if (string.IsNullOrEmpty(dllPath))
+            {
+                Logger.Error("dllPath was null or empty.");
+                return (false, "Unable to swap dll. Please check your error log for more information.", false);
+            }
+
+            var backupDllPath = $"{existingRecord.Path}.dlsss";
+
+            if (pathsNeedingBackup.Contains(existingRecord.Path) == false)
+            {
+                // The original for this dll is already stored and recorded, leave it alone.
+                continue;
+            }
+
+            try
+            {
                 if (File.Exists(backupDllPath) == false)
                 {
-                    try
-                    {
-                        File.Copy(existingRecord.Path, backupDllPath);
-
-                        var backupGameAsset = new GameAsset()
-                        {
-                            Id = ID,
-                            AssetType = backupRecordType,
-                            Path = backupDllPath,
-                            Version = existingRecord.Version,
-                            Hash = existingRecord.Hash,
-                        };
-                        newGameAssets.Add(backupGameAsset);
-                    }
-                    catch (UnauthorizedAccessException err)
-                    {
-                        Logger.Error(err);
-                        if (App.CurrentApp.IsAdminUser() is false)
-                        {
-                            return (false, "Unable to swap dll as we are unable to write to the target directory. Running DLSS Swapper as administrator may fix this.", true);
-
-                        }
-                        else
-                        {
-                            return (false, "Unable to swap dll as we are unable to write to the target directory.", false);
-                        }
-                    }
-                    catch (Exception err)
-                    {
-                        Logger.Error(err);
-                        return (false, "Unable to swap dll. Please check your error log for more information.", false);
-                    }
+                    // Never clobber an existing backup, it holds the game's original dll.
+                    File.Copy(existingRecord.Path, backupDllPath);
                 }
+
+                // The file may already have been on disk with no record pointing at it, which used to
+                // orphan it during the database rewrite below. Record it either way.
+                var isAlreadyTracked = GameAssets.Any(x =>
+                    x.AssetType == backupRecordType &&
+                    string.Equals(x.Path, backupDllPath, StringComparison.OrdinalIgnoreCase));
+
+                if (isAlreadyTracked == false)
+                {
+                    newGameAssets.Add(new GameAsset()
+                    {
+                        Id = ID,
+                        AssetType = backupRecordType,
+                        Path = backupDllPath,
+                        Version = existingRecord.Version,
+                        Hash = existingRecord.Hash,
+                    });
+                }
+            }
+            catch (UnauthorizedAccessException err)
+            {
+                Logger.Error(err);
+                if (App.CurrentApp.IsAdminUser() is false)
+                {
+                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running DLSS Swapper as administrator may fix this.", true);
+
+                }
+                else
+                {
+                    return (false, "Unable to swap dll as we are unable to write to the target directory.", false);
+                }
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err);
+                return (false, "Unable to swap dll. Please check your error log for more information.", false);
             }
         }
 
