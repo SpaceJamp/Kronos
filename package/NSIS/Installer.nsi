@@ -101,6 +101,12 @@ VIAddVersionKey "ProductName" "Unofficial DLSS Swapper"
 VIAddVersionKey "ProductVersion" "1.2.6.1"
 VIAddVersionKey "FileDescription" "Unofficial DLSS Swapper installer"
 VIAddVersionKey "FileVersion" "1.2.6.1"
+; Shown as "Company" in Explorer's file Properties. Matches the Publisher written
+; during install; this fork is not published by the original maintainer.
+VIAddVersionKey "CompanyName" "SpaceJamp"
+; GPL-3.0 requires the original copyright notices to be preserved, so attribute
+; upstream here rather than leaving this standard key unset.
+VIAddVersionKey "LegalCopyright" "Unofficial DLSS Swapper is based on DLSS Swapper by beeradmoore. Licensed under the GNU GPL v3.0 - see LICENSE."
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
@@ -202,9 +208,10 @@ Section
 
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Unofficial DLSS Swapper"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "1.2.6.1"
-  ; NOTE (fork): changed from the upstream publisher "beeradmoore" so this installer does not
-  ; impersonate the original maintainer in Add/Remove Programs. Set this to your own name.
-  WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "fork"
+  ; Publisher shown in Windows "Installed apps" and Add/Remove Programs.
+  ; This is an unofficial fork, so it must not claim to be published by the
+  ; original maintainer. Change the string below to your own name or handle.
+  WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "SpaceJamp"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\Unofficial DLSS Swapper.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"

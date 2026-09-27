@@ -15,6 +15,7 @@ StoredData/
 package/Output/
 .vscode/
 package/NSIS/FileList.nsh
+package/NSIS/installer.exe
 .idea/
 docs/_site/
 docs/.sass-cache/
