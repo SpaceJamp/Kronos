@@ -12,7 +12,9 @@ echo.
 DEL NSIS\installer.exe > NUL 2>&1
 DEL NSIS\FileList.nsh > NUL 2>&1
 
-pwsh.exe .\NSIS\create_nsh_file_list.ps1 || goto :error
+REM -ExecutionPolicy Bypass matches package_Portable.cmd. Without it the default
+REM Windows policy blocks this unsigned script and the build fails at step one.
+pwsh.exe -ExecutionPolicy Bypass -File .\NSIS\create_nsh_file_list.ps1 || goto :error
 
 makensis.exe NSIS\Installer.nsi || goto :error
  
@@ -27,8 +29,11 @@ REM If there was an error output this error message and navigate back to the ini
 echo.
 echo.
 echo ERROR: Failed with error code %errorlevel%.
+REM Save the failing code first: a successful cd resets %errorlevel% to 0,
+REM which would make a failed build report success.
+set "result=%errorlevel%"
 cd %initial_directory% > NUL 2>&1
-exit /b %errorlevel%
+exit /b %result%
 
 :end
 exit /b 0

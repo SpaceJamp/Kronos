@@ -21,8 +21,11 @@ REM If there was an error output this error message and navigate back to the ini
 echo.
 echo.
 echo ERROR: Failed with error code %errorlevel%.
+REM Save the failing code first: a successful cd resets %errorlevel% to 0,
+REM which would make a failed build report success.
+set "result=%errorlevel%"
 cd %initial_directory% > NUL 2>&1
-exit /b %errorlevel%
+exit /b %result%
 
 :end
 exit /b 0
