@@ -79,6 +79,15 @@ This fork exists to carry local modifications. The significant changes relative 
 - The import work no longer runs as an unobserved thread-pool work item, which could either crash
   the app or leave a modal dialog stuck on screen forever.
 - Importing no longer re-hashes the same file once per candidate record.
+- Toggling a DLSS setting (on-screen indicator, logging level, console logging) no longer freezes
+  the window. Writing the NGXCore registry key shells out to an elevated `reg.exe` and blocked on
+  `WaitForExit()`, including waiting on a UAC prompt, on the UI thread.
+- `WinTrust.VerifyEmbeddedSignature` no longer leaks unmanaged memory. It allocated two `CoTaskMem`
+  blocks per call and its cleanup was commented out, so every DLL swap and every DLL import leaked.
+  It also passed `WINTRUST_DATA` by value, which discarded the verification-state handle the native
+  call writes, so that state was never released; and it declared `SetLastError = false`, which made
+  the `GetLastWin32Error()` call in the "not signed" branch return a stale value and log the wrong
+  message.
 
 **Maintainability**
 
