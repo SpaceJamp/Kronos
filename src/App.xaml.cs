@@ -174,6 +174,17 @@ public sealed partial class App : Application
             return;
         }
 
+        // This build is x64 only. A 32-bit Windows cannot load it, and the failure it produces is
+        // an unhelpful loader error before any of our code runs, so say something useful instead of
+        // letting the user stare at "This app can't run on your PC". Checked before anything else
+        // touches the disk, database or network.
+        if (Environment.Is64BitOperatingSystem == false)
+        {
+            Logger.Error("Refusing to launch: this is an x64 only build and the operating system is 32-bit.");
+            WindowManager.ShowWindow(new UnsupportedArchitectureWindow());
+            return;
+        }
+
         if (Storage.StoragePath.Trim(Path.DirectorySeparatorChar).Contains(Environment.SystemDirectory, StringComparison.InvariantCultureIgnoreCase))
         {
             var failToLaunchWindow = new FailToLaunchWindow();

@@ -15,8 +15,16 @@
     -->
     <RootNamespace>Kronos</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      x64 only, deliberately. The app downloads 64-bit nvngx_dlss.dll, nvngx_dlssg.dll, amd_fidelityfx_dx12.dll
+      and the rest to swap into games, so there is nothing useful it could do on a 32-bit Windows. A
+      32-bit OS also cannot load this binary at all, and App.OnLaunched shows an explanation when
+      Environment.Is64BitOperatingSystem is false rather than letting the loader fail obscurely.
+    -->
     <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Prefer32Bit>false</Prefer32Bit>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
