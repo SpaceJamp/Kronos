@@ -243,17 +243,25 @@
                     <ProgressRing Width="25" Height="25" IsIndeterminate="True" IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" />
                 </StackPanel>
 
+                <!--
+                    Attribution, not contact details. The links here are upstream's, so they are
+                    labelled as such: Kronos has no social accounts, and presenting beeradmoore's
+                    Twitter and subreddit as this app's own would be exactly the impersonation this
+                    project exists to avoid. Crediting the original author is a GPL-3.0 requirement,
+                    not a courtesy.
+                -->
                 <RichTextBlock Margin="0,24,0,0">
+                    <Paragraph>
+                        <Run Text="Kronos is based on DLSS Swapper by beeradmoore and contributors, used under the GNU GPL v3.0. All original copyright notices are preserved." />
+                    </Paragraph>
                     <Paragraph Margin="0,12,0,0">
-                        GitHub:
+                        <Run Text="Upstream project:" />
                         <Hyperlink NavigateUri="https://github.com/beeradmoore/dlss-swapper">beeradmoore/dlss-swapper</Hyperlink>
                     </Paragraph>
                     <Paragraph Margin="0,0,0,0">
-                        Twitter:
+                        <Run Text="Upstream announcements:" />
                         <Hyperlink NavigateUri="https://twitter.com/dlss_swapper">@dlss_swapper</Hyperlink>
-                    </Paragraph>
-                    <Paragraph Margin="0,0,0,0">
-                        Reddit:
+                        <Run Text="  ·  " />
                         <Hyperlink NavigateUri="https://www.reddit.com/r/DLSS_Swapper/">r/DLSS_Swapper</Hyperlink>
                     </Paragraph>
                     <Paragraph Margin="0,12,0,0">

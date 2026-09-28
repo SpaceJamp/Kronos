@@ -121,7 +121,7 @@
     <value>Ліцензії та подяки</value>
   </data>
   <data name="ApplicationTitle" xml:space="preserve">
-    <value>DLSS Swapper</value>
+    <value>Kronos</value>
   </data>
   <data name="DiagnosticsPage_ClickToCopyDetails" xml:space="preserve">
     <value>Натисніть, щоб скопіювати ці дані</value>
@@ -172,7 +172,7 @@
     <value>Пресет {0} (застарілий)</value>
   </data>
   <data name="FailedToLaunchPage_DlssSwapperFailedToLaunch" xml:space="preserve">
-    <value>Не вдалося запустити DLSS Swapper</value>
+    <value>Не вдалося запустити Kronos</value>
   </data>
   <data name="FailedToLaunchPage_PleaseOpenIssuePartial1" xml:space="preserve">
     <value>Будь ласка, відкрийте</value>
@@ -181,7 +181,7 @@
     <value>нову проблему</value>
   </data>
   <data name="FailedToLaunchPage_PleaseOpenIssuePartial3" xml:space="preserve">
-    <value> у репозиторії DLSS Swapper на GitHub та надайте наступну інформацію в розділі додаткового контексту.</value>
+    <value> у репозиторії Kronos на GitHub та надайте наступну інформацію в розділі додаткового контексту.</value>
   </data>
   <data name="FailedToLaunchPage_WindowTitle" xml:space="preserve">
     <value>Не вдалося запустити</value>
@@ -293,7 +293,7 @@
     <value>Цю гру не додано вручну і її не можна видалити.</value>
   </data>
   <data name="GamePage_ManuallyAdded_RemoveGameTemplate" xml:space="preserve">
-    <value>Ви впевнені, що хочете видалити "{0}" з DLSS Swapper? Це не внесе жодних змін у файли DLSS, які вже були замінені.</value>
+    <value>Ви впевнені, що хочете видалити "{0}" з Kronos? Це не внесе жодних змін у файли DLSS, які вже були замінені.</value>
   </data>
   <data name="GamePage_MultipleDllFound_Notice" xml:space="preserve">
     <value>Нижче показано кілька знайдених DLL. Ви все ще зможете замінювати та відновлювати DLL як завжди, оскільки ми виконуватимемо ці дії з усіма DLL одночасно. Однак, оскільки ми не знаємо, яка з цих DLL використовується грою, показана версія першої виявленої DLL.</value>
@@ -383,7 +383,7 @@
     <value>Ви повинні вибрати каталог &lt;i&gt;гри&lt;/i&gt;, а не каталог &lt;i&gt;ігор&lt;/i&gt;.&lt;br/&gt;&lt;br/&gt;Наприклад, якщо у вас є гра за адресою:&lt;br/&gt;&lt;b&gt;C:\Program Files\MyGamesFolder\MyFavGame\&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;Ви повинні вибрати каталог &lt;b&gt;MyFavGame&lt;/b&gt;, а не каталог &lt;b&gt;MyGamesFolder&lt;/b&gt;.</value>
   </data>
   <data name="GamesPage_ManuallyAdding_NoteMessage" xml:space="preserve">
-    <value>DLSS Swapper має автоматично знаходити ігри з ваших встановлених бібліотек ігор. Якщо вашої гри немає у списку, можливо, цьому заважають деякі налаштування. Будь ласка, перевірте:
+    <value>Kronos має автоматично знаходити ігри з ваших встановлених бібліотек ігор. Якщо вашої гри немає у списку, можливо, цьому заважають деякі налаштування. Будь ласка, перевірте:
 
 - Фільтр списку ігор не встановлено на "Приховати ігри без елементів, які можна замінити"
 - У налаштуваннях увімкнено певну бібліотеку ігор
@@ -409,7 +409,7 @@
     <value>Створіть нову проблему на GitHub</value>
   </data>
   <data name="GamesPage_NewDlls_DiscoveredHelpUs" xml:space="preserve">
-    <value>Під час завантаження ваших ігор було виявлено деякі нові DLL, яких немає в маніфесті DLSS Swapper.</value>
+    <value>Під час завантаження ваших ігор було виявлено деякі нові DLL, яких немає в маніфесті Kronos.</value>
   </data>
   <data name="GamesPage_NewDlls_GitHubAccountRequired" xml:space="preserve">
     <value>(потрібен обліковий запис GitHub)</value>
@@ -634,7 +634,7 @@
     <value>У вас зараз встановлено {0}.</value>
   </data>
   <data name="GitHubUpdater_DlssSwapperUpdated" xml:space="preserve">
-    <value>DLSS Swapper щойно оновився</value>
+    <value>Kronos щойно оновився</value>
   </data>
   <data name="GitHubUpdater_UpdateAvailable" xml:space="preserve">
     <value>Доступне оновлення</value>
@@ -746,10 +746,10 @@
     <value>Спроба оновлення</value>
   </data>
   <data name="MainWindow_DlssSwapperCloseDueToManifest" xml:space="preserve">
-    <value>DLSS Swapper не зміг завантажити файл маніфесту і зараз закриється.</value>
+    <value>Kronos не зміг завантажити файл маніфесту і зараз закриється.</value>
   </data>
   <data name="MainWindow_DlssSwapperMustClose" xml:space="preserve">
-    <value>DLSS Swapper буде закрито</value>
+    <value>Kronos буде закрито</value>
   </data>
   <data name="MainWindow_ManifestCouldNotBeLoaded_GitHubIssues" xml:space="preserve">
     <value>Проблеми GitHub</value>
@@ -792,22 +792,22 @@
     <value>Тест користувацького агента</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest10Title" xml:space="preserve">
-    <value>Завантаження DLSS Swapper DLL у DLSS Swapper за допомогою власного агента користувача</value>
+    <value>Завантаження Kronos DLL у Kronos за допомогою власного агента користувача</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest11Title" xml:space="preserve">
     <value>Завантаження DLSS DLL з дзеркала UploadThing</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest1Title" xml:space="preserve">
-    <value>Доступ до google.com з DLSS Swapper (тестує загальне підключення до Інтернету)</value>
+    <value>Доступ до google.com з Kronos (тестує загальне підключення до Інтернету)</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest2Title" xml:space="preserve">
-    <value>Доступ до bing.com з DLSS Swapper (тестує загальне підключення до Інтернету)</value>
+    <value>Доступ до bing.com з Kronos (тестує загальне підключення до Інтернету)</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest3Title" xml:space="preserve">
-    <value>Завантаження DLSS Swapper DLL в DLSS Swapper</value>
+    <value>Завантаження Kronos DLL в Kronos</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest4Title" xml:space="preserve">
-    <value>Завантаження DLSS Swapper DLL з браузера</value>
+    <value>Завантаження Kronos DLL з браузера</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest5Title" xml:space="preserve">
     <value>Завантаження обкладинки гри зі Steam</value>
@@ -816,13 +816,13 @@
     <value>Завантаження обкладинки гри з Epic Game Store</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest7Title" xml:space="preserve">
-    <value>Завантаження обкладинки гри з файлового сервера DLSS Swapper</value>
+    <value>Завантаження обкладинки гри з файлового сервера Kronos</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest8Title" xml:space="preserve">
-    <value>Завантаження обкладинки гри з альтернативного файлового сервера DLSS Swapper</value>
+    <value>Завантаження обкладинки гри з альтернативного файлового сервера Kronos</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest9Title" xml:space="preserve">
-    <value>DNS-пошук файлового сервера DLSS Swapper</value>
+    <value>DNS-пошук файлового сервера Kronos</value>
   </data>
   <data name="NetworkTesterPage_OpenInBrowser" xml:space="preserve">
     <value>Відкрити у браузері</value>
@@ -867,7 +867,7 @@
     <value>Дата збірки</value>
   </data>
   <data name="SettingsPage_CouldNotOpenLogFileTryManual" xml:space="preserve">
-    <value>Не вдалося відкрити файл журналу безпосередньо з DLSS Swapper. Спробуйте відкрити його вручну.</value>
+    <value>Не вдалося відкрити файл журналу безпосередньо з Kronos. Спробуйте відкрити його вручну.</value>
   </data>
   <data name="SettingsPage_DeleteIgnoredPathMessage" xml:space="preserve">
     <value>Ви впевнені, що хочете видалити ігнорований шлях {0}?</value>
@@ -912,7 +912,7 @@
     <value>Залишити відгук</value>
   </data>
   <data name="SettingsPage_GiveFeedbackInfo" xml:space="preserve">
-    <value>Ви можете запропонувати функцію або повідомити про проблему DLSS Swapper</value>
+    <value>Ви можете запропонувати функцію або повідомити про проблему Kronos</value>
   </data>
   <data name="SettingsPage_IgnoredPaths" xml:space="preserve">
     <value>Ігноровані шляхи</value>
@@ -1023,7 +1023,7 @@
     <value>Не знайдено даних перекладу для збереження.</value>
   </data>
   <data name="TranslationToolboxPage_NotValidTranslationFile" xml:space="preserve">
-    <value>Недійсний файл перекладу DLSS Swapper.</value>
+    <value>Недійсний файл перекладу Kronos.</value>
   </data>
   <data name="TranslationToolboxPage_PublishFailedMessage" xml:space="preserve">
     <value>Не вдалося опублікувати переклад. Перегляньте журнал помилок для отримання додаткової інформації.</value>
@@ -1056,7 +1056,7 @@
     <value>Посібник з перекладу</value>
   </data>
   <data name="TranslationToolboxPage_TranslationGuideMessage" xml:space="preserve">
-    <value>Ваш переклад створено. Будь ласка, ознайомтеся з посібником з перекладу DLSS Swapper, щоб дізнатися, що робити далі з {0}.</value>
+    <value>Ваш переклад створено. Будь ласка, ознайомтеся з посібником з перекладу Kronos, щоб дізнатися, що робити далі з {0}.</value>
   </data>
   <data name="TranslationToolboxPage_TranslationProgress" xml:space="preserve">
     <value>Прогрес перекладу</value>
