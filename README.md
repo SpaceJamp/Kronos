@@ -18,6 +18,11 @@
 > and the installer publisher string are all there to make that confusion unlikely.
 
 > [!NOTE]
+> **No prebuilt binaries are published from this repository.** There is no releases page here, and
+> this fork is not on winget. If you want a ready-to-run DLSS Swapper, use the official project
+> linked above. This repository is source only, and exists to record the changes listed below.
+
+> [!NOTE]
 > **This fork was developed with AI assistance.** The original upstream code is not AI-generated,
 > but the changes listed below were written with the help of an AI coding assistant (Claude, via
 > OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
@@ -190,9 +195,14 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 Those are the only official sources. Do not install a build labelled "DLSS Swapper" from any other
 site, including this repository.
 
-**For this fork**, build it yourself from source (see [Building](#building)) or download a release
-from this repository's releases page. Artifacts are named `Unofficial.DLSS.Swapper-*`. Forks are not
-published to winget, and fork builds are unsigned, so Windows SmartScreen will warn on first run.
+**For this fork**, there are no published binaries. This repository is source only, so the only way
+to get a build is to compile it yourself — see [Building](#building). Two things follow from that:
+
+- This fork is not on winget, and no installer or portable zip is attached to any release here. If
+  you find one anywhere claiming to be from this project, it did not come from this repository.
+- Any build you make is unsigned, so Windows SmartScreen will warn on first run. This is also true
+  of the official app's own pre-signature builds, but the official project signs its releases via
+  SignPath, so expect a difference.
 
 ## It would be cool if DLSS Swapper could...
 
