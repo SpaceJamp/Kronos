@@ -24,12 +24,26 @@ Var UninstLog
 Var DEFAULT_INSTALL_PATH
 
 Function .onInit
-  ; Only the running-process check belongs here. The install path is decided in
-  ; DirectoryPagePre instead, because MUI's directory page initialises $INSTDIR from the InstallDir
-  ; directive when the page is created, which is *after* .onInit. With no InstallDir declared the
-  ; page reset $INSTDIR to empty, discarding anything set here, and the folder check in
-  ; .onVerifyInstDir then appended the app name to nothing and produced "\Kronos", a path relative to
-  ; the root of the current drive. That is what produced the unwritable folder error.
+  ; MUI's directory page seeds $INSTDIR from the InstallDir directive, which is declared below as a
+  ; per user path, so the page always starts from a location that is writable without elevation.
+  ; .onVerifyInstDir then only ever validates that path, and never rewrites it, which is what
+  ; finally stopped the install path from changing under the user.
+  ;
+  ; An existing install's location wins, so an upgrade keeps its folder. Read from both hives
+  ; because the uninstall registry key is written to whichever the installer ran as.
+  ClearErrors
+  ReadRegStr $0 HKLM "${UNINST_KEY}" "InstallLocation"
+  ${IfNot} ${Errors}
+    StrCpy $INSTDIR "$0\"
+    StrCpy $DEFAULT_INSTALL_PATH "$0"
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $0 HKCU "${UNINST_KEY}" "InstallLocation"
+  ${IfNot} ${Errors}
+    StrCpy $INSTDIR "$0\"
+    StrCpy $DEFAULT_INSTALL_PATH "$0"
+  ${EndIf}
+
   FindProcDLL::FindProc "${APP_EXE}"
 
   StrCmp $R0 0 NotRunning
@@ -43,51 +57,21 @@ Function .onInit
   NotRunning:
 FunctionEnd
 
-; Decide the default install location. Runs as the directory page's pre function, so it operates
-; after MUI has seeded $INSTDIR from InstallDir and can therefore still override it.
-Function DirectoryPagePre
-  ; An existing install always wins, so an upgrade keeps its location.
-  ClearErrors
-  ReadRegStr $0 HKLM "${UNINST_KEY}" "InstallLocation"
-  ${IfNot} ${Errors}
-    StrCpy $INSTDIR "$0\"
-    StrCpy $DEFAULT_INSTALL_PATH "$0"
-    Return
-  ${EndIf}
-  ClearErrors
-  ReadRegStr $0 HKCU "${UNINST_KEY}" "InstallLocation"
-  ${IfNot} ${Errors}
-    StrCpy $INSTDIR "$0\"
-    StrCpy $DEFAULT_INSTALL_PATH "$0"
-    Return
-  ${EndIf}
-
-  ; Otherwise prefer Program Files when we can actually write there. RequestExecutionLevel highest
-  ; raises the UAC prompt, but if that is declined, or the account is not an Administrator, this
-  ; installer still runs, just unelevated. Offering C:\Program Files to such a user means offering a
-  ; location that is certain to fail, which used to end with the install dying hundreds of files in.
-  StrCpy $0 "$PROGRAMFILES64\${APP_NAME}"
-  ${If} $0 != "\${APP_NAME}"
-    ClearErrors
-    FileOpen $1 "$PROGRAMFILES64\.__kronos_probe" w
-    ${IfNot} ${Errors}
-      FileClose $1
-      Delete "$PROGRAMFILES64\.__kronos_probe"
-      StrCpy $DEFAULT_INSTALL_PATH "$0"
-      StrCpy $INSTDIR "$0\"
-      Return
-    ${EndIf}
-  ${EndIf}
-
-  ; Per user needs no elevation at all, and is what InstallDir already defaults to.
-  StrCpy $DEFAULT_INSTALL_PATH "$LOCALAPPDATA\Programs\${APP_NAME}"
-  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
-FunctionEnd
+; Removed: DirectoryPagePre and OnInstFilesPre.
+;
+; Both were attached with "!define MUI_PAGE_CUSTOMFUNCTION_PRE", which does not exist in Modern UI 2.
+; The MUI2 tree contains no reference to that directive anywhere, so defining it is silently ignored
+; and the two functions it appeared to wire up were never called. They compiled with zero warnings
+; and zero errors throughout, which is why a dead code path survived two rounds of fixes and kept
+; looking like the thing that was running. Only .onInit, .onVerifyInstDir and .onSectionExit style
+; callbacks, which NSIS itself invokes, are used now.
 
 ; InstallDir is mandatory, not cosmetic. MUI's directory page seeds $INSTDIR from it when the page
-; is created, and with no InstallDir declared that reset $INSTDIR to empty, throwing away whatever
-; .onInit had set. DirectoryPagePre then runs and puts a real path back, but only because it is
-; wired up below; without InstallDir the page had nothing to fall back on.
+; is created, and it does so *after* .onInit, so anything .onInit set is discarded. With no
+; InstallDir declared the page reset $INSTDIR to empty, and the append in the old .onVerifyInstDir
+; then produced bare "\Kronos" and "Kronos\Kronos" paths relative to the drive root. It is a per
+; user path, so it is writable without elevation, which is what allows the installer to run as a
+; normal user now.
 InstallDir "$LOCALAPPDATA\Programs\${APP_NAME}"
 
 ; On uninstall, confirm you want to remove downloaded/imported DLSS files.
@@ -114,17 +98,21 @@ FunctionEnd
 ; longer matched, so it fired even on the default "C:\Program Files\Kronos" and appended a second
 ; Kronos folder to it, announcing "Install path updated to C:\Program Files\Kronos\Kronos".
 Function .onVerifyInstDir
-  ${GetFileName} $0 $INSTDIR
-  ${If} $0 != "${APP_NAME}"
-    StrCpy $INSTDIR "$INSTDIR\${APP_NAME}\"
-  ${EndIf}
-
-  ; Check we can actually write here, now, before 600+ files are attempted. The usual cause is not
-  ; being elevated: RequestExecutionLevel highest raises the UAC prompt, but if that is declined, or
-  ; the account is not an Administrator, NSIS carries on unelevated rather than failing. The result
-  ; used to be extraction dying partway with a bare "Error opening file for writing:
-  ; \Kronos\SomeDependency.dll" and a half written install directory containing no uninstaller and
-  ; no registry entry, which gives the user nothing to act on.
+  ; Validate only. This function must never rewrite $INSTDIR.
+  ;
+  ; It used to append a subfolder when the chosen path did not contain a hardcoded product name
+  ; string, "dlss", which was the name before the rename. Two things went wrong from there. The
+  ; string no longer matched anything, including the app's own folder, so the append fired on every
+  ; install. And when $INSTDIR reached this function empty, which happened because no InstallDir was
+  ; declared for the directory page to seed it from, the append produced a bare "\Kronos" and then
+  ; "Kronos\Kronos": paths relative to the root of the current drive. Both were reported to the user
+  ; as an unwritable folder, which sent them chasing administrator rights when the real problem was
+  ; that the path was nonsense.
+  ;
+  ; Nothing needs appending now. InstallDir gives the page a per user default, and a user who
+  ; deliberately chooses some other folder has chosen it, so it is used exactly as given. The only
+  ; job left is to fail early and clearly if it cannot be written to, instead of extracting 600+
+  ; files and dying on the first one.
   ClearErrors
   FileOpen $1 "$INSTDIR\.__kronos_write_test" w
   IfErrors path_not_writable
@@ -133,22 +121,16 @@ Function .onVerifyInstDir
   Goto path_ok
 
   path_not_writable:
-  MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos cannot write to this folder:$\r$\n$INSTDIR$\r$\n$\r$\nProgram Files needs administrator rights. Close this, right click the installer and choose 'Run as administrator', or pick a different folder such as your Downloads folder.$\r$\n$\r$\nNothing has been installed."
+  MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos cannot write to this folder:$\r$\n$INSTDIR$\r$\n$\r$\nPick a different folder, for example your Downloads folder, or one under your user profile. Program Files needs administrator rights, and if the installer was not run as administrator it will not be able to write there.$\r$\n$\r$\nNothing has been installed."
   Abort
 
   path_ok:
 FunctionEnd
 
 
-Function OnInstFilesPre
-  ; Same reasoning as .onVerifyInstDir. This is idempotent with it, because after the first has run
-  ; the last component is the app name and this becomes a no-op.
-  ${GetFileName} $0 $INSTDIR
-  ${If} $0 != "${APP_NAME}"
-    StrCpy $INSTDIR "$INSTDIR\${APP_NAME}\"
-    MessageBox MB_OK "Install path updated to $INSTDIR"
-  ${EndIf}
-FunctionEnd
+; Removed: OnInstFilesPre, which is where the "Install path updated to ..." message came from. It
+; appended a subfolder and rewrote $INSTDIR during the install, which is exactly the behaviour that
+; produced every wrong path reported. It was also never invoked.
 
 
 ; This is disabled until I can figure out how to make it launch as admin
@@ -158,9 +140,17 @@ FunctionEnd
 ;FunctionEnd
 
 
-; For removing Start Menu shortcut in Windows 7
-; RequestExecutionLevel user
-RequestExecutionLevel highest
+; Install as a normal user, no elevation.
+;
+; This was "highest", which raised a UAC prompt on every run. That bought nothing, because the
+; default install location is %LOCALAPPDATA%\Programs\Kronos, which any user can write, and it
+; actively hurt in two ways. A declined prompt left the installer running unelevated while it still
+; believed it had rights, and the prompt itself became the thing standing between a user and a
+; successful install, on a machine where nothing needed administrator rights at all.
+;
+; The writability check in .onVerifyInstDir still catches a user who deliberately picks somewhere
+; unwritable, and tells them so in one sentence before anything is written.
+RequestExecutionLevel user
 
 
 ; App version information
@@ -190,11 +180,11 @@ VIAddVersionKey "LegalCopyright" "Kronos is based on DLSS Swapper by beeradmoore
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
-; DirectoryPagePre decides the default folder. It has to be the directory page's pre function
-; rather than part of .onInit, because the page seeds $INSTDIR from InstallDir after .onInit runs.
-!define MUI_PAGE_CUSTOMFUNCTION_PRE DirectoryPagePre
+; No MUI_PAGE_CUSTOMFUNCTION_PRE here. That directive does not exist in Modern UI 2, so defining it
+; does nothing at all and the functions it appeared to attach to were never called. The path is
+; seeded by InstallDir, upgraded by .onInit, and validated by .onVerifyInstDir, all of which NSIS
+; itself invokes.
 !insertmacro MUI_PAGE_DIRECTORY
-!define MUI_PAGE_CUSTOMFUNCTION_PRE OnInstFilesPre
 !insertmacro MUI_PAGE_INSTFILES
  
 
