@@ -12,6 +12,13 @@ OutFile "installer.exe"
 
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kronos"
 
+; The product folder name, defined once. The install path guard used to hardcode the old product
+; name "dlss" as the string it searched the chosen directory for, so renaming the product stopped it
+; matching the app's own directory and it appended a second folder every time, turning
+; "C:\Program Files\Kronos" into "C:\Program Files\Kronos\Kronos".
+!define APP_NAME "Kronos"
+!define APP_EXE "${APP_NAME}.exe"
+
 !define UninstLog "uninstall.log"
 Var UninstLog
 
@@ -19,9 +26,9 @@ Var DEFAULT_INSTALL_PATH
 
 Function .onInit
   ; Set default install location
-  StrCpy $INSTDIR "$PROGRAMFILES64\Kronos\"
+  StrCpy $INSTDIR "$PROGRAMFILES64\${APP_NAME}\\"
   ; The missing \ is intentional
-  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\Kronos"
+  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\${APP_NAME}"
   ClearErrors
   ReadRegStr $0 SHCTX "${UNINST_KEY}" "InstallLocation"
   ${If} ${Errors}
@@ -30,7 +37,7 @@ Function .onInit
     StrCpy $INSTDIR "$0\"
   ${EndIf}
 
-  FindProcDLL::FindProc "Kronos.exe"
+  FindProcDLL::FindProc "${APP_EXE}"
 
   StrCmp $R0 0 NotRunning
     MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos is currently running. Please close it before continuing with installation." /SD IDOK
@@ -40,7 +47,7 @@ FunctionEnd
 ; On uninstall, confirm you want to remove downloaded/imported DLSS files.
 Function un.onInit
   
-  FindProcDLL::FindProc "Kronos.exe"
+  FindProcDLL::FindProc "${APP_EXE}"
   StrCmp $R0 0 NotRunning
     MessageBox MB_OK|MB_ICONSTOP "Kronos is currently running. Please close it before attempting to uninstall." /SD IDOK
     SetErrorLevel 2
@@ -52,30 +59,30 @@ Function un.onInit
   NoAbort:
 FunctionEnd
 
-; Install directory should have "dlss" in it, if not we should add it. 
+; Install directory should be the app's own folder. If not, add it.
 ; See issue #169 for what the consequences are if a user selects a directory
 ; to install to which already contains other files.
+;
+; The check is on the last path component, not a substring search for a product name. It used to
+; search for the literal "dlss", which was the product name before the rename; after renaming it no
+; longer matched, so it fired even on the default "C:\Program Files\Kronos" and appended a second
+; Kronos folder to it, announcing "Install path updated to C:\Program Files\Kronos\Kronos".
 Function .onVerifyInstDir
-  ${StrContains} $0 "dlss" $INSTDIR
-  StrCmp $0 "" badPath
-    Goto done
-  badPath:
-    StrCpy $INSTDIR "$INSTDIR\Kronos\"
-  done:
+  ${GetFileName} $0 $INSTDIR
+  ${If} $0 != "${APP_NAME}"
+    StrCpy $INSTDIR "$INSTDIR\${APP_NAME}\"
+  ${EndIf}
 FunctionEnd
 
 
 Function OnInstFilesPre
-  ; If the install directory does not contain "dlss" in it we should
-  ; probably add it to keep the user safe. See issue #169 as to why
-  ; this is useful.
-  ${StrContains} $0 "dlss" $INSTDIR
-  StrCmp $0 "" badPath
-    Goto done
-  badPath:
-    StrCpy $INSTDIR "$INSTDIR\Kronos\"
+  ; Same reasoning as .onVerifyInstDir. This is idempotent with it, because after the first has run
+  ; the last component is the app name and this becomes a no-op.
+  ${GetFileName} $0 $INSTDIR
+  ${If} $0 != "${APP_NAME}"
+    StrCpy $INSTDIR "$INSTDIR\${APP_NAME}\"
     MessageBox MB_OK "Install path updated to $INSTDIR"
-  done:
+  ${EndIf}
 FunctionEnd
 
 
@@ -167,7 +174,7 @@ SectionEnd
 ; start default section
 Section
 
-  FindProcDLL::FindProc "Kronos.exe"
+  FindProcDLL::FindProc "${APP_EXE}"
   StrCmp $R0 0 NotRunning
     MessageBox MB_OK|MB_ICONSTOP "Kronos is currently running. Please close it and run the installer again." /SD IDOK
     SetErrorLevel 2
@@ -179,7 +186,7 @@ Section
   
   ; Check if the install already directory exists
   ; We can't just check the directory exists as the directory is created by creating the uninstall.log file
-  IfFileExists "$INSTDIR\Kronos.exe" InstallProbablyExists Install
+  IfFileExists "$INSTDIR\${APP_EXE}" InstallProbablyExists Install
 
   InstallProbablyExists:
 
@@ -212,7 +219,7 @@ Section
   
   # create a shortcut named "new shortcut" in the start menu programs directory
   # point the new shortcut at the program uninstaller
-  CreateShortcut "$SMPROGRAMS\Kronos.lnk" "$INSTDIR\Kronos.exe"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
 
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Kronos"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "${APP_VERSION}"
@@ -220,7 +227,7 @@ Section
   ; Kronos is not published by the original DLSS Swapper maintainer, so this must
   ; not name them. Change the string below to your own name or handle.
   WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "SpaceJamp"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\Kronos.exe$\""
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\${APP_EXE}$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
   WriteRegStr SHCTX "${UNINST_KEY}" "InstallLocation" $INSTDIR
@@ -288,6 +295,6 @@ RMDir /r "$LOCALAPPDATA\Kronos\"
   DeleteRegKey SHCTX "${UNINST_KEY}"
 
   ; Remove start menu shortcut.
-  Delete "$SMPROGRAMS\Kronos.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}.lnk"
 
 SectionEnd
