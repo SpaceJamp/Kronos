@@ -12,7 +12,7 @@
 >
 > All original copyright notices are preserved, and the original author is credited in
 > [LICENSE](LICENSE), in the installer's file properties, and in the Credits section below. The
-> changes made here are listed in [What changed](#what-changed-in-this-fork) and were written with AI
+> changes made here are listed in [What changed](#what-changed-in-chronos) and were written with AI
 > assistance, disclosed in [AI_ASSISTED.md](AI_ASSISTED.md).
 >
 > If you want the official DLSS Swapper, including signed binaries, use
@@ -31,9 +31,10 @@
 > OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
 > not involved, and for the things I checked by hand rather than taking on trust.
 
-## What changed in this fork
+## What changed in Chronos
 
-This fork exists to carry local modifications. The significant changes relative to upstream are:
+Chronos is a private, personal modification of upstream DLSS Swapper. The significant changes
+relative to upstream are:
 
 **Renamed to avoid impersonation**
 
@@ -44,11 +45,13 @@ This fork exists to carry local modifications. The significant changes relative 
   `namespace` and `using` in the codebase. It is kept in step with `AssemblyName` deliberately: the
   embedded resource names derive from the root namespace, and both the static DLL manifest and the
   acknowledgements page look resources up by name, so letting the two drift breaks startup.
-- The on-disk data folder is deliberately **unchanged** (`%LOCALAPPDATA%\DLSS Swapper`), so moving
-  from the official app keeps your existing settings, game history and downloaded DLLs instead of
-  appearing to lose everything. The uninstaller still cleans up that same folder.
+- **The on-disk data folder moved** to `%LOCALAPPDATA%\Chronos`, and the database is now
+  `chronos.db`. This is a behaviour change, and it is intentional: Chronos is a separate program and
+  should not read or write another product's data. **A Chronos build therefore starts with an empty
+  database** rather than inheriting an existing DLSS Swapper install's settings, game history and
+  downloaded DLLs. The uninstaller removes the `Chronos` folder only.
 - `package/config.cmd` and the release workflow now produce
-  `Unofficial.DLSS.Swapper-<version>-{portable.zip,installer.exe}`.
+  `Chronos-<version>-{portable.zip,installer.exe}`.
 
 **Correctness fixes**
 
@@ -108,17 +111,18 @@ This fork exists to carry local modifications. The significant changes relative 
   migration, the zip-hash lookup, and path/Levenshtein helpers.
 
 **Not changed:** the app still fetches the DLL manifest from the upstream project's public
-`beeradmoore.github.io` endpoint, and still retrieves the DLLs themselves from NVIDIA. This fork
-depends on those remaining available.
+`beeradmoore.github.io` endpoint, and still retrieves the DLLs themselves from NVIDIA. Chronos
+depends on those remaining available, and deliberately does not repoint them.
 
-**Builds from this fork are unsigned.** Upstream signs its releases via SignPath; those credentials
-are not available here, so expect a SmartScreen warning on first run.
+**Builds of Chronos are unsigned.** Upstream signs its releases via SignPath; those credentials are
+not available here, so expect a SmartScreen warning on first run.
 
 ## License
 
-This fork remains under the [GNU General Public License v3.0](LICENSE), the same license as
-upstream. Per GPL-3.0 section 5(a), the modifications above are stated here. The original copyright
-notices are preserved in `LICENSE`.
+Chronos remains under the [GNU General Public License v3.0](LICENSE), the same license as upstream.
+It is a derivative work and cannot be relicensed. Per GPL-3.0 section 5(a), the modifications above
+are stated here. The original copyright notices are preserved in `LICENSE`, and beeradmoore is
+credited in the installer's file properties and in [Credits](#credits) below.
 
 `DLSS`, `FSR`, `FidelityFX` and `XeSS` are trademarks of their respective owners. This project is
 not affiliated with NVIDIA.
@@ -200,14 +204,13 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 Those are the only official sources. Do not install a build labelled "DLSS Swapper" from any other
 site, including this repository.
 
-**For this fork**, there are no published binaries. This repository is source only, so the only way
+**For Chronos**, there are no published binaries. This repository is source only, so the only way
 to get a build is to compile it yourself — see [Building](#building). Two things follow from that:
 
-- This fork is not on winget, and no installer or portable zip is attached to any release here. If
-  you find one anywhere claiming to be from this project, it did not come from this repository.
-- Any build you make is unsigned, so Windows SmartScreen will warn on first run. This is also true
-  of the official app's own pre-signature builds, but the official project signs its releases via
-  SignPath, so expect a difference.
+- Chronos is not on winget, and no installer or portable zip is attached to any release here. If you
+  find one anywhere claiming to be from this project, it did not come from this repository.
+- Any build you make is unsigned, so Windows SmartScreen will warn on first run. The official project
+  signs its releases via SignPath, so expect a difference.
 
 ## It would be cool if DLSS Swapper could...
 
@@ -246,8 +249,7 @@ Then, from the `package` directory:
 .\build_all.cmd
 ```
 
-This produces `Output\Unofficial.DLSS.Swapper-<version>-portable.zip` and
-`Output\Unofficial.DLSS.Swapper-<version>-installer.exe`.
+This produces `Output\Chronos-<version>-portable.zip` and `Output\Chronos-<version>-installer.exe`.
 
 Two things to know before you use it:
 
@@ -261,8 +263,8 @@ Two things to know before you use it:
 ## Branding and assets
 
 The application icon is still upstream's original `src\Assets\icon.ico`, and the roughly sixty
-`Assets\*Logo*.png` / `*Tile*.png` files are upstream's MSIX tile set. This fork does not ship its
-own artwork.
+`Assets\*Logo*.png` / `*Tile*.png` files are upstream's MSIX tile set. Chronos does not ship its own
+artwork.
 
 - `src\Assets\icon.ico` is the one that matters. It is used by `<ApplicationIcon>` in the csproj and
   by `MUI_ICON` in `package\NSIS\Installer.nsi`, so it sets the executable's icon and the installer's
@@ -277,10 +279,13 @@ endorsement.
 
 ## How can I contribute?
 
-Bug reports and feature requests for the official app belong
-[upstream](https://github.com/beeradmoore/dlss-swapper/issues). Pull requests against this fork are
-welcome if they are generally useful, but note the maintainers of the original project are the
-ones who decide what lands in the official app.
+This is a private, personal project and is not accepting contributions.
+
+Bug reports and feature requests belong
+[upstream](https://github.com/beeradmoore/dlss-swapper/issues), whose maintainers decide what lands
+in the official app. If you have found a bug in the local changes listed above rather than in
+upstream DLSS Swapper, note that the underlying fixes may be worth sending upstream — see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Minimum System Requirements
 
@@ -293,21 +298,27 @@ ones who decide what lands in the official app.
 
 ## Upstream project
 
-This is a fork. The original project, its maintainer, and its official releases live at:
+Chronos is a derivative of DLSS Swapper. The original project, its maintainer, and its official
+releases live at:
 
 - GitHub: https://github.com/beeradmoore/dlss-swapper/
 - Twitter: https://twitter.com/dlss_swapper
 - Reddit: https://www.reddit.com/r/DLSS_Swapper/
 
-Please report impersonation or malicious sites to the
-[upstream issue tracker](https://github.com/beeradmoore/dlss-swapper/issues/new?template=other_issue.yml),
-not here. Bug reports and feature requests for the official app also belong upstream — this fork
-does not provide support.
+If you want an official, signed DLSS Swapper, use the upstream project rather than a build of this
+one. Bug reports and feature requests for the official app belong upstream. This is a private,
+personal project and provides no support.
 
 ### Credits
 
-Upstream DLSS Swapper is by [beeradmoore](https://github.com/beeradmoore) and contributors, and
-receives free Windows code signing from
+**Chronos would not exist without the original DLSS Swapper, by
+[beeradmoore](https://github.com/beeradmoore) and contributors.** The original project is the
+foundation of this one, and this project is released under the same licence with the original
+copyright notices intact. Please support the upstream project rather than treating this as a
+replacement for it.
+
+Upstream DLSS Swapper receives free Windows code signing from
 [SignPath.io](https://signpath.io/) via the
 [SignPath Foundation](https://www.signpath.com/solutions/for-open-source-community-foundation).
-That sponsorship applies to the official project, not to this fork, whose builds are unsigned.
+That sponsorship applies to the official project. Chronos builds are unsigned and are not covered
+by it.

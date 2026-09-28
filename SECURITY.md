@@ -2,11 +2,13 @@
 
 ## Scope
 
-This repository is an **unofficial fork** of
-[DLSS Swapper](https://github.com/beeradmoore/dlss-swapper). Only security issues in this fork's own
-local changes are handled here.
+This repository is **Chronos**, a private, personal modification of
+[DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
+[beeradmoore](https://github.com/beeradmoore). It is not published and does not accept reports, so
+there is no disclosure channel here.
 
-For vulnerabilities in the upstream application, report them through
+For vulnerabilities in the upstream application — which is what actually runs on other people's
+machines — report them through
 [GitHub's private vulnerability reporting on the upstream repository](https://github.com/beeradmoore/dlss-swapper/security/advisories/new).
 
 If you believe a site or binary is impersonating DLSS Swapper, report it to
@@ -21,23 +23,23 @@ DLSS Swapper downloads and swaps DLLs inside game installations. Two consequence
   importing them, and has an "allow untrusted" setting. Do not weaken that check, and do not
   distribute prebuilt DLL bundles from this repository.
 - **Local data lives outside the install directory.** Settings, the SQLite database, and a cache of
-  imported DLLs are written under `%LOCALAPPDATA%\DLSS Swapper` (or, for portable/Debug builds,
-  inside the build output). Treat that directory as sensitive: it can contain DLLs you imported.
+  imported DLLs are written under `%LOCALAPPDATA%\Chronos` (or, for portable/Debug builds, inside
+  the build output). Treat that directory as sensitive: it can contain DLLs you imported.
+
+Note that this path changed. Earlier builds used `%LOCALAPPDATA%\DLSS Swapper`, so a build from
+before the rename will not read or write the same data — and the installer deliberately does not
+delete the old folder, because that would remove the official app's data.
 
 ## Reporting a vulnerability
 
-Please report security issues privately rather than opening a public issue. Use GitHub's
-[private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
-on this repository if it is enabled; otherwise open an issue describing the problem in general terms
-without working exploit details and ask for a private channel.
+There is no public reporting channel for this repository. If you are the maintainer and find
+something wrong in the local changes, treat it as a normal bug.
 
-Please include:
+If the issue is in upstream DLSS Swapper rather than in the local changes, it belongs upstream via
+the link at the top of this file, and doing so is the more useful outcome — the fix reaches everyone.
 
-- What the issue is and what an attacker gains.
-- Steps to reproduce, or the relevant file and line.
-- The version or commit you tested.
+## Builds are unsigned
 
-## Builds from this fork are unsigned
-
-Releases here are not code-signed, so Windows SmartScreen will warn. That is expected for this fork
-and is not by itself a vulnerability.
+Builds produced here are not code-signed, so Windows SmartScreen will warn. That is expected and is
+not by itself a vulnerability. Upstream signs its releases via SignPath; those credentials are not
+available for a personal build.
