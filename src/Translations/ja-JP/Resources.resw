@@ -121,7 +121,7 @@
     <value>ライセンスと謝辞</value>
   </data>
   <data name="ApplicationTitle" xml:space="preserve">
-    <value>DLSS Swapper</value>
+    <value>Kronos</value>
   </data>
   <data name="DiagnosticsPage_ClickToCopyDetails" xml:space="preserve">
     <value>以下の詳細をクリックしてコピーしてください</value>
@@ -172,10 +172,10 @@
     <value>プリセット {0}（非推奨）</value>
   </data>
   <data name="FailedToLaunchPage_DlssSwapperFailedToLaunch" xml:space="preserve">
-    <value>DLSS Swapper の起動に失敗しました</value>
+    <value>Kronos の起動に失敗しました</value>
   </data>
   <data name="FailedToLaunchPage_PleaseOpenIssuePartial1" xml:space="preserve">
-    <value>DLSS Swapper の GitHub リポジトリにアクセスして</value>
+    <value>Kronos の GitHub リポジトリにアクセスして</value>
   </data>
   <data name="FailedToLaunchPage_PleaseOpenIssuePartial2" xml:space="preserve">
     <value>新しい Issue を作成してください。</value>
@@ -293,7 +293,7 @@
     <value>このタイトルは手動で追加されたものではなく、削除することもできません。</value>
   </data>
   <data name="GamePage_ManuallyAdded_RemoveGameTemplate" xml:space="preserve">
-    <value>DLSS Swapper から「{0}」を削除してもよろしいですか？既に置き換え済みの DLSS ファイルには変更は加えられません。</value>
+    <value>Kronos から「{0}」を削除してもよろしいですか？既に置き換え済みの DLSS ファイルには変更は加えられません。</value>
   </data>
   <data name="GamePage_MultipleDllFound_Notice" xml:space="preserve">
     <value>以下に、検出された複数の DLL を表示します。すべての DLL に対して一括で処理を行うため、DLL の置き換えや復元は通常通り行うことができます。ただし、これらの DLL のうちどれがゲームで使用されているかは不明であるため、表示されている DLL のバージョンは最初に検出された DLL のものです。</value>
@@ -383,7 +383,7 @@
     <value>&lt;i&gt;games&lt;/i&gt; ディレクトリではなく、&lt;i&gt;game&lt;/i&gt; ディレクトリを選択する必要があります。&lt;br/&gt;&lt;br/&gt;例えば、ゲームが以下のフォルダーにある場合:&lt;br/&gt;&lt;b&gt;C:\Program Files\MyGamesFolder\MyFavGame\&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;MyGamesFolder&lt;/b&gt; ディレクトリではなく、&lt;b&gt;MyFavGame&lt;/b&gt; ディレクトリを選択します。</value>
   </data>
   <data name="GamesPage_ManuallyAdding_NoteMessage" xml:space="preserve">
-    <value>DLSS Swapper は、インストール済みのゲームライブラリからゲームを自動的に検出します。もしゲームがリストに表示されない場合は、いくつかの設定がリストへの表示を妨げている可能性があります。以下の点をご確認ください。
+    <value>Kronos は、インストール済みのゲームライブラリからゲームを自動的に検出します。もしゲームがリストに表示されない場合は、いくつかの設定がリストへの表示を妨げている可能性があります。以下の点をご確認ください。
 
 - ゲームリストのフィルターが「置き換え可能なアイテムがないゲームを非表示」に設定されていないか
 - 設定で該当のゲームライブラリが有効になっているか
@@ -409,7 +409,7 @@
     <value>GitHub で新しい Issue を作成</value>
   </data>
   <data name="GamesPage_NewDlls_DiscoveredHelpUs" xml:space="preserve">
-    <value>ゲームのロード中に、DLSS Swapper マニフェストに存在しないいくつかの新しい DLL が検出されました。</value>
+    <value>ゲームのロード中に、Kronos マニフェストに存在しないいくつかの新しい DLL が検出されました。</value>
   </data>
   <data name="GamesPage_NewDlls_GitHubAccountRequired" xml:space="preserve">
     <value>（GitHub アカウントが必要です）</value>
@@ -646,7 +646,7 @@
     <value>現在、 {0} がインストールされています</value>
   </data>
   <data name="GitHubUpdater_DlssSwapperUpdated" xml:space="preserve">
-    <value>DLSS Swapper が更新されました</value>
+    <value>Kronos が更新されました</value>
   </data>
   <data name="GitHubUpdater_DownloadComplete_Title" xml:space="preserve">
     <value>ダウンロードが完了しました</value>
@@ -733,10 +733,10 @@
     <value>ダウンロードが開始されました</value>
   </data>
   <data name="LibraryPage_Error_NVIDIA_Downloading" xml:space="preserve">
-    <value>NVIDIA サーバーからファイルリストを取得できませんでした。後ほど再試行するか、DLSS Swapper の更新を確認してください。</value>
+    <value>NVIDIA サーバーからファイルリストを取得できませんでした。後ほど再試行するか、Kronos の更新を確認してください。</value>
   </data>
   <data name="LibraryPage_Error_NVIDIA_Importing" xml:space="preserve">
-    <value>NVIDIA サーバーからインポートできませんでした。後ほど再試行するか、DLSS Swapper の更新を確認してください。</value>
+    <value>NVIDIA サーバーからインポートできませんでした。後ほど再試行するか、Kronos の更新を確認してください。</value>
   </data>
   <data name="LibraryPage_ExportedDLLs" xml:space="preserve">
     <value>エクスポートされた DLL:</value>
@@ -821,10 +821,10 @@
     <value>更新を試行中</value>
   </data>
   <data name="MainWindow_DlssSwapperCloseDueToManifest" xml:space="preserve">
-    <value>DLSS Swapper はマニフェストファイルを読み込めませんでした。プログラムを終了します。</value>
+    <value>Kronos はマニフェストファイルを読み込めませんでした。プログラムを終了します。</value>
   </data>
   <data name="MainWindow_DlssSwapperMustClose" xml:space="preserve">
-    <value>DLSS Swapper を終了する必要があります</value>
+    <value>Kronos を終了する必要があります</value>
   </data>
   <data name="MainWindow_ManifestCouldNotBeLoaded_GitHubIssues" xml:space="preserve">
     <value>GitHub Issues</value>
@@ -867,22 +867,22 @@
     <value>カスタムユーザーエージェントのテスト</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest10Title" xml:space="preserve">
-    <value>DLSS Swapper 内で、カスタムユーザーエージェントを使用して DLSS Swapper DLL をダウンロードします</value>
+    <value>Kronos 内で、カスタムユーザーエージェントを使用して Kronos DLL をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest11Title" xml:space="preserve">
     <value>UploadThing ミラーから DLSS DLL をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest1Title" xml:space="preserve">
-    <value>DLSS Swapper 内から google.com にアクセスします（一般的なインターネット接続を確認します）</value>
+    <value>Kronos 内から google.com にアクセスします（一般的なインターネット接続を確認します）</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest2Title" xml:space="preserve">
-    <value>DLSS Swapper 内から bing.com にアクセスします（一般的なインターネット接続を確認します）</value>
+    <value>Kronos 内から bing.com にアクセスします（一般的なインターネット接続を確認します）</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest3Title" xml:space="preserve">
-    <value>DLSS Swapper 内で DLSS Swapper DLL をダウンロードします</value>
+    <value>Kronos 内で Kronos DLL をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest4Title" xml:space="preserve">
-    <value>ブラウザーから DLSS Swapper DLL をダウンロードします</value>
+    <value>ブラウザーから Kronos DLL をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest5Title" xml:space="preserve">
     <value>Steam からゲームのカバー画像をダウンロードします</value>
@@ -891,13 +891,13 @@
     <value>Epic Games Store からゲームのカバー画像をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest7Title" xml:space="preserve">
-    <value>DLSS Swapper ファイルサーバーからゲームのカバー画像をダウンロードします</value>
+    <value>Kronos ファイルサーバーからゲームのカバー画像をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest8Title" xml:space="preserve">
-    <value>代替の DLSS Swapper ファイルサーバーからゲームのカバー画像をダウンロードします</value>
+    <value>代替の Kronos ファイルサーバーからゲームのカバー画像をダウンロードします</value>
   </data>
   <data name="NetworkTesterPage_DiagnosticsTest9Title" xml:space="preserve">
-    <value>DLSS Swapper ファイルサーバーの DNS 検索</value>
+    <value>Kronos ファイルサーバーの DNS 検索</value>
   </data>
   <data name="NetworkTesterPage_OpenInBrowser" xml:space="preserve">
     <value>ブラウザーで開く</value>
@@ -963,7 +963,7 @@
     <value>ビルド日時</value>
   </data>
   <data name="SettingsPage_CouldNotOpenLogFileTryManual" xml:space="preserve">
-    <value>DLSS Swapper から直接ログファイルを開くことができませんでした。手動で開いてみてください。</value>
+    <value>Kronos から直接ログファイルを開くことができませんでした。手動で開いてみてください。</value>
   </data>
   <data name="SettingsPage_DeleteIgnoredPathMessage" xml:space="preserve">
     <value>無視されているパス {0} を削除してもよろしいですか？</value>
@@ -1014,7 +1014,7 @@
     <value>フィードバックを送信</value>
   </data>
   <data name="SettingsPage_GiveFeedbackInfo" xml:space="preserve">
-    <value>DLSS Swapper に関する機能の提案や問題の報告を行うことができます</value>
+    <value>Kronos に関する機能の提案や問題の報告を行うことができます</value>
   </data>
   <data name="SettingsPage_IgnoredPaths" xml:space="preserve">
     <value>無視されたパス</value>
@@ -1131,7 +1131,7 @@
     <value>保存する翻訳データが見つかりませんでした。</value>
   </data>
   <data name="TranslationToolboxPage_NotValidTranslationFile" xml:space="preserve">
-    <value>有効な DLSS Swapper 翻訳ファイルではありません。</value>
+    <value>有効な Kronos 翻訳ファイルではありません。</value>
   </data>
   <data name="TranslationToolboxPage_PublishFailedMessage" xml:space="preserve">
     <value>翻訳を公開できませんでした。詳細については、エラーログをご確認ください。</value>
@@ -1164,7 +1164,7 @@
     <value>翻訳ガイド</value>
   </data>
   <data name="TranslationToolboxPage_TranslationGuideMessage" xml:space="preserve">
-    <value>翻訳が完了しました。{0} に関する今後の手順については、DLSS Swapper の翻訳ガイドをご確認ください。</value>
+    <value>翻訳が完了しました。{0} に関する今後の手順については、Kronos の翻訳ガイドをご確認ください。</value>
   </data>
   <data name="TranslationToolboxPage_TranslationProgress" xml:space="preserve">
     <value>翻訳の進捗状況</value>
