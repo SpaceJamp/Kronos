@@ -15,7 +15,11 @@
 
         <Grid Grid.Column="0" Width="200" Height="300" CornerRadius="8" BorderThickness="1" ColumnSpacing="0" RowSpacing="0" Margin="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
 
-            <TextBlock TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{ThemeResource ButtonForegroundColor}">
+            <!-- Hidden once there is a cover, so the placeholder text does not sit on top of the
+                 poster. Auto-detected store covers make this reachable without the user doing
+                 anything at all, which is why it matters. -->
+            <TextBlock TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{ThemeResource ButtonForegroundColor}"
+                       Visibility="{Binding HasCoverImage, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                 <Run Text="{x:Bind ViewModel.TranslationProperties.AddCoverText, Mode=OneWay}" />
                 <LineBreak />
                 <Run Text="{x:Bind ViewModel.TranslationProperties.OptionalText, Mode=OneWay}" />
@@ -54,18 +58,18 @@
 
             <!--
                 A manually added game has no store page to fetch artwork from, so the tile is
-                blank unless the user supplies an image. Linking the store appid borrows that
-                game's cover instead. A dropped image still wins over this, see
-                ManuallyAddedGame.UpdateCacheImageAsync.
+                blank unless the user supplies an image or the appid is known. The appid is
+                detected automatically and the cover previewed next to this field, so a wrong match
+                is visible before the game is added. A dropped image still wins over the store one.
             -->
-            <TextBlock Text="Store app id (optional)" FontWeight="Bold" Padding="0,20,0,0" />
-            <TextBox Text="{Binding Game.LinkedAppId, Mode=TwoWay}"
-                     PlaceholderText="e.g. 3669870" />
+            <TextBlock Text="Store app id" FontWeight="Bold" Padding="0,20,0,0" />
+            <TextBox Text="{Binding Game.LinkedAppId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="detected automatically, or type e.g. 3669870" />
             <TextBlock TextWrapping="Wrap"
                        Opacity="0.7"
                        FontSize="12"
                        Padding="0,4,0,0"
-                       Text="Paste the Steam app id of the game this is a copy of to use its cover art." />
+                       Text="The Steam app id of the game this is a copy of. Kronos looks this up from the folder name and downloads that game's cover art. Correct it if the preview on the left is wrong." />
         </StackPanel>
     </Grid>
 </UserControl>

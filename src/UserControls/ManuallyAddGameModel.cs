@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
@@ -37,7 +38,65 @@ internal partial class ManuallyAddGameModel : ObservableObject
         }
 
         RepackDetection = detection;
+
+        _ = DetectStoreAppIdAsync();
     }
+
+    /// <summary>
+    /// Looks up the Steam appid for this folder and pre-fills it, so a repack gets a cover without
+    /// the user having to know or type the id.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately best-effort and deliberately allowed to be wrong: a failure just leaves the box
+    /// empty for the user to fill in, and a wrong guess is visible rather than silent because the
+    /// cover preview next to the field shows whatever was matched. That is why the cover is fetched
+    /// here, while the dialog is still open, instead of only after the game is added.
+    /// </remarks>
+    async Task DetectStoreAppIdAsync()
+    {
+        try
+        {
+            var match = await SteamAppIdLookup.FindBestMatchAsync(_game.Title).ConfigureAwait(false);
+            if (match is null)
+            {
+                return;
+            }
+
+            // Don't stamp over something the user already typed or picked while we were searching.
+            if (string.IsNullOrWhiteSpace(_game.LinkedAppId) == false)
+            {
+                return;
+            }
+
+            _game.SetLinkedAppId(match.Id.ToString(CultureInfo.InvariantCulture));
+
+            LinkedAppIdWasDetected = true;
+            OnPropertyChanged(nameof(LinkedAppIdWasDetected));
+            OnPropertyChanged(nameof(Game));
+
+            // Pull the artwork now so the dialog can preview it. The user can see a wrong match and
+            // correct the id before committing, which is the whole safety net for auto-detection.
+            await _game.ImportStoreCoverAsync().ConfigureAwait(false);
+            OnPropertyChanged(nameof(Game));
+            OnPropertyChanged(nameof(HasCoverImage));
+        }
+        catch (Exception err)
+        {
+            // Never let a lookup problem stop the game being added.
+            Logger.Error(err, "Failed to auto-detect a Steam app id for a manually added game.");
+        }
+    }
+
+    /// <summary>
+    /// True when the appid in the box was found by searching rather than typed, so the UI can say
+    /// where it came from.
+    /// </summary>
+    public bool LinkedAppIdWasDetected { get; private set; }
+
+    /// <summary>
+    /// True when the preview has artwork, so the "add cover image" placeholder can be hidden.
+    /// </summary>
+    public bool HasCoverImage => string.IsNullOrWhiteSpace(_game.CoverImage) == false;
 
     RepackDetectionResult _repackDetection = RepackDetectionResult.NotARepack;
 
@@ -57,9 +116,14 @@ internal partial class ManuallyAddGameModel : ObservableObject
         if (_game.CoverImage == _game.ExpectedCustomCoverImage)
         {
             await _game.PromptToRemoveCustomCover();
-            return;
+        }
+        else
+        {
+            _game.PromptToBrowseCustomCover();
         }
 
-        _game.PromptToBrowseCustomCover();
+        // Picking or removing an image changes whether the placeholder should be showing.
+        OnPropertyChanged(nameof(Game));
+        OnPropertyChanged(nameof(HasCoverImage));
     }
 }

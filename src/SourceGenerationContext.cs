@@ -31,6 +31,7 @@ namespace Kronos;
 [JsonSerializable(typeof(List<GameSearchResult>))]
 [JsonSerializable(typeof(List<PresetOption>))]
 [JsonSerializable(typeof(GetItemsInput))]
+[JsonSerializable(typeof(StoreSearchResponse))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
 }
