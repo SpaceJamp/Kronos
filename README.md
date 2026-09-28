@@ -291,10 +291,16 @@ upstream DLSS Swapper, note that the underlying fixes may be worth sending upstr
 
 | Requirement | Description                                                     |
 | ----------- | --------------------------------------------------------------- |
-| OS          | Windows 10 64-bit (20H1, build 19041)                           |
+| OS          | **64-bit** Windows 10 (20H1, build 19041) or newer               |
 | GPU         | Any                                                             |
 | To build    | .NET 10 SDK, Windows SDK 10.0.26100                             |
 | To package  | PowerShell 7 (`pwsh`), and NSIS for the installer               |
+
+**32-bit Windows is not supported**, deliberately. There is no 32-bit build and there will not be
+one. The app exists to swap 64-bit `nvngx_dlss.dll`, `nvngx_dlssg.dll` and `amd_fidelityfx_dx12.dll`
+into game installs, so a 32-bit OS has nothing it could usefully do. A 32-bit OS cannot load the
+binary either, so on one, Kronos shows a short window saying so rather than letting Windows report
+an opaque loader failure.
 
 ## Upstream project
 

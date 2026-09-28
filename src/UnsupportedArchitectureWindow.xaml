@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Kronos.UnsupportedArchitectureWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Kronos"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Kronos cannot run on this version of Windows">
+
+    <StackPanel Margin="24" Spacing="16" MaxWidth="520">
+        <TextBlock Style="{ThemeResource TitleTextBlockStyle}" Text="This is a 64-bit only build" />
+        <TextBlock TextWrapping="Wrap"
+                   Text="Kronos is built for 64-bit Windows and needs a 64-bit version of the operating system. This machine is running 32-bit Windows, which cannot load it." />
+        <TextBlock TextWrapping="Wrap"
+                   Opacity="0.8"
+                   Text="Nothing has been changed on this machine. Installing 64-bit Windows is a hardware and OS level change, so there is no setting here that can fix it." />
+        <TextBlock TextWrapping="Wrap"
+                   Opacity="0.8"
+                   Text="Kronos also downloads 64-bit DLSS, FSR and XeSS dlls to swap into games, so a 64-bit Windows is required for it to be able to do its job." />
+    </StackPanel>
+</Window>
