@@ -4,6 +4,35 @@
  <p align="center">A tool that lets you conveniently download, manage, and swap <strong>DLSS</strong>, <strong>FSR</strong> and <strong>XeSS</strong> dlls, letting you upgrade or downgrade the DLSS, FSR and XeSS version in a game without the game needing an update.</p>
 </p>
 
+> [!WARNING]
+> ## 32-bit Windows is NOT supported
+>
+> **Kronos is a 64-bit only application. There is no 32-bit build, and there will not be one.**
+>
+> * **There is no 32-bit version to download.** If you are looking for a 32-bit build, it does not
+>   exist and never has.
+> * **A 32-bit Windows cannot run it at all.** The application, along with the .NET runtime, the
+>   SQLite native library and the CoreCLR it ships with, are all compiled for the `x86_64` processor
+>   architecture. On a 32-bit Windows the operating system's own program loader refuses to start it,
+>   before a single line of Kronos code gets the chance to run.
+> * **You will not get a useful error message.** Windows reports an application that cannot run on
+>   your PC, which says nothing about the cause. If you see that, check whether your Windows is
+>   32-bit first.
+> * **If it is somehow launched anyway**, Kronos detects the 32-bit operating system and shows a
+>   window explaining the situation, rather than failing obscurely.
+> * **There is no workaround and no setting to change.** You need a 64-bit version of Windows. That
+>   is an operating system level change which cannot be configured from inside an application, and it
+>   depends on your hardware. On a 32-bit CPU, 64-bit Windows cannot be installed at all.
+>
+> **Why:** Kronos exists to swap 64-bit graphics driver DLLs, namely `nvngx_dlss.dll`,
+> `nvngx_dlssg.dll`, `nvngx_dlss_d.dll` and `amd_fidelityfx_dx12.dll`, into game installations.
+> Games on Windows are 64-bit, and these DLLs exist only as 64-bit binaries, so a 32-bit operating
+> system has nothing Kronos could usefully do even if the application itself did load.
+>
+> **How to tell if your Windows is 64-bit:** press <kbd>Win</kbd>+<kbd>R</kbd>, type `msinfo32`, and
+> look at **System Type**. `x64-based PC` means you are fine. `x86-based PC` means your Windows is
+> 32-bit and Kronos will not run on it.
+
 > [!IMPORTANT]
 > **Kronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
 > [beeradmoore](https://github.com/beeradmoore), which is licensed under the
@@ -196,6 +225,10 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 
 ## How do I get it?
 
+**Before anything else: Kronos needs 64-bit Windows.** If your copy of Windows is 32-bit, it will
+not run here or anywhere else, and no setting will change that. Check with
+<kbd>Win</kbd>+<kbd>R</kbd>, `msinfo32`, **System Type**. See the warning at the top of this file.
+
 **For the official, signed build**, use the upstream project:
 
 - [Upstream GitHub releases](https://github.com/beeradmoore/dlss-swapper/releases)
@@ -230,9 +263,14 @@ dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -c Debug
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to
 build with zero warnings, and the test suite is expected to pass.
 
-The `Debug` configurations write their data to a separate `DEBUG` folder under `%LOCALAPPDATA%\DLSS
-Swapper`, and the `Portable` configurations keep all data inside the build output, so neither
-touches a real installation's settings or database.
+**x64 only, for the project as well as the output.** `<Platforms>` is `x64` and `RuntimeIdentifier`
+is `win-x64`, so `dotnet build -p:Platform=x86` will not produce anything usable, and
+`-r win-x86` is not a supported configuration. Do not add one; see the warning at the top of this
+file for why.
+
+The `Debug` configurations write their data to a separate `DEBUG` folder under `%LOCALAPPDATA%\Kronos`,
+and the `Portable` configurations keep all data inside the build output, so neither touches a real
+installation's settings or database.
 
 ### Building the release artifacts
 
@@ -291,16 +329,26 @@ upstream DLSS Swapper, note that the underlying fixes may be worth sending upstr
 
 | Requirement | Description                                                     |
 | ----------- | --------------------------------------------------------------- |
-| OS          | **64-bit** Windows 10 (20H1, build 19041) or newer               |
+| OS          | **64-bit only.** Windows 10 (20H1, build 19041) or newer, x64   |
 | GPU         | Any                                                             |
 | To build    | .NET 10 SDK, Windows SDK 10.0.26100                             |
 | To package  | PowerShell 7 (`pwsh`), and NSIS for the installer               |
 
-**32-bit Windows is not supported**, deliberately. There is no 32-bit build and there will not be
-one. The app exists to swap 64-bit `nvngx_dlss.dll`, `nvngx_dlssg.dll` and `amd_fidelityfx_dx12.dll`
-into game installs, so a 32-bit OS has nothing it could usefully do. A 32-bit OS cannot load the
-binary either, so on one, Kronos shows a short window saying so rather than letting Windows report
-an opaque loader failure.
+**32-bit Windows is not supported.** There is no 32-bit build and there will not be one. This is
+not an oversight and not a missing feature; it is the only sensible target, and it is enforced
+rather than left to chance:
+
+* The published `Kronos.exe` has the PE machine type `0x8664`, and so do the native and runtime
+  files it ships with, `coreclr.dll`, `hostfxr.dll`, `e_sqlite3.dll` and `System.Private.CoreLib.dll`.
+  A 32-bit Windows cannot load any of them.
+* `<PlatformTarget>x64</PlatformTarget>` and `<Prefer32Bit>false</Prefer32Bit>` are set explicitly in
+  [`src/Kronos.csproj`](src/Kronos.csproj), alongside the existing `win-x64` runtime identifier, so
+  the architecture is declared in one place rather than inferred.
+* `App.OnLaunched` checks `Environment.Is64BitOperatingSystem` before touching the disk, the
+  database or the network, and shows a dedicated window explaining the situation.
+
+The underlying reason is that the DLLs Kronos swaps are 64-bit only, so a 32-bit operating system
+could not use the feature even if the application loaded.
 
 ## Upstream project
 
