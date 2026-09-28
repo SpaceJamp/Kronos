@@ -5,33 +5,44 @@
 </p>
 
 > [!WARNING]
-> ## 32-bit Windows is NOT supported
+> ## 32-bit CPUs are NOT supported
 >
-> **Kronos is a 64-bit only application. There is no 32-bit build, and there will not be one.**
+> **Kronos requires a 64-bit processor. There is no 32-bit build, and there will not be one.**
 >
-> * **There is no 32-bit version to download.** If you are looking for a 32-bit build, it does not
->   exist and never has.
-> * **A 32-bit Windows cannot run it at all.** The application, along with the .NET runtime, the
->   SQLite native library and the CoreCLR it ships with, are all compiled for the `x86_64` processor
->   architecture. On a 32-bit Windows the operating system's own program loader refuses to start it,
->   before a single line of Kronos code gets the chance to run.
+> * **There is no 32-bit version to download.** If you are looking for one, it does not exist and
+>   never has.
+> * **A 32-bit processor cannot run it, ever.** The application, the .NET runtime, the SQLite
+>   native library and the CoreCLR it ships with are all compiled for the `x86_64` instruction set.
+>   A 32-bit CPU cannot execute those instructions at all, so 64-bit Windows cannot be installed on
+>   that hardware in the first place. This is a hardware limit, not a setting.
+> * **64-bit Windows is also required.** A 32-bit *operating system* cannot load a 64-bit program, so
+>   Kronos will not run on 32-bit Windows either, even when the CPU underneath is perfectly capable.
+>   If your CPU is 64-bit but your Windows is 32-bit, installing 64-bit Windows will fix it. Note that
+>   Windows cannot be upgraded in place from 32-bit to 64-bit, it needs a clean install.
 > * **You will not get a useful error message.** Windows reports an application that cannot run on
->   your PC, which says nothing about the cause. If you see that, check whether your Windows is
->   32-bit first.
-> * **If it is somehow launched anyway**, Kronos detects the 32-bit operating system and shows a
->   window explaining the situation, rather than failing obscurely.
-> * **There is no workaround and no setting to change.** You need a 64-bit version of Windows. That
->   is an operating system level change which cannot be configured from inside an application, and it
->   depends on your hardware. On a 32-bit CPU, 64-bit Windows cannot be installed at all.
+>   your PC, which never mentions processor architecture. If you see that, check the two fields below
+>   before anything else.
+> * **If it is somehow launched anyway**, Kronos detects a 32-bit operating system and shows a window
+>   explaining the situation rather than failing obscurely.
 >
 > **Why:** Kronos exists to swap 64-bit graphics driver DLLs, namely `nvngx_dlss.dll`,
 > `nvngx_dlssg.dll`, `nvngx_dlss_d.dll` and `amd_fidelityfx_dx12.dll`, into game installations.
-> Games on Windows are 64-bit, and these DLLs exist only as 64-bit binaries, so a 32-bit operating
-> system has nothing Kronos could usefully do even if the application itself did load.
+> Games on Windows are 64-bit, and these DLLs exist only as 64-bit binaries, so there is nothing
+> Kronos could usefully do on 32-bit hardware.
 >
-> **How to tell if your Windows is 64-bit:** press <kbd>Win</kbd>+<kbd>R</kbd>, type `msinfo32`, and
-> look at **System Type**. `x64-based PC` means you are fine. `x86-based PC` means your Windows is
-> 32-bit and Kronos will not run on it.
+> **How to check.** Press <kbd>Win</kbd>+<kbd>R</kbd>, type `msinfo32`, and read two separate fields,
+> because they answer different questions and are commonly confused:
+>
+> | Field | Value | Meaning |
+> | --- | --- | --- |
+> | **System Type** | `x64-based PC` | 64-bit Windows. Kronos can run. |
+> | **System Type** | `x86-based PC` | 32-bit **Windows**, so Kronos will not run. Check *Processor* next. |
+> | **Processor > Architecture** | `x64` or `ARM64` | 64-bit **CPU**. Supported. |
+> | **Processor > Architecture** | `x86` | 32-bit **CPU**. Not supported, and no version of Windows can change that. |
+>
+> `System Type` describes your operating system, not your processor. An `x86-based PC` there does not
+> necessarily mean a 32-bit CPU, which is exactly why `Processor > Architecture` is the field that
+> actually settles whether this machine could ever run Kronos.
 
 > [!IMPORTANT]
 > **Kronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
@@ -225,9 +236,10 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 
 ## How do I get it?
 
-**Before anything else: Kronos needs 64-bit Windows.** If your copy of Windows is 32-bit, it will
-not run here or anywhere else, and no setting will change that. Check with
-<kbd>Win</kbd>+<kbd>R</kbd>, `msinfo32`, **System Type**. See the warning at the top of this file.
+**Before anything else: Kronos needs a 64-bit processor and 64-bit Windows.** A 32-bit CPU cannot run
+it under any circumstances. A 32-bit Windows will not run it either, though that one may be fixable by
+installing 64-bit Windows. Check both **System Type** and **Processor > Architecture** in
+<kbd>Win</kbd>+<kbd>R</kbd> `msinfo32`; the warning at the top of this file explains which is which.
 
 **For the official, signed build**, use the upstream project:
 
@@ -330,13 +342,17 @@ upstream DLSS Swapper, note that the underlying fixes may be worth sending upstr
 | Requirement | Description                                                     |
 | ----------- | --------------------------------------------------------------- |
 | OS          | **64-bit only.** Windows 10 (20H1, build 19041) or newer, x64   |
+| CPU         | **64-bit only** (x64 or ARM64). 32-bit CPUs cannot run it. |
 | GPU         | Any                                                             |
 | To build    | .NET 10 SDK, Windows SDK 10.0.26100                             |
 | To package  | PowerShell 7 (`pwsh`), and NSIS for the installer               |
 
-**32-bit Windows is not supported.** There is no 32-bit build and there will not be one. This is
-not an oversight and not a missing feature; it is the only sensible target, and it is enforced
-rather than left to chance:
+**32-bit CPUs are not supported, and neither is 32-bit Windows.** There is no 32-bit build and
+there will not be one. A 32-bit CPU is a hard hardware limit. A 32-bit Windows is a separate,
+softer case: the CPU may well be 64-bit and capable, and installing 64-bit Windows would fix it.
+
+Neither case is an oversight or a missing feature; x64 is the only sensible target, and it is
+enforced rather than left to chance:
 
 * The published `Kronos.exe` has the PE machine type `0x8664`, and so do the native and runtime
   files it ships with, `coreclr.dll`, `hostfxr.dll`, `e_sqlite3.dll` and `System.Private.CoreLib.dll`.
