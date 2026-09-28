@@ -6,12 +6,12 @@ using System.Text;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data;
+using Chronos.Interfaces;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class NewDLLsControlModel : ObservableObject
 {

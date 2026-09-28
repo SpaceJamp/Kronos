@@ -1,6 +1,6 @@
 using System;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 internal class CommonHelpers
 {

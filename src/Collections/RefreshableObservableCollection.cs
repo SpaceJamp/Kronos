@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 
-namespace DLSS_Swapper.Collections;
+namespace Chronos.Collections;
 
 public class RefreshableObservableCollection<T> : ObservableCollection<T>
 {

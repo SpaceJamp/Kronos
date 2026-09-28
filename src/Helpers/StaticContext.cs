@@ -1,7 +1,7 @@
 /*
  using YamlDotNet.Serialization;
 
-namespace DLSS_Swapper.Helpers
+namespace Chronos.Helpers
 {
     [YamlStaticContext]
     public partial class StaticContext : YamlDotNet.Serialization.StaticContext

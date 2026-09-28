@@ -5,13 +5,13 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.WinUI.Controls;
-using DLSS_Swapper.Acknowledgements;
+using Chronos.Acknowledgements;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 public partial class AcknowledgementsPageModel : ObservableObject
 {
-    public const string AcknowledgementsPrefix = "DLSS_Swapper.Acknowledgements.";
+    public const string AcknowledgementsPrefix = "Chronos.Acknowledgements.";
     readonly WeakReference<AcknowledgementsPage> _weakPage;
 
     public List<Acknowledgement> Acknowlegements { get; } = new List<Acknowledgement>();

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace DLSS_Swapper.Data.NVIDIA;
+namespace Chronos.Data.NVIDIA;
 
 public partial class NGXModelRow : ObservableObject
 {

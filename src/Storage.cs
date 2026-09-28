@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 // TODO: Test portable app.
 // TODO: Clean portable temp path on launch
@@ -19,10 +19,10 @@ static class Storage
 #elif PORTABLE && !DEBUG
     public static string StoragePath => _storagePath ??= Path.Combine(AppContext.BaseDirectory, "StoredData");
 #elif !PORTABLE && DEBUG
-    //public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "DLSS Swapper", "DEBUG", Guid.NewGuid().ToString());
-    public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "DLSS Swapper", "DEBUG");
+    //public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Chronos", "DEBUG", Guid.NewGuid().ToString());
+    public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Chronos", "DEBUG");
 #elif !PORTABLE && !DEBUG
-    public static string StoragePath => _storagePath  ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "DLSS Swapper");
+    public static string StoragePath => _storagePath  ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Chronos");
 #endif
 
 
@@ -41,7 +41,7 @@ static class Storage
         var path = Path.Combine(StoragePath, "temp");
         CreateDirectoryIfNotExists(path);
 #else
-        var path = Path.Combine(Path.GetTempPath(), "DLSS Swapper");
+        var path = Path.Combine(Path.GetTempPath(), "Chronos");
         CreateDirectoryIfNotExists(path);
 #endif
         return path;
@@ -65,7 +65,7 @@ static class Storage
     public static string GetDBPath()
     {
         CreateDirectoryIfNotExists(StoragePath);
-        return Path.Combine(StoragePath, "dlss_swapper.db");
+        return Path.Combine(StoragePath, "chronos.db");
     }
 
     public static string GetImageCachePath()

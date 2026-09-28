@@ -1,6 +1,6 @@
 using System;
 
-namespace DLSS_Swapper.Extensions;
+namespace Chronos.Extensions;
 
 internal static class VersionExtensions
 {

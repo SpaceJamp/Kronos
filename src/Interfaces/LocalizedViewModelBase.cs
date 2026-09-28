@@ -1,8 +1,8 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 
-namespace DLSS_Swapper.Interfaces;
+namespace Chronos.Interfaces;
 
 public abstract class LocalizedViewModelBase : ObservableObject, IDisposable
 {

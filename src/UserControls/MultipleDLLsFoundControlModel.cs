@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
+using Chronos.Data;
+using Chronos.Helpers;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class MultipleDLLsFoundControlModel : ObservableObject
 {

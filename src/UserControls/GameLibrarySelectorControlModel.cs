@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 
 internal partial class GameLibrarySelectorControlModel : ObservableObject

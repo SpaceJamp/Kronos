@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.GOG;
+namespace Chronos.Data.GOG;
 
 /// <summary>
 /// This class is the json repsonse from https://embed.gog.com/games/ajax/filtered?mediaType=game&search=gameTitleGoesHere

@@ -6,10 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data.EpicGamesStore;
+namespace Chronos.Data.EpicGamesStore;
 
 internal class EpicGamesStoreLibrary : IGameLibrary
 {

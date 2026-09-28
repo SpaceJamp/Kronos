@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.JsonConverters;
+namespace Chronos.JsonConverters;
 
 internal class HexStringToUintConverter : JsonConverter<uint>
 {

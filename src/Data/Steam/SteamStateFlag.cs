@@ -1,6 +1,6 @@
 using System;
 
-namespace DLSS_Swapper.Data.Steam;
+namespace Chronos.Data.Steam;
 
 [Flags]
 internal enum SteamStateFlag : uint

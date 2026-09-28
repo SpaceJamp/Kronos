@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public class GameHistoryControlModel
 {

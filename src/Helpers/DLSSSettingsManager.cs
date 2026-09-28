@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 // Reg values defined in this file are from:
 // https://github.com/NVIDIA/DLSS/tree/main/utils

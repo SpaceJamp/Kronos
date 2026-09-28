@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public sealed partial class GameFilterControl : UserControl
 {

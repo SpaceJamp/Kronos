@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 /// <summary>
 /// An empty page that can be used on its own or navigated to within a Frame.

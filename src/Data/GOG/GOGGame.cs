@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using SQLite;
 
-namespace DLSS_Swapper.Data.GOG;
+namespace Chronos.Data.GOG;
 
 [Table("gog_game")]
 internal class GOGGame : Game

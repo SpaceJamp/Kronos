@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
 {

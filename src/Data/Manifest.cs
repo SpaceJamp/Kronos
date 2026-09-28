@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 internal class Manifest
 {

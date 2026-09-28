@@ -1,13 +1,13 @@
 using CommunityToolkit.Mvvm.Messaging;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Interfaces;
-using DLSS_Swapper.Pages;
+using Chronos.Data;
+using Chronos.Interfaces;
+using Chronos.Pages;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 public class Settings
 {

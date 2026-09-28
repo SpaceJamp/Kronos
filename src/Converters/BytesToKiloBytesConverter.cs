@@ -3,7 +3,7 @@ using System.Globalization;
 using ByteSizeLib;
 using Microsoft.UI.Xaml.Data;
 
-namespace DLSS_Swapper.Converters;
+namespace Chronos.Converters;
 
 internal class BytesToKiloBytesConverter : IValueConverter
 {

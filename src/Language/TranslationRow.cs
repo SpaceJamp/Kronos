@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CsvHelper.Configuration.Attributes;
 
-namespace DLSS_Swapper.Language;
+namespace Chronos.Language;
 
 public partial class TranslationRow : ObservableObject
 {

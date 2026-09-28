@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using DLSS_Swapper.Language;
+using Chronos.Language;
 using Windows.ApplicationModel.Resources;
 using Windows.ApplicationModel.Resources.Core;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 public class ResourceHelper
 {

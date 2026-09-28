@@ -1,13 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class ManuallyAddGameControl : UserControl
 {

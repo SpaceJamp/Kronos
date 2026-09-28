@@ -1,12 +1,12 @@
 using System;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.UserControls;
+using Chronos.Helpers;
+using Chronos.UserControls;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

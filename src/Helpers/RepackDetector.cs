@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 /// <summary>
 /// How confident we are that a game folder is a repack rather than a normal store install.

@@ -10,7 +10,7 @@
 ; define name of installer
 OutFile "installer.exe"
 
-!define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Unofficial DLSS Swapper"
+!define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Chronos"
 
 !define UninstLog "uninstall.log"
 Var UninstLog
@@ -19,9 +19,9 @@ Var DEFAULT_INSTALL_PATH
 
 Function .onInit
   ; Set default install location
-  StrCpy $INSTDIR "$PROGRAMFILES64\Unofficial DLSS Swapper\"
+  StrCpy $INSTDIR "$PROGRAMFILES64\Chronos\"
   ; The missing \ is intentional
-  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\Unofficial DLSS Swapper"
+  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\Chronos"
   ClearErrors
   ReadRegStr $0 SHCTX "${UNINST_KEY}" "InstallLocation"
   ${If} ${Errors}
@@ -30,19 +30,19 @@ Function .onInit
     StrCpy $INSTDIR "$0\"
   ${EndIf}
 
-  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
+  FindProcDLL::FindProc "Chronos.exe"
 
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Unofficial DLSS Swapper is currently running. Please close it before continuing with installation." /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Chronos is currently running. Please close it before continuing with installation." /SD IDOK
   NotRunning:
 FunctionEnd
 
 ; On uninstall, confirm you want to remove downloaded/imported DLSS files.
 Function un.onInit
   
-  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
+  FindProcDLL::FindProc "Chronos.exe"
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONSTOP "Unofficial DLSS Swapper is currently running. Please close it before attempting to uninstall." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Chronos is currently running. Please close it before attempting to uninstall." /SD IDOK
     SetErrorLevel 2
     Quit
   NotRunning:
@@ -60,7 +60,7 @@ Function .onVerifyInstDir
   StrCmp $0 "" badPath
     Goto done
   badPath:
-    StrCpy $INSTDIR "$INSTDIR\Unofficial DLSS Swapper\"
+    StrCpy $INSTDIR "$INSTDIR\Chronos\"
   done:
 FunctionEnd
 
@@ -73,16 +73,16 @@ Function OnInstFilesPre
   StrCmp $0 "" badPath
     Goto done
   badPath:
-    StrCpy $INSTDIR "$INSTDIR\Unofficial DLSS Swapper\"
+    StrCpy $INSTDIR "$INSTDIR\Chronos\"
     MessageBox MB_OK "Install path updated to $INSTDIR"
   done:
 FunctionEnd
 
 
 ; This is disabled until I can figure out how to make it launch as admin
-; Used to launch Unofficial DLSS Swapper after install is complete.
+; Used to launch Chronos after install is complete.
 ;Function LaunchLink
-;  ExecShell "" "$SMPROGRAMS\Unofficial DLSS Swapper.lnk"
+;  ExecShell "" "$SMPROGRAMS\Chronos.lnk"
 ;FunctionEnd
 
 
@@ -92,9 +92,9 @@ RequestExecutionLevel highest
 
 
 ; App version information
-Name "Unofficial DLSS Swapper"
+Name "Chronos"
 !define MUI_ICON "..\..\src\Assets\icon.ico"
-!define MUI_PRODUCT "Unofficial DLSS Swapper"
+!define MUI_PRODUCT "Chronos"
 
 ; Defined once here rather than repeated per key, which is how the version used to drift out of
 ; step between ProductVersion, FileVersion and the uninstall registry entry. Keep in step with
@@ -105,16 +105,16 @@ Name "Unofficial DLSS Swapper"
 !define APP_VERSION_4PART "1.3.0.0"
 
 VIProductVersion "${APP_VERSION_4PART}"
-VIAddVersionKey "ProductName" "Unofficial DLSS Swapper"
+VIAddVersionKey "ProductName" "Chronos"
 VIAddVersionKey "ProductVersion" "${APP_VERSION}"
-VIAddVersionKey "FileDescription" "Unofficial DLSS Swapper installer"
+VIAddVersionKey "FileDescription" "Chronos installer"
 VIAddVersionKey "FileVersion" "${APP_VERSION_4PART}"
 ; Shown as "Company" in Explorer's file Properties. Matches the Publisher written
 ; during install; this fork is not published by the original maintainer.
 VIAddVersionKey "CompanyName" "SpaceJamp"
 ; GPL-3.0 requires the original copyright notices to be preserved, so attribute
 ; upstream here rather than leaving this standard key unset.
-VIAddVersionKey "LegalCopyright" "Unofficial DLSS Swapper is based on DLSS Swapper by beeradmoore. Licensed under the GNU GPL v3.0 - see LICENSE."
+VIAddVersionKey "LegalCopyright" "Chronos is based on DLSS Swapper by beeradmoore, licensed under the GNU GPL v3.0 - see LICENSE."
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
@@ -167,9 +167,9 @@ SectionEnd
 ; start default section
 Section
 
-  FindProcDLL::FindProc "Unofficial DLSS Swapper.exe"
+  FindProcDLL::FindProc "Chronos.exe"
   StrCmp $R0 0 NotRunning
-    MessageBox MB_OK|MB_ICONSTOP "Unofficial DLSS Swapper is currently running. Please close it and run the installer again." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Chronos is currently running. Please close it and run the installer again." /SD IDOK
     SetErrorLevel 2
     Quit
   NotRunning:
@@ -179,7 +179,7 @@ Section
   
   ; Check if the install already directory exists
   ; We can't just check the directory exists as the directory is created by creating the uninstall.log file
-  IfFileExists "$INSTDIR\Unofficial DLSS Swapper.exe" InstallProbablyExists Install
+  IfFileExists "$INSTDIR\Chronos.exe" InstallProbablyExists Install
 
   InstallProbablyExists:
 
@@ -206,21 +206,21 @@ Section
   WriteUninstaller "$INSTDIR\uninstall.exe"
   FileWrite $UninstLog "uninstall.exe$\r$\n"
 
-  ; Calculate install size. This will be updated in app to include data from LOCALAPPDATA\DLSS Swapper
+  ; Calculate install size. This will be updated in app to include data from LOCALAPPDATA\Chronos
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
   
   # create a shortcut named "new shortcut" in the start menu programs directory
   # point the new shortcut at the program uninstaller
-  CreateShortcut "$SMPROGRAMS\Unofficial DLSS Swapper.lnk" "$INSTDIR\Unofficial DLSS Swapper.exe"
+  CreateShortcut "$SMPROGRAMS\Chronos.lnk" "$INSTDIR\Chronos.exe"
 
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Unofficial DLSS Swapper"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "Chronos"
   WriteRegStr SHCTX "${UNINST_KEY}" "DisplayVersion" "${APP_VERSION}"
   ; Publisher shown in Windows "Installed apps" and Add/Remove Programs.
-  ; This is an unofficial fork, so it must not claim to be published by the
-  ; original maintainer. Change the string below to your own name or handle.
+  ; Chronos is not published by the original DLSS Swapper maintainer, so this must
+  ; not name them. Change the string below to your own name or handle.
   WriteRegStr SHCTX "${UNINST_KEY}" "Publisher" "SpaceJamp"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\Unofficial DLSS Swapper.exe$\""
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayIcon" "$\"$INSTDIR\Chronos.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
   WriteRegStr SHCTX "${UNINST_KEY}" "InstallLocation" $INSTDIR
@@ -281,14 +281,13 @@ Section "Uninstall"
   Pop $R0
 
   ; Remove downloaded and imported DLSS dlls.
-  ; NOTE: storage folder intentionally still "Unofficial DLSS Swapper" so existing users keep their data.
-; NOTE: storage folder intentionally still "DLSS Swapper" so existing users keep their data.
-RMDir /r "$LOCALAPPDATA\DLSS Swapper\"
+  ; Must match Storage.StoragePath in src\Storage.cs, or the uninstaller leaves the database behind.
+RMDir /r "$LOCALAPPDATA\Chronos\"
   
   ; Remove registry keys
   DeleteRegKey SHCTX "${UNINST_KEY}"
 
   ; Remove start menu shortcut.
-  Delete "$SMPROGRAMS\Unofficial DLSS Swapper.lnk"
+  Delete "$SMPROGRAMS\Chronos.lnk"
 
 SectionEnd

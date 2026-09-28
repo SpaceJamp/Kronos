@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.BattleNet;
+namespace Chronos.Data.BattleNet;
 
 internal class Aggregate
 {

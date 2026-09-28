@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.EpicGamesStore;
+namespace Chronos.Data.EpicGamesStore;
 
 internal class CacheItem
 {

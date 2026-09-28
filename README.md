@@ -1,29 +1,32 @@
 <p align="center">
- <h2 align="center">Unofficial DLSS Swapper
+ <h2 align="center">Chronos
 </h2>
  <p align="center">A tool that lets you conveniently download, manage, and swap <strong>DLSS</strong>, <strong>FSR</strong> and <strong>XeSS</strong> dlls, letting you upgrade or downgrade the DLSS, FSR and XeSS version in a game without the game needing an update.</p>
 </p>
 
 > [!IMPORTANT]
-> **This is an unofficial fork**, and the executable is named `Unofficial DLSS Swapper.exe` so it
-> cannot be mistaken for the real thing. It is not affiliated with, endorsed by, or associated with
-> the original DLSS Swapper maintainer or with NVIDIA.
+> **Chronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
+> [beeradmoore](https://github.com/beeradmoore), which is licensed under the
+> [GNU GPL v3.0](LICENSE).** Chronos is a private, personal modification of that project. It is not
+> affiliated with, endorsed by, or associated with the original DLSS Swapper maintainer or with NVIDIA.
 >
-> The official project, and the only place you should get official builds, is at
-> **[github.com/beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper)**.
+> All original copyright notices are preserved, and the original author is credited in
+> [LICENSE](LICENSE), in the installer's file properties, and in the Credits section below. The
+> changes made here are listed in [What changed](#what-changed-in-this-fork) and were written with AI
+> assistance, disclosed in [AI_ASSISTED.md](AI_ASSISTED.md).
 >
-> If you want the official release, including signed binaries, use that link rather than this one.
->
-> The upstream project warns that malicious sites impersonate DLSS Swapper. The rename, this banner
-> and the installer publisher string are all there to make that confusion unlikely.
+> If you want the official DLSS Swapper, including signed binaries, use
+> **[github.com/beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper)** rather than
+> this. The upstream project warns that malicious sites impersonate DLSS Swapper; the distinct name
+> here, and the publisher string in the installer, exist to make that confusion unlikely.
 
 > [!NOTE]
 > **No prebuilt binaries are published from this repository.** There is no releases page here, and
-> this fork is not on winget. If you want a ready-to-run DLSS Swapper, use the official project
-> linked above. This repository is source only, and exists to record the changes listed below.
+> Chronos is not on winget. If you want a ready-to-run DLSS Swapper, use the official project linked
+> above. This repository is source only.
 
 > [!NOTE]
-> **This fork was developed with AI assistance.** The original upstream code is not AI-generated,
+> **This project was developed with AI assistance.** The original upstream code is not AI-generated,
 > but the changes listed below were written with the help of an AI coding assistant (Claude, via
 > OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
 > not involved, and for the things I checked by hand rather than taking on trust.
@@ -34,11 +37,13 @@ This fork exists to carry local modifications. The significant changes relative 
 
 **Renamed to avoid impersonation**
 
-- The product, assembly and output files are now named `Unofficial DLSS Swapper`
-  (`Unofficial DLSS Swapper.exe`). The installer uses its own uninstall registry key and Start Menu
-  entry, so it does not collide with an existing official installation.
-- The C# `RootNamespace` is deliberately **unchanged** (`DLSS_Swapper`), so no namespace or `using`
-  statement in the codebase had to change.
+- The product, assembly and output files are named `Chronos` (`Chronos.exe`). The installer uses its
+  own uninstall registry key and Start Menu entry, so it does not collide with an existing official
+  installation.
+- The C# `RootNamespace` was changed to `Chronos` to match `AssemblyName`, which renamed every
+  `namespace` and `using` in the codebase. It is kept in step with `AssemblyName` deliberately: the
+  embedded resource names derive from the root namespace, and both the static DLL manifest and the
+  acknowledgements page look resources up by name, so letting the two drift breaks startup.
 - The on-disk data folder is deliberately **unchanged** (`%LOCALAPPDATA%\DLSS Swapper`), so moving
   from the official app keeps your existing settings, game history and downloaded DLLs instead of
   appearing to lose everything. The uninstaller still cleans up that same folder.
@@ -212,11 +217,11 @@ Create a [feature request upstream](https://github.com/beeradmoore/dlss-swapper/
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) and a Windows SDK matching the
 project's target platform (`10.0.26100.0`). The solution is
-`Unofficial DLSS Swapper.sln`.
+`Chronos.sln`.
 
 ```powershell
-dotnet build ".\Unofficial DLSS Swapper.sln" -c Debug
-dotnet test ".\tests\DLSS_Swapper.Tests\DLSS_Swapper.Tests.csproj" -c Debug
+dotnet build ".\Chronos.sln" -c Debug
+dotnet test ".\tests\Chronos.Tests\Chronos.Tests.csproj" -c Debug
 ```
 
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to

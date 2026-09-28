@@ -4,7 +4,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.UI;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 public class WindowManager
 {

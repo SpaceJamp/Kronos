@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 internal class GameLibrarySelector : INotifyPropertyChanged
 {

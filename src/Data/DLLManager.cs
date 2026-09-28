@@ -9,10 +9,10 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using DLSS_Swapper.Extensions;
-using DLSS_Swapper.Helpers;
+using Chronos.Extensions;
+using Chronos.Helpers;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 internal class DLLManager
 {
@@ -72,7 +72,7 @@ internal class DLLManager
             Logger.Info("No manifest loaded, loading static manifest instead.");
             try
             {
-                using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("DLSS_Swapper.Assets.static_manifest.json"))
+                using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Chronos.Assets.static_manifest.json"))
                 {
                     if (staticManifestStream is not null)
                     {

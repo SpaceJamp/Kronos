@@ -6,13 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.UserControls;
+using Chronos.Helpers;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 public partial class NetworkTesterWindowModel : ObservableObject
 {
@@ -135,7 +135,7 @@ public partial class NetworkTesterWindowModel : ObservableObject
         // Subscribe to language changes
         LanguageManager.Instance.OnLanguageChanged += UpdateFlowDirection;
 
-        AppendTestResults("Init", $"DLSS Swapper version: v{App.CurrentApp.GetVersionString()}");
+        AppendTestResults("Init", $"Chronos version: v{App.CurrentApp.GetVersionString()}");
     }
     
     private void UpdateFlowDirection()

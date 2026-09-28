@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 /// <summary>
 /// Page for application settings.

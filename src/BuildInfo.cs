@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 internal static class BuildInfo
 {

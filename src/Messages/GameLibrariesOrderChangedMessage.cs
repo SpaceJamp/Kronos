@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging.Messages;
 
-namespace DLSS_Swapper.Messages;
+namespace Chronos.Messages;
 
 
 internal class GameLibrariesOrderChangedMessage : ValueChangedMessage<bool>

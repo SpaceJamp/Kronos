@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace DLSS_Swapper.Acknowledgements;
+namespace Chronos.Acknowledgements;
 
 public partial class Acknowledgement : ObservableObject, IComparable<Acknowledgement>
 {

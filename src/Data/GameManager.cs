@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI.Collections;
-using DLSS_Swapper.Data.BattleNet;
-using DLSS_Swapper.Data.Xbox;
-using DLSS_Swapper.Interfaces;
-using DLSS_Swapper.Messages;
+using Chronos.Data.BattleNet;
+using Chronos.Data.Xbox;
+using Chronos.Interfaces;
+using Chronos.Messages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 internal partial class GameManager : ObservableObject
 {

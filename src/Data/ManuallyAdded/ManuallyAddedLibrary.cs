@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data.ManuallyAdded;
+namespace Chronos.Data.ManuallyAdded;
 
 public class ManuallyAddedLibrary : IGameLibrary
 {

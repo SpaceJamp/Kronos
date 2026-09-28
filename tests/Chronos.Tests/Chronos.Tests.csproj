@@ -5,8 +5,8 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <RootNamespace>DLSS_Swapper.Tests</RootNamespace>
-    <AssemblyName>DLSS_Swapper.Tests</AssemblyName>
+    <RootNamespace>Chronos.Tests</RootNamespace>
+    <AssemblyName>Chronos.Tests</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Unofficial DLSS Swapper.csproj" />
+    <ProjectReference Include="..\..\src\Chronos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

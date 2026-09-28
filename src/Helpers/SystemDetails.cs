@@ -5,10 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Principal;
 using System.Text;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 internal class SystemDetails
 {
@@ -21,7 +21,7 @@ internal class SystemDetails
             var currentAssembly = Assembly.GetExecutingAssembly();
 
 
-            stringBuilder.AppendLine(CultureInfo.InvariantCulture, $"DLSS Swapper: {App.CurrentApp.GetVersionString()}");
+            stringBuilder.AppendLine(CultureInfo.InvariantCulture, $"Chronos: {App.CurrentApp.GetVersionString()}");
 #if PORTABLE
             stringBuilder.AppendLine("Portable: true");
 #else

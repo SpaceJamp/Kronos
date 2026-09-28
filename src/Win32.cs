@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 // From https://github.com/microsoft/WinUI-Gallery/blob/main/WinUIGallery/Common/Win32.cs
 internal static class Win32

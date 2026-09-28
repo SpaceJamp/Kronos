@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.EAApp;
+namespace Chronos.Data.EAApp;
 
 internal class GameSearchResult
 {

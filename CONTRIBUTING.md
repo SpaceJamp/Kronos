@@ -20,8 +20,8 @@ AI-generated, and which of the fixes have and have not been verified.
 ## Building and testing
 
 ```powershell
-dotnet build ".\Unofficial DLSS Swapper.sln" -c Debug
-dotnet test ".\tests\DLSS_Swapper.Tests\DLSS_Swapper.Tests.csproj" -c Debug
+dotnet build ".\Chronos.sln" -c Debug
+dotnet test ".\tests\Chronos.Tests\Chronos.Tests.csproj" -c Debug
 ```
 
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to

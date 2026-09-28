@@ -1,6 +1,6 @@
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Tests for the DLL asset type registry. The registry replaced nine hand-maintained

@@ -1,7 +1,7 @@
 using System;
 using SQLite;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public enum GameHistoryEventType
 {

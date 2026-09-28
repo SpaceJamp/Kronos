@@ -2,9 +2,9 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
-using DLSS_Swapper.Data.Steam.SteamAPI;
+using Chronos.Data.Steam.SteamAPI;
 
-namespace DLSS_Swapper.Data.Steam;
+namespace Chronos.Data.Steam;
 
 /// <summary>
 /// Resolves the vertical library cover (the poster) for a Steam appid.

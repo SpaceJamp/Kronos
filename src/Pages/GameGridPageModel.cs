@@ -3,18 +3,18 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Builders;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
+using Chronos.Builders;
+using Chronos.Data;
+using Chronos.Helpers;
 using CommunityToolkit.Mvvm.Messaging;
-using DLSS_Swapper.Messages;
-using DLSS_Swapper.UserControls;
+using Chronos.Messages;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 public enum GameGridViewType
 {

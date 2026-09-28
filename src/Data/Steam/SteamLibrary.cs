@@ -1,6 +1,6 @@
-using DLSS_Swapper.Data.Steam.Manifest;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data.Steam.Manifest;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ValveKeyValue;
 
-namespace DLSS_Swapper.Data.Steam;
+namespace Chronos.Data.Steam;
 
 internal partial class SteamLibrary : IGameLibrary
 {

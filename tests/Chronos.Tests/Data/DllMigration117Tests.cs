@@ -1,7 +1,7 @@
 using System.IO.Compression;
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Regression tests for the v1.1.7 zip -> raw dll migration in

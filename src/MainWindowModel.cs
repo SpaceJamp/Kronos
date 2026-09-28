@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 using Microsoft.UI.Xaml;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 public partial class MainWindowModel : ObservableObject
 {

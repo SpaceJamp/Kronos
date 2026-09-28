@@ -3,7 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 internal static class PathHelpers
 {

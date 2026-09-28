@@ -1,16 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <AssemblyName>Unofficial DLSS Swapper</AssemblyName>
+    <AssemblyName>Chronos</AssemblyName>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <!--
-      RootNamespace is deliberately left as DLSS_Swapper even though AssemblyName changed, so that
-      renaming the product does not churn every namespace/using in the codebase. The storage folder
-      in Storage.cs is likewise left as "DLSS Swapper" so existing users keep their settings and
-      game history instead of appearing to lose everything.
+      RootNamespace matches AssemblyName. They are kept in step deliberately: the embedded resource
+      names are derived from the root namespace, and AcknowledgementsPageModel and DLLManager both
+      look resources up by name, so letting the two drift silently breaks the static manifest
+      (the app then refuses to start) and empties the acknowledgements page.
+
+      The storage folder in Storage.cs is "Chronos" rather than the original "DLSS Swapper" for the
+      same reason: this is a separate program and should not read or write another product's data.
     -->
-    <RootNamespace>DLSS_Swapper</RootNamespace>
+    <RootNamespace>Chronos</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -385,7 +388,7 @@
 
   <!-- Let the unit test project exercise the internal helpers (DLLManager, DLLAssetTypes, ...). -->
   <ItemGroup>
-    <InternalsVisibleTo Include="DLSS_Swapper.Tests" />
+    <InternalsVisibleTo Include="Chronos.Tests" />
   </ItemGroup>
 
   <ItemGroup>

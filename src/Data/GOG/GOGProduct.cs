@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.GOG;
+namespace Chronos.Data.GOG;
 
 class GOGProduct
 {

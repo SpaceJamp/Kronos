@@ -25,7 +25,7 @@ Everything in the "What changed in this fork" section of the README. Concretely:
 | File | Purpose |
 | --- | --- |
 | `src/Data/DLLAssetTypeInfo.cs` | The asset-type registry that replaced nine hand-maintained if/else chains |
-| `tests/DLSS_Swapper.Tests/*` | The entire xUnit test project, 91 tests |
+| `tests/Chronos.Tests/*` | The entire xUnit test project, 91 tests |
 | `CONTRIBUTING.md`, `SECURITY.md` | Fork documentation |
 
 **Existing files it edited**

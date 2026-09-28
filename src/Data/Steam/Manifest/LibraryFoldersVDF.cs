@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace DLSS_Swapper.Data.Steam.Manifest;
+namespace Chronos.Data.Steam.Manifest;
 
 internal class LibraryFoldersVDF
 {

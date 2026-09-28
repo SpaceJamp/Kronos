@@ -1,6 +1,6 @@
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 
-namespace DLSS_Swapper.Tests.Helpers;
+namespace Chronos.Tests.Helpers;
 
 public class CommonHelpersTests
 {

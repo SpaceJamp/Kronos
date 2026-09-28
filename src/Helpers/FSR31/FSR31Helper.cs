@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace DLSS_Swapper.Helpers.FSR31;
+namespace Chronos.Helpers.FSR31;
 
 internal class FSR31Helper
 {

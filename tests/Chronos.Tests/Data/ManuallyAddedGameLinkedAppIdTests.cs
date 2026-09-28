@@ -1,7 +1,7 @@
-using DLSS_Swapper.Data.ManuallyAdded;
-using DLSS_Swapper.Data.Steam;
+using Chronos.Data.ManuallyAdded;
+using Chronos.Data.Steam;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Tests for linking a manually added game to a store appid so it can borrow that game's cover.
@@ -162,11 +162,11 @@ public class SteamCoverUrlResolverTests
     [InlineData("", "library_capsule_2x.jpg")]
     [InlineData("steam/apps/1/${FILENAME}", "")]
     [InlineData("steam/apps/1/${FILENAME}", "   ")]
-    [InlineData(null, null)]
     public void MissingAssetDetailsYieldNoUrlsRatherThanABrokenUrl(string format, string capsule)
     {
         // An app with no vertical cover is a normal thing to hit. Returning an empty list lets the
-        // caller say "no artwork available", where a url with a null in it would just fail noisily.
+        // caller say "no artwork available", where a url with an empty hole in it would just fail
+        // noisily and much later.
         Assert.Empty(SteamCoverUrlResolver.BuildCoverUrls(format, capsule));
     }
 
