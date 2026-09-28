@@ -24,34 +24,12 @@ Var UninstLog
 Var DEFAULT_INSTALL_PATH
 
 Function .onInit
-  ; Default to Program Files when we can actually write there, and to a per user location when we
-  ; cannot. RequestExecutionLevel highest raises the UAC prompt, but if it is declined, or the
-  ; account is not an Administrator, this installer still runs, just unelevated. Offering
-  ; C:\Program Files to such a user means offering a location that is certain to fail, which is a
-  ; poor first impression and used to end with the install dying hundreds of files in.
-  StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\${APP_NAME}"
-  ClearErrors
-  FileOpen $1 "$PROGRAMFILES64\.__kronos_probe" w
-  IfErrors use_per_user_path
-  FileClose $1
-  Delete "$PROGRAMFILES64\.__kronos_probe"
-  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
-  Goto have_default_path
-
-use_per_user_path:
-  StrCpy $DEFAULT_INSTALL_PATH "$LOCALAPPDATA\Programs\${APP_NAME}"
-  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
-
-have_default_path:
-  ; The missing \ on $DEFAULT_INSTALL_PATH is intentional, it is compared against later.
-  ClearErrors
-  ReadRegStr $0 SHCTX "${UNINST_KEY}" "InstallLocation"
-  ${If} ${Errors}
-    ; No-op
-  ${Else}
-    StrCpy $INSTDIR "$0\"
-  ${EndIf}
-
+  ; Only the running-process check belongs here. The install path is decided in
+  ; DirectoryPagePre instead, because MUI's directory page initialises $INSTDIR from the InstallDir
+  ; directive when the page is created, which is *after* .onInit. With no InstallDir declared the
+  ; page reset $INSTDIR to empty, discarding anything set here, and the folder check in
+  ; .onVerifyInstDir then appended the app name to nothing and produced "\Kronos", a path relative to
+  ; the root of the current drive. That is what produced the unwritable folder error.
   FindProcDLL::FindProc "${APP_EXE}"
 
   StrCmp $R0 0 NotRunning
@@ -64,6 +42,53 @@ have_default_path:
     Quit
   NotRunning:
 FunctionEnd
+
+; Decide the default install location. Runs as the directory page's pre function, so it operates
+; after MUI has seeded $INSTDIR from InstallDir and can therefore still override it.
+Function DirectoryPagePre
+  ; An existing install always wins, so an upgrade keeps its location.
+  ClearErrors
+  ReadRegStr $0 HKLM "${UNINST_KEY}" "InstallLocation"
+  ${IfNot} ${Errors}
+    StrCpy $INSTDIR "$0\"
+    StrCpy $DEFAULT_INSTALL_PATH "$0"
+    Return
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $0 HKCU "${UNINST_KEY}" "InstallLocation"
+  ${IfNot} ${Errors}
+    StrCpy $INSTDIR "$0\"
+    StrCpy $DEFAULT_INSTALL_PATH "$0"
+    Return
+  ${EndIf}
+
+  ; Otherwise prefer Program Files when we can actually write there. RequestExecutionLevel highest
+  ; raises the UAC prompt, but if that is declined, or the account is not an Administrator, this
+  ; installer still runs, just unelevated. Offering C:\Program Files to such a user means offering a
+  ; location that is certain to fail, which used to end with the install dying hundreds of files in.
+  StrCpy $0 "$PROGRAMFILES64\${APP_NAME}"
+  ${If} $0 != "\${APP_NAME}"
+    ClearErrors
+    FileOpen $1 "$PROGRAMFILES64\.__kronos_probe" w
+    ${IfNot} ${Errors}
+      FileClose $1
+      Delete "$PROGRAMFILES64\.__kronos_probe"
+      StrCpy $DEFAULT_INSTALL_PATH "$0"
+      StrCpy $INSTDIR "$0\"
+      Return
+    ${EndIf}
+  ${EndIf}
+
+  ; Per user needs no elevation at all, and is what InstallDir already defaults to.
+  StrCpy $DEFAULT_INSTALL_PATH "$LOCALAPPDATA\Programs\${APP_NAME}"
+  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
+FunctionEnd
+
+; InstallDir is mandatory, not cosmetic. MUI's directory page seeds $INSTDIR from it when the page
+; is created, and with no InstallDir declared that reset $INSTDIR to empty, throwing away whatever
+; .onInit had set. DirectoryPagePre then runs and puts a real path back, but only because it is
+; wired up below; without InstallDir the page had nothing to fall back on.
+InstallDir "$LOCALAPPDATA\Programs\${APP_NAME}"
 
 ; On uninstall, confirm you want to remove downloaded/imported DLSS files.
 Function un.onInit
@@ -165,6 +190,9 @@ VIAddVersionKey "LegalCopyright" "Kronos is based on DLSS Swapper by beeradmoore
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
+; DirectoryPagePre decides the default folder. It has to be the directory page's pre function
+; rather than part of .onInit, because the page seeds $INSTDIR from InstallDir after .onInit runs.
+!define MUI_PAGE_CUSTOMFUNCTION_PRE DirectoryPagePre
 !insertmacro MUI_PAGE_DIRECTORY
 !define MUI_PAGE_CUSTOMFUNCTION_PRE OnInstFilesPre
 !insertmacro MUI_PAGE_INSTFILES
