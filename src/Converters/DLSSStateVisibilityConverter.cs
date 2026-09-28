@@ -1,9 +1,9 @@
-using Chronos.Data;
+using Kronos.Data;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace Chronos.Converters;
+namespace Kronos.Converters;
 
 class DLSSStateVisibilityConverter : DependencyObject, IValueConverter
 {

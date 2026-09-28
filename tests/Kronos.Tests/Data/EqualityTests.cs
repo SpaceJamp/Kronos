@@ -1,8 +1,8 @@
-using Chronos.Data;
-using Chronos.Data.ManuallyAdded;
-using Chronos.Interfaces;
+using Kronos.Data;
+using Kronos.Data.ManuallyAdded;
+using Kronos.Interfaces;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Tests for the equality contract on Game, GameAsset and LocalRecord.

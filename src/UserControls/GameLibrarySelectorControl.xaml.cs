@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 internal partial class GameLibrarySelectorControl : UserControl
 {

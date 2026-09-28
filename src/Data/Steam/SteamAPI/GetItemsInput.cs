@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.Steam.SteamAPI;
+namespace Kronos.Data.Steam.SteamAPI;
 internal class GetItemsInput
 {
     [JsonPropertyName("ids")]

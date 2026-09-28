@@ -6,7 +6,7 @@ using System.Management;
 using System.Security.Principal;
 using Windows.UI.ViewManagement;
 
-namespace Chronos;
+namespace Kronos;
 
 // Class inspired by https://stackoverflow.com/a/69604613/1253832
 

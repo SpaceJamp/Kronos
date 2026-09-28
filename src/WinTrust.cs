@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 
 
-namespace Chronos;
+namespace Kronos;
 
 // Full implementaiton take from here, https://docs.microsoft.com/en-us/windows/win32/seccrypto/example-c-program--verifying-the-signature-of-a-pe-file
 // Help also from the comments in here, https://www.pinvoke.net/default.aspx/wintrust.winverifytrust

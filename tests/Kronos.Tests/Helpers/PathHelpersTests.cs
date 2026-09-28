@@ -1,6 +1,6 @@
-using Chronos.Helpers;
+using Kronos.Helpers;
 
-namespace Chronos.Tests.Helpers;
+namespace Kronos.Tests.Helpers;
 
 public class PathHelpersTests
 {

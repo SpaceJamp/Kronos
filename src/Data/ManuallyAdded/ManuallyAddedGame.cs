@@ -2,11 +2,11 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using Chronos.Data.Steam;
-using Chronos.Interfaces;
+using Kronos.Data.Steam;
+using Kronos.Interfaces;
 using SQLite;
 
-namespace Chronos.Data.ManuallyAdded;
+namespace Kronos.Data.ManuallyAdded;
 
 [Table("manually_added_game")]
 public class ManuallyAddedGame : Game

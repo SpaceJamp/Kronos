@@ -1,4 +1,4 @@
-namespace Chronos.Data.BattleNet;
+namespace Kronos.Data.BattleNet;
 
 internal class BattleNetLauncherGame
 {

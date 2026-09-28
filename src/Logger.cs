@@ -6,7 +6,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Chronos;
+namespace Kronos;
 
 public enum LoggingLevel : int
 {
@@ -21,7 +21,7 @@ public enum LoggingLevel : int
 internal static class Logger
 {
     public static string LogDirectory => Path.Combine(Storage.GetTemp(), "logs");
-    static string loggingFile => Path.Combine(LogDirectory, "chronos_.log");
+    static string loggingFile => Path.Combine(LogDirectory, "kronos_.log");
 #if DEBUG
     static LoggingLevelSwitch levelSwitch = new LoggingLevelSwitch(LogEventLevel.Verbose);
 #else

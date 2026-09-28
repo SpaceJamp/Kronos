@@ -5,13 +5,13 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.WinUI.Controls;
-using Chronos.Acknowledgements;
+using Kronos.Acknowledgements;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 public partial class AcknowledgementsPageModel : ObservableObject
 {
-    public const string AcknowledgementsPrefix = "Chronos.Acknowledgements.";
+    public const string AcknowledgementsPrefix = "Kronos.Acknowledgements.";
     readonly WeakReference<AcknowledgementsPage> _weakPage;
 
     public List<Acknowledgement> Acknowlegements { get; } = new List<Acknowledgement>();

@@ -1,4 +1,4 @@
-namespace Chronos.Data.Steam.Manifest;
+namespace Kronos.Data.Steam.Manifest;
 
 internal class AppManifestACF
 {

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 internal class Manifest
 {

@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Chronos.JsonConverters;
+namespace Kronos.JsonConverters;
 
 internal class HexStringToUintConverter : JsonConverter<uint>
 {

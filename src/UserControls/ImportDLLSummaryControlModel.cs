@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 class ImportDLLSummaryControlModel
 {

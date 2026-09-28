@@ -1,8 +1,8 @@
-using Chronos.Attributes;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Attributes;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public class ComboBoxOption : LocalizedViewModelBase
 {

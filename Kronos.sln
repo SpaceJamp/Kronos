@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unofficial DLSS Swapper", "src\Chronos.csproj", "{63586228-FDDE-4E35-9138-7FF35ED61EC1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unofficial DLSS Swapper", "src\Kronos.csproj", "{63586228-FDDE-4E35-9138-7FF35ED61EC1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chronos.Tests", "tests\Chronos.Tests\Chronos.Tests.csproj", "{E61B5348-5805-4E14-8C53-B113000D5665}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kronos.Tests", "tests\Kronos.Tests\Kronos.Tests.csproj", "{E61B5348-5805-4E14-8C53-B113000D5665}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject

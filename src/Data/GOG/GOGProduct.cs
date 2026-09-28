@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.GOG;
+namespace Kronos.Data.GOG;
 
 class GOGProduct
 {

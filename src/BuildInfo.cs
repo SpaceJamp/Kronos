@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace Chronos;
+namespace Kronos;
 
 internal static class BuildInfo
 {

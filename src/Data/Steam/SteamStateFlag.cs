@@ -1,6 +1,6 @@
 using System;
 
-namespace Chronos.Data.Steam;
+namespace Kronos.Data.Steam;
 
 [Flags]
 internal enum SteamStateFlag : uint

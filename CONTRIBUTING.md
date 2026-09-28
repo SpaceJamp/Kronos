@@ -1,6 +1,6 @@
 # Contributing
 
-This repository is **Chronos**, a private, personal modification of
+This repository is **Kronos**, a private, personal modification of
 [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
 [beeradmoore](https://github.com/beeradmoore). See the README for what changed and for the
 licensing/GPL-3.0 section 5(a) modification notice.
@@ -19,24 +19,24 @@ several of the fixes are worth sending upstream.
 | --- | --- |
 | Bug in the **official** app | [upstream issue tracker](https://github.com/beeradmoore/dlss-swapper/issues) |
 | Feature request for the **official** app | [upstream issue tracker](https://github.com/beeradmoore/dlss-swapper/issues) |
-| Bug in Chronos' local changes | Nowhere public — fix it here |
+| Bug in Kronos' local changes | Nowhere public — fix it here |
 | Malicious site impersonating DLSS Swapper | [upstream](https://github.com/beeradmoore/dlss-swapper/issues/new?template=other_issue.yml) |
 
-The bug fixes made here were found by auditing upstream and are mostly independent of the Chronos
+The bug fixes made here were found by auditing upstream and are mostly independent of the Kronos
 rename, so they are worth offering upstream. The repack detection and store-linked cover art are
-Chronos-specific features and are not.
+Kronos-specific features and are not.
 
 ## Building and testing
 
 ```powershell
-dotnet build ".\Chronos.sln" -c Debug
-dotnet test ".\tests\Chronos.Tests\Chronos.Tests.csproj" -c Debug
+dotnet build ".\Kronos.sln" -c Debug
+dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -c Debug
 ```
 
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to
 build with zero warnings. Please include test results in any change that alters logic.
 
-Note that the `Debug` configurations write to `%LOCALAPPDATA%\Chronos\DEBUG` and the `Portable`
+Note that the `Debug` configurations write to `%LOCALAPPDATA%\Kronos\DEBUG` and the `Portable`
 configurations keep everything inside the build output, so neither touches a real installation.
 
 ## Adding a new DLL/upscaler type

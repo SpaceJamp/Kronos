@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Data;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Data;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 
 internal partial class GameLibrarySelectorControlModel : ObservableObject

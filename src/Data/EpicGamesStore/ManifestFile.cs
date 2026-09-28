@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.EpicGamesStore;
+namespace Kronos.Data.EpicGamesStore;
 
 internal class ManifestFile
 {

@@ -2,19 +2,19 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Data;
+using Kronos.Data;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using System.Diagnostics;
 using System.IO;
 using Windows.System;
-using Chronos.Helpers;
+using Kronos.Helpers;
 using System.Collections.Generic;
 using System.Linq;
-using Chronos.Data.DLSS;
+using Kronos.Data.DLSS;
 using System.ComponentModel;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class GameControlModel : ObservableObject
 {

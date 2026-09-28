@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Data;
-using Chronos.Helpers;
+using Kronos.Data;
+using Kronos.Helpers;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class MultipleDLLsFoundControlModel : ObservableObject
 {

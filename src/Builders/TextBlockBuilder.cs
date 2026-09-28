@@ -5,7 +5,7 @@ using Microsoft.UI.Text;
 using Windows.UI.Text;
 using HtmlAgilityPack;
 
-namespace Chronos.Builders;
+namespace Kronos.Builders;
 
 class TextBlockBuilder
 {

@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 /// <summary>
 /// Page for application settings.

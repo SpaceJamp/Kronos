@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Data.NVIDIA;
+using Kronos.Data.NVIDIA;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class NGXModelImporterModel : ObservableObject
 {

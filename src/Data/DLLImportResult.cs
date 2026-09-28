@@ -1,4 +1,4 @@
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public record DLLImportResult
 {

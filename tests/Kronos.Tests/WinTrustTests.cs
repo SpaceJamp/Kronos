@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using Chronos;
+using Kronos;
 
-namespace Chronos.Tests;
+namespace Kronos.Tests;
 
 /// <summary>
 /// Tests for WinTrust.VerifyEmbeddedSignature, which decides whether an imported dll is trusted.

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 /// <summary>
 /// Describes a single swappable asset type (e.g. DLSS, FSR 3.1 DX12, XeSS) and how to reach the

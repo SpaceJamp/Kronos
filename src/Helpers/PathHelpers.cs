@@ -3,7 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 
 internal static class PathHelpers
 {

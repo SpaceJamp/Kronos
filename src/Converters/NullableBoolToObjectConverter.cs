@@ -2,7 +2,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 
-namespace Chronos.Converters;
+namespace Kronos.Converters;
 
 internal class NullableBoolToObjectConverter : DependencyObject, IValueConverter
 {

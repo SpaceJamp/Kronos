@@ -1,6 +1,6 @@
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Tests for the DLL asset type registry. The registry replaced nine hand-maintained

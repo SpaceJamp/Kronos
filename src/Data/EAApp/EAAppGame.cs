@@ -2,11 +2,11 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using SQLite;
 using Windows.Win32;
 
-namespace Chronos.Data.EAApp;
+namespace Kronos.Data.EAApp;
 
 
 [Table("ea_app_game")]

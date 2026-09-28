@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace Chronos;
+namespace Kronos;
 
 internal class ProxySettings
 {
@@ -20,7 +20,7 @@ internal class ProxySettings
             try
             {
                 var vault = new Windows.Security.Credentials.PasswordVault();
-                var proxySettings = vault.Retrieve("Chronos", "proxy");
+                var proxySettings = vault.Retrieve("Kronos", "proxy");
                 if (proxySettings is not null)
                 {
                     proxySettings.RetrievePassword();
@@ -57,7 +57,7 @@ internal class ProxySettings
                 var proxyUsername = username is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(username)) : string.Empty;
                 var proxyPassword = password is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(password)) : string.Empty;
 
-                vault.Add(new Windows.Security.Credentials.PasswordCredential("Chronos", "proxy", $"{proxyServer}|{proxyUsername}|{proxyPassword}"));
+                vault.Add(new Windows.Security.Credentials.PasswordCredential("Kronos", "proxy", $"{proxyServer}|{proxyUsername}|{proxyPassword}"));
 
                 Settings.ProxySettings.Server = server;
                 Settings.ProxySettings.Username = username ?? string.Empty;
@@ -66,7 +66,7 @@ internal class ProxySettings
             else
             {
                 // Try delete existing proxy settings
-                var proxyCredentails = vault.Retrieve("Chronos", "proxy");
+                var proxyCredentails = vault.Retrieve("Kronos", "proxy");
                 if (proxyCredentails is not null)
                 {
                     vault.Remove(proxyCredentails);

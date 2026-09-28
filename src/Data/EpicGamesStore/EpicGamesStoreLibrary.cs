@@ -6,10 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 
-namespace Chronos.Data.EpicGamesStore;
+namespace Kronos.Data.EpicGamesStore;
 
 internal class EpicGamesStoreLibrary : IGameLibrary
 {

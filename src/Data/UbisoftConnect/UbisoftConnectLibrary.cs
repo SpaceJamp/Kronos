@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 using Microsoft.Win32;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace Chronos.Data.UbisoftConnect;
+namespace Kronos.Data.UbisoftConnect;
 
 internal class UbisoftConnectLibrary : IGameLibrary
 {

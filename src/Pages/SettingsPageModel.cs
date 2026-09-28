@@ -7,18 +7,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Data;
-using Chronos.Helpers;
-using Chronos.UserControls;
+using Kronos.Data;
+using Kronos.Helpers;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Chronos.Collections;
+using Kronos.Collections;
 using System.Collections.Specialized;
-using Chronos.Data.DLSS;
+using Kronos.Data.DLSS;
 using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 public partial class SettingsPageModel : ObservableObject
 {
@@ -93,12 +93,12 @@ public partial class SettingsPageModel : ObservableObject
 
     public RefreshableObservableCollection<ComboBoxOption> LoggingLevelOptions { get; init; } = new RefreshableObservableCollection<ComboBoxOption>()
     {
-        new ComboBoxOption("SettingsPage_Logging_Off", (int)Chronos.LoggingLevel.Off),
-        new ComboBoxOption("SettingsPage_Logging_Verbose", (int)Chronos.LoggingLevel.Verbose),
-        new ComboBoxOption("SettingsPage_Logging_Debug", (int)Chronos.LoggingLevel.Debug),
-        new ComboBoxOption("SettingsPage_Logging_Info", (int)Chronos.LoggingLevel.Info),
-        new ComboBoxOption("SettingsPage_Logging_Warning", (int)Chronos.LoggingLevel.Warning),
-        new ComboBoxOption("SettingsPage_Logging_Error", (int)Chronos.LoggingLevel.Error),
+        new ComboBoxOption("SettingsPage_Logging_Off", (int)Kronos.LoggingLevel.Off),
+        new ComboBoxOption("SettingsPage_Logging_Verbose", (int)Kronos.LoggingLevel.Verbose),
+        new ComboBoxOption("SettingsPage_Logging_Debug", (int)Kronos.LoggingLevel.Debug),
+        new ComboBoxOption("SettingsPage_Logging_Info", (int)Kronos.LoggingLevel.Info),
+        new ComboBoxOption("SettingsPage_Logging_Warning", (int)Kronos.LoggingLevel.Warning),
+        new ComboBoxOption("SettingsPage_Logging_Error", (int)Kronos.LoggingLevel.Error),
     };
 
     [ObservableProperty]
@@ -313,7 +313,7 @@ public partial class SettingsPageModel : ObservableObject
         }
         else if (e.PropertyName == nameof(LoggingLevel))
         {
-            var loggingLevel  = (Chronos.LoggingLevel)LoggingLevel.Value;
+            var loggingLevel  = (Kronos.LoggingLevel)LoggingLevel.Value;
             Settings.Instance.LoggingLevel = loggingLevel;
             Logger.ChangeLoggingLevel(loggingLevel);
         }

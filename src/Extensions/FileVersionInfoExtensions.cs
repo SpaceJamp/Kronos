@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-namespace Chronos.Extensions;
+namespace Kronos.Extensions;
 
 internal static class FileVersionInfoExtensions
 {

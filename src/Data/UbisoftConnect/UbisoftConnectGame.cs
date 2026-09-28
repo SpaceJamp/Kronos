@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using SQLite;
 
-namespace Chronos.Data.UbisoftConnect;
+namespace Kronos.Data.UbisoftConnect;
 
 [Table("ubisoft_connect_game")]
 internal class UbisoftConnectGame : Game

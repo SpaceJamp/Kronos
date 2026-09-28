@@ -1,8 +1,8 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Helpers;
+using Kronos.Helpers;
 
-namespace Chronos.Interfaces;
+namespace Kronos.Interfaces;
 
 public abstract class LocalizedViewModelBase : ObservableObject, IDisposable
 {

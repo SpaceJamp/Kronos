@@ -1,5 +1,5 @@
-using Chronos.Data;
-using Chronos.UserControls;
+using Kronos.Data;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -9,12 +9,12 @@ using Windows.System;
 using AsyncAwaitBestPractices;
 using CommunityToolkit.WinUI;
 using System.Threading;
-using Chronos.Helpers;
+using Kronos.Helpers;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 
 /// <summary>

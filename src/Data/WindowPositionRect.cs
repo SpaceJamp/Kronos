@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public class WindowPositionRect
 {

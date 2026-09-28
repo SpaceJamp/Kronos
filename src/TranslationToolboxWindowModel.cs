@@ -11,13 +11,13 @@ using System.Xml.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CsvHelper;
-using Chronos.Helpers;
-using Chronos.Language;
-using Chronos.UserControls;
+using Kronos.Helpers;
+using Kronos.Language;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.Resources.Core;
 
-namespace Chronos;
+namespace Kronos;
 
 public partial class TranslationToolboxWindowModel : ObservableObject
 {
@@ -346,7 +346,7 @@ public partial class TranslationToolboxWindowModel : ObservableObject
                     new FileSystemHelper.FileFilter("CSV files", ".csv"),
                 };
                 var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-                var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "chronos_translation.json", "json");
+                var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "kronos_translation.json", "json");
 
                 // User cancelled.
                 if (string.IsNullOrWhiteSpace(outputPath))
@@ -568,7 +568,7 @@ public partial class TranslationToolboxWindowModel : ObservableObject
                     new FileSystemHelper.FileFilter("ZIP files", ".zip"),
                 };
                 var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-                var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "chronos_published_translation.zip", "zip");
+                var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "kronos_published_translation.zip", "zip");
 
                 // User cancelled.
                 if (string.IsNullOrWhiteSpace(outputPath))

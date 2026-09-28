@@ -1,4 +1,4 @@
-namespace Chronos.Data.NVIDIA;
+namespace Kronos.Data.NVIDIA;
 
 [System.Xml.Serialization.XmlRootAttribute(Namespace = "http://s3.amazonaws.com/doc/2006-03-01/", IsNullable = false)]
 public class ListBucketResult

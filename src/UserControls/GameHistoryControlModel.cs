@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public class GameHistoryControlModel
 {

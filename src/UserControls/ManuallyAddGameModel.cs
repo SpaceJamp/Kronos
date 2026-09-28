@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Helpers;
-using Chronos.Data.ManuallyAdded;
+using Kronos.Helpers;
+using Kronos.Data.ManuallyAdded;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 internal partial class ManuallyAddGameModel : ObservableObject
 {

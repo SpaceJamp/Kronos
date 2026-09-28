@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Helpers;
+using Kronos.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace Chronos;
+namespace Kronos;
 
 public partial class DiagnosticsWindowModel : ObservableObject
 {

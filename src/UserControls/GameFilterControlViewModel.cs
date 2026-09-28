@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class GameFilterControlViewModel : ObservableObject
 {

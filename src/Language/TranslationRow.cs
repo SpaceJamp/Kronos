@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CsvHelper.Configuration.Attributes;
 
-namespace Chronos.Language;
+namespace Kronos.Language;
 
 public partial class TranslationRow : ObservableObject
 {

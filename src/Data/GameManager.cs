@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI.Collections;
-using Chronos.Data.BattleNet;
-using Chronos.Data.Xbox;
-using Chronos.Interfaces;
-using Chronos.Messages;
+using Kronos.Data.BattleNet;
+using Kronos.Data.Xbox;
+using Kronos.Interfaces;
+using Kronos.Messages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 internal partial class GameManager : ObservableObject
 {

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.BattleNet;
+namespace Kronos.Data.BattleNet;
 
 internal class AggregateItem
 {

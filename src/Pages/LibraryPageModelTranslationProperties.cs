@@ -1,8 +1,8 @@
-using Chronos.Attributes;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Attributes;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 public class LibraryPageModelTranslationProperties : LocalizedViewModelBase
 {

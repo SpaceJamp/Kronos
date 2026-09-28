@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Chronos.Data.UbisoftConnect;
+namespace Kronos.Data.UbisoftConnect;
 
 internal class UbisoftConnectConfigurationItem
 {

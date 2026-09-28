@@ -9,10 +9,10 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Chronos.Extensions;
-using Chronos.Helpers;
+using Kronos.Extensions;
+using Kronos.Helpers;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 internal class DLLManager
 {
@@ -72,7 +72,7 @@ internal class DLLManager
             Logger.Info("No manifest loaded, loading static manifest instead.");
             try
             {
-                using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Chronos.Assets.static_manifest.json"))
+                using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Kronos.Assets.static_manifest.json"))
                 {
                     if (staticManifestStream is not null)
                     {

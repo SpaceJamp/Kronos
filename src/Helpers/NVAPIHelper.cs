@@ -9,10 +9,10 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Data;
-using Chronos.Data.DLSS;
-using Chronos.Data.NVIDIA;
-using Chronos.UserControls;
+using Kronos.Data;
+using Kronos.Data.DLSS;
+using Kronos.Data.NVIDIA;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using NvAPIWrapper;
@@ -20,7 +20,7 @@ using NvAPIWrapper.DRS;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.General;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 
 record NVAPIResult<T>
 {

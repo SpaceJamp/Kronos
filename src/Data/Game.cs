@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Extensions;
-using Chronos.Helpers;
-using Chronos.Interfaces;
-using Chronos.UserControls;
+using Kronos.Extensions;
+using Kronos.Helpers;
+using Kronos.Interfaces;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml.Controls;
 using NvAPIWrapper.DRS;
 using SixLabors.ImageSharp;
@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public abstract partial class Game : ObservableObject, IComparable<Game>, IEquatable<Game> //, INotifyPropertyChanged
 {
@@ -679,7 +679,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     Logger.Error(err);
                     if (App.CurrentApp.IsAdminUser() is false)
                     {
-                        return (false, "Unable to reset to default. Running Chronos as administrator may fix this.", true);
+                        return (false, "Unable to reset to default. Running Kronos as administrator may fix this.", true);
                     }
                     else
                     {
@@ -889,7 +889,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Logger.Error(err);
                 if (App.CurrentApp.IsAdminUser() is false)
                 {
-                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Chronos as administrator may fix this.", true);
+                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Kronos as administrator may fix this.", true);
 
                 }
                 else
@@ -939,7 +939,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Logger.Error(err);
                 if (App.CurrentApp.IsAdminUser() is false)
                 {
-                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Chronos as administrator may fix this.", true);
+                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Kronos as administrator may fix this.", true);
                 }
                 else
                 {

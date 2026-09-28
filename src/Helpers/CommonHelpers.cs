@@ -1,6 +1,6 @@
 using System;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 
 internal class CommonHelpers
 {

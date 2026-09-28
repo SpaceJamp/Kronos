@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using Chronos.Data.BattleNet;
-using Chronos.Data.DLSS;
-using Chronos.Data.EAApp;
-using Chronos.Data.Steam.SteamAPI;
+using Kronos.Data.BattleNet;
+using Kronos.Data.DLSS;
+using Kronos.Data.EAApp;
+using Kronos.Data.Steam.SteamAPI;
 using Microsoft.UI.Windowing;
 
-namespace Chronos;
+namespace Kronos;
 
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(Data.GitHub.GitHubRelease))]

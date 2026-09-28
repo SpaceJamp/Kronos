@@ -1,7 +1,7 @@
-using Chronos.Data.ManuallyAdded;
-using Chronos.Data.Steam;
+using Kronos.Data.ManuallyAdded;
+using Kronos.Data.Steam;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Tests for linking a manually added game to a store appid so it can borrow that game's cover.
