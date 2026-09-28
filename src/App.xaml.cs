@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -255,6 +256,17 @@ public sealed partial class App : Application
     {
         try
         {
+            // An elevated process gets a *different* HKEY_CURRENT_USER: the administrator's hive,
+            // not the user's. This app explicitly offers to relaunch as administrator whenever it
+            // cannot write to a game folder, so that path is easy to reach, and the write then
+            // lands in someone else's registry instead of the one the install is registered in.
+            // The size is a nicety, so skip it rather than corrupt another account's entry.
+            if (IsAdminUser())
+            {
+                Logger.Verbose("Skipping the install size update because this is an elevated process, which would write to a different user's registry hive.");
+                return;
+            }
+
             long installSize = 0;
             installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kronos"));
 
@@ -266,11 +278,24 @@ public sealed partial class App : Application
                     installSize += CalculateDirectorySize(installLocation);
                 }
 
-                if (installSize > 0)
+                if (installSize <= 0)
                 {
-                    var installSizeKB = (int)(installSize / 1000);
-                    kronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
+                    return;
                 }
+
+                var installSizeKB = (int)(installSize / 1000);
+
+                // Only write when it actually changed. This ran on every single launch and wrote
+                // unconditionally, so the value in Apps & features churned on every start and the
+                // registry saw a write for a number that almost never moved.
+                if (kronosRegistryKey is not null &&
+                    kronosRegistryKey.GetValue("EstimatedSize") is int existingSize &&
+                    existingSize == installSizeKB)
+                {
+                    return;
+                }
+
+                kronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
             }
         }
         catch (Exception err)
@@ -278,23 +303,74 @@ public sealed partial class App : Application
             Logger.Error(err);
         }
     }
+#endif
 
-    long CalculateDirectorySize(string path)
+    /// <summary>
+    /// Total size of every file under a directory, in bytes. Returns 0 for a path that does not
+    /// exist.
+    /// </summary>
+    /// <remarks>
+    /// Outside the #if !PORTABLE block on purpose, even though its only caller is inside it. It is a
+    /// pure function of the filesystem with nothing portable specific about it, and keeping it behind
+    /// the guard meant it did not exist in the portable configurations, so the tests that reference it
+    /// could not compile there.
+    /// <br/><br/>
+    /// Deliberately walks one directory at a time instead of
+    /// <c>EnumerateFiles("*", SearchOption.AllDirectories)</c>. The all directories overload throws
+    /// the moment it meets a subdirectory it cannot read, and that exception propagated all the way
+    /// out of here, abandoning the whole calculation. A single locked folder in the image cache or an
+    /// unreadable directory under Program Files therefore stopped EstimatedSize being updated at all,
+    /// permanently and silently. Now one bad directory only costs its own files.
+    /// </remarks>
+    internal static long CalculateDirectorySize(string path)
     {
-        var directorySize = 0L;
-        var fileCount = 0;
-        var directoryInfo = new DirectoryInfo(path);
-        foreach (var fileInfo in directoryInfo.EnumerateFiles("*", SearchOption.AllDirectories))
+        if (string.IsNullOrWhiteSpace(path) || Directory.Exists(path) == false)
         {
-            directorySize += fileInfo.Length;
-            ++fileCount;
+            return 0L;
         }
 
-        //Logger.Debug($"{path} has {fileCount} files for a total size of {directorySize} bytes");
+        long directorySize = 0L;
+        var pending = new Stack<string>();
+        pending.Push(path);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            string[] files;
+            string[] subdirectories;
+            try
+            {
+                files = Directory.GetFiles(current);
+                subdirectories = Directory.GetDirectories(current);
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err, $"Could not read directory \"{current}\" while measuring the install size. Its contents are excluded from the total.");
+                continue;
+            }
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    directorySize += new FileInfo(file).Length;
+                }
+                catch (Exception err)
+                {
+                    // A file deleted or locked between listing and measuring is not worth failing over.
+                    Logger.Verbose($"Could not measure \"{file}\" while calculating the install size: {err.Message}");
+                }
+            }
+
+            foreach (var subdirectory in subdirectories)
+            {
+                pending.Push(subdirectory);
+            }
+        }
 
         return directorySize;
     }
-#endif
 
     public bool IsAdminUser()
     {
