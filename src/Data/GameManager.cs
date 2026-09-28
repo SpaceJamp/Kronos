@@ -236,7 +236,23 @@ internal partial class GameManager : ObservableObject
             var completedTask = await Task.WhenAny(tasks);
             tasks.Remove(completedTask);
 
-            foreach (var game in completedTask.Result)
+            // Task.WhenAny returns whichever task finished first, including one that finished
+            // faulted. Reading .Result on a faulted task rethrows, which used to abandon this loop
+            // and throw out of LoadGamesAsync, so a single misbehaving store library cost the user
+            // every game from every other library as well. A library that cannot be read is a
+            // normal condition, not a reason to discard the rest.
+            List<Game> completedGames;
+            try
+            {
+                completedGames = completedTask.Result;
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err, "A game library failed to load. The other libraries are unaffected.");
+                continue;
+            }
+
+            foreach (var game in completedGames)
             {
                 AddGame(game);
             }

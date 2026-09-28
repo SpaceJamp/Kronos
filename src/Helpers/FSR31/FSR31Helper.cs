@@ -32,7 +32,16 @@ internal class FSR31Helper
         var hModule = LoadLibrary(dllPath);
         if (hModule == IntPtr.Zero)
         {
-            throw new Exception("Failed to load DLL");
+            // Return an empty list rather than throwing. A dll that will not load is the most
+            // likely failure of all here, a partial download, a quarantined file, the wrong
+            // architecture, and it is also the one failure that happened *outside* the try below.
+            // Throwing therefore escaped every handler in this file, reached GetLatestVersion which
+            // has none, and aborted the caller's entire per game scan, because
+            // GameAsset.LoadVersionAndHash is called in a loop guarded only by a catch around the
+            // whole loop. Every other error path here returns an empty list, so match them rather
+            // than making this one failure mode special.
+            Logger.Error($"AMDFidelityFXAPI - Failed to load {dllPath}");
+            return new List<string?>();
         }
 
         try
