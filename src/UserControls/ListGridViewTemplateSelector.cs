@@ -1,8 +1,8 @@
-using Chronos.Pages;
+using Kronos.Pages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 class ListGridViewTemplateSelector : DataTemplateSelector
 {

@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using SQLite;
 
-namespace Chronos.Data.EpicGamesStore;
+namespace Kronos.Data.EpicGamesStore;
 
 [Table("epic_games_store_game")]
 internal class EpicGamesStoreGame : Game

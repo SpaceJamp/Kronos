@@ -1,6 +1,6 @@
 using System;
 
-namespace Chronos.Data.NVIDIA;
+namespace Kronos.Data.NVIDIA;
 
 public class NGXModel
 {

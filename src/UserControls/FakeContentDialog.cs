@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public class FakeContentDialog : Control
 {

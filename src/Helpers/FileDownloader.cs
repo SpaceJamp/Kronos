@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 
 public partial class FileDownloader : ObservableObject
 {

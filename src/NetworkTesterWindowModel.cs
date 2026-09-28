@@ -6,13 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Helpers;
-using Chronos.UserControls;
+using Kronos.Helpers;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace Chronos;
+namespace Kronos;
 
 public partial class NetworkTesterWindowModel : ObservableObject
 {
@@ -135,7 +135,7 @@ public partial class NetworkTesterWindowModel : ObservableObject
         // Subscribe to language changes
         LanguageManager.Instance.OnLanguageChanged += UpdateFlowDirection;
 
-        AppendTestResults("Init", $"Chronos version: v{App.CurrentApp.GetVersionString()}");
+        AppendTestResults("Init", $"Kronos version: v{App.CurrentApp.GetVersionString()}");
     }
     
     private void UpdateFlowDirection()

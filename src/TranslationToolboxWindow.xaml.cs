@@ -1,12 +1,12 @@
 using System;
-using Chronos.Helpers;
-using Chronos.UserControls;
+using Kronos.Helpers;
+using Kronos.UserControls;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace Chronos;
+namespace Kronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

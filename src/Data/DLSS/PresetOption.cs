@@ -1,10 +1,10 @@
 
 using System.ComponentModel;
 using System.Text.Json.Serialization;
-using Chronos.Helpers;
-using Chronos.JsonConverters;
+using Kronos.Helpers;
+using Kronos.JsonConverters;
 
-namespace Chronos.Data.DLSS;
+namespace Kronos.Data.DLSS;
 
 public class PresetOption : INotifyPropertyChanged
 {

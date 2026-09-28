@@ -7,11 +7,11 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 using Windows.Management.Deployment;
 
-namespace Chronos.Data.Xbox;
+namespace Kronos.Data.Xbox;
 
 internal class XboxLibrary : IGameLibrary
 {

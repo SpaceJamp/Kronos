@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.GOG;
+namespace Kronos.Data.GOG;
 
 /// <summary>
 /// This class is the json repsonse from https://catalog.gog.com/v1/catalog?order=desc:score&productType=in:game&query=like:gameTitleGoesHere

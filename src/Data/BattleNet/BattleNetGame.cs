@@ -1,8 +1,8 @@
 using SQLite;
 using System.Threading.Tasks;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 
-namespace Chronos.Data.BattleNet;
+namespace Kronos.Data.BattleNet;
 
 [Table("battlenet_game")]
 internal class BattleNetGame : Game

@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using Chronos.Language;
+using Kronos.Language;
 using Windows.ApplicationModel.Resources;
 using Windows.ApplicationModel.Resources.Core;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 
 public class ResourceHelper
 {

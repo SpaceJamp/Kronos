@@ -1,13 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
-using Chronos.Helpers;
+using Kronos.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class ManuallyAddGameControl : UserControl
 {

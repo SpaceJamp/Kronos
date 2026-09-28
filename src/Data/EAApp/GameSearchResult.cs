@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.EAApp;
+namespace Kronos.Data.EAApp;
 
 internal class GameSearchResult
 {

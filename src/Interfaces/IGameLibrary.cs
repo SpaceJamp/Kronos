@@ -1,17 +1,17 @@
-using Chronos.Data;
-using Chronos.Data.EpicGamesStore;
-using Chronos.Data.GOG;
-using Chronos.Data.Steam;
-using Chronos.Data.UbisoftConnect;
-using Chronos.Data.Xbox;
-using Chronos.Data.ManuallyAdded;
-using Chronos.Data.BattleNet;
+using Kronos.Data;
+using Kronos.Data.EpicGamesStore;
+using Kronos.Data.GOG;
+using Kronos.Data.Steam;
+using Kronos.Data.UbisoftConnect;
+using Kronos.Data.Xbox;
+using Kronos.Data.ManuallyAdded;
+using Kronos.Data.BattleNet;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Chronos.Data.EAApp;
+using Kronos.Data.EAApp;
 
-namespace Chronos.Interfaces;
+namespace Kronos.Interfaces;
 
 [Flags]
 public enum GameLibrary : uint

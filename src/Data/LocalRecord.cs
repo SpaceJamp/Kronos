@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Helpers;
+using Kronos.Helpers;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
 {

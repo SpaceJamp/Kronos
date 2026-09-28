@@ -7,12 +7,12 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 using Microsoft.Win32;
 using SQLite;
 
-namespace Chronos.Data.GOG;
+namespace Kronos.Data.GOG;
 
 internal class GOGLibrary : IGameLibrary
 {

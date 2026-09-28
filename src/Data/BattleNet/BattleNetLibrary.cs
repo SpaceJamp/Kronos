@@ -5,12 +5,12 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Chronos.Data.BattleNet.Proto;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Data.BattleNet.Proto;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 using Microsoft.Win32;
 
-namespace Chronos.Data.BattleNet;
+namespace Kronos.Data.BattleNet;
 
 internal partial class BattleNetLibrary : IGameLibrary
 {

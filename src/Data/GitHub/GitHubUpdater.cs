@@ -7,16 +7,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using ByteSizeLib;
 using CommunityToolkit.WinUI.Controls;
-using Chronos.Extensions;
-using Chronos.Helpers;
-using Chronos.UserControls;
+using Kronos.Extensions;
+using Kronos.Helpers;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
-namespace Chronos.Data.GitHub;
+namespace Kronos.Data.GitHub;
 
 /// <summary>
 /// Helper class to be notified of updates of the app (which is Debug and Release builds)
@@ -436,7 +436,7 @@ internal class GitHubUpdater
                     throw new Exception("Could not launch installer");
                 }
 
-                // Close Chronos so the installer can install
+                // Close Kronos so the installer can install
                 Application.Current.Exit();
             }
             catch (Exception err)

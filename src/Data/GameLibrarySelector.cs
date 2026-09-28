@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 internal class GameLibrarySelector : INotifyPropertyChanged
 {

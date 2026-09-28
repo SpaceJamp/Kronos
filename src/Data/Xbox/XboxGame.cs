@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Xml;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using SQLite;
 
-namespace Chronos.Data.Xbox;
+namespace Kronos.Data.Xbox;
 
 [Table("xbox_game")]
 public class XboxGame : Game

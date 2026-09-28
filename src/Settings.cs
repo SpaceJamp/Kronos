@@ -1,13 +1,13 @@
 using CommunityToolkit.Mvvm.Messaging;
-using Chronos.Data;
-using Chronos.Interfaces;
-using Chronos.Pages;
+using Kronos.Data;
+using Kronos.Interfaces;
+using Kronos.Pages;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Chronos;
+namespace Kronos;
 
 public class Settings
 {

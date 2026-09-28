@@ -1,8 +1,8 @@
 <Application
-    x:Class="Chronos.App"
+    x:Class="Kronos.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Chronos">
+    xmlns:local="using:Kronos">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

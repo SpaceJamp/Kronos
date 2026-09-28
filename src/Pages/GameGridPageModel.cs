@@ -3,18 +3,18 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Builders;
-using Chronos.Data;
-using Chronos.Helpers;
+using Kronos.Builders;
+using Kronos.Data;
+using Kronos.Helpers;
 using CommunityToolkit.Mvvm.Messaging;
-using Chronos.Messages;
-using Chronos.UserControls;
+using Kronos.Messages;
+using Kronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 public enum GameGridViewType
 {

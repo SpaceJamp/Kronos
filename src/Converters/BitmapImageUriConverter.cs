@@ -1,7 +1,7 @@
 using System;
 using Microsoft.UI.Xaml.Data;
 
-namespace Chronos.Converters;
+namespace Kronos.Converters;
 
 internal class BitmapImageUriConverter : IValueConverter
 {

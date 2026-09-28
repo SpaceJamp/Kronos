@@ -6,12 +6,12 @@ using System.Text;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Data;
-using Chronos.Interfaces;
+using Kronos.Data;
+using Kronos.Interfaces;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class NewDLLsControlModel : ObservableObject
 {

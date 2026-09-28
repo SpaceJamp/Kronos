@@ -1,6 +1,6 @@
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Tests for Game.GetPathsNeedingBackup, the decision that protects a game's original dll before

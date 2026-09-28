@@ -2,9 +2,9 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
-using Chronos.Data.Steam.SteamAPI;
+using Kronos.Data.Steam.SteamAPI;
 
-namespace Chronos.Data.Steam;
+namespace Kronos.Data.Steam;
 
 /// <summary>
 /// Resolves the vertical library cover (the poster) for a Steam appid.

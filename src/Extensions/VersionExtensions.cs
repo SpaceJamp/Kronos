@@ -1,6 +1,6 @@
 using System;
 
-namespace Chronos.Extensions;
+namespace Kronos.Extensions;
 
 internal static class VersionExtensions
 {

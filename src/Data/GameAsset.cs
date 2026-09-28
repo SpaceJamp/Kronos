@@ -2,11 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Chronos.Extensions;
-using Chronos.Helpers.FSR31;
+using Kronos.Extensions;
+using Kronos.Helpers.FSR31;
 using SQLite;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 [Table("game_asset")]
 public class GameAsset : IEquatable<GameAsset>

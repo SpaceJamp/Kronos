@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 
-namespace Chronos.Collections;
+namespace Kronos.Collections;
 
 public class RefreshableObservableCollection<T> : ObservableCollection<T>
 {

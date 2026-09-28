@@ -1,6 +1,6 @@
 # AI assistance disclosure
 
-Chronos was developed with the help of an AI coding assistant. This document records exactly
+Kronos was developed with the help of an AI coding assistant. This document records exactly
 what that covered, so nobody has to guess.
 
 ## Summary
@@ -8,7 +8,7 @@ what that covered, so nobody has to guess.
 - **The upstream code is not AI-generated.** This repository started as a copy of
   [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper), obtained as a source
   archive. Everything that project contains was written by its author and contributors.
-- **The changes made in Chronos were written with AI assistance**, under my direction and review.
+- **The changes made in Kronos were written with AI assistance**, under my direction and review.
   That covers the bug fixes, the asset-type refactor, the test suite, the cancellation work, the
   rename, and the packaging fixes.
 - **I am responsible for all of it.** The AI is not an author and holds no rights. The commits in
@@ -18,14 +18,14 @@ The assistant used was Claude, via the OpenCode harness.
 
 ## What the AI wrote
 
-Everything in the "What changed in Chronos" section of the README. Concretely:
+Everything in the "What changed in Kronos" section of the README. Concretely:
 
 **New files it authored**
 
 | File | Purpose |
 | --- | --- |
 | `src/Data/DLLAssetTypeInfo.cs` | The asset-type registry that replaced nine hand-maintained if/else chains |
-| `tests/Chronos.Tests/*` | The entire xUnit test project, 91 tests |
+| `tests/Kronos.Tests/*` | The entire xUnit test project, 91 tests |
 | `CONTRIBUTING.md`, `SECURITY.md` | Project documentation |
 
 **Existing files it edited**
@@ -87,7 +87,7 @@ Stated plainly, because the AI-assisted fixes above are not all equally proven:
 - **The swap path was not tested against a real game.** The backup logic is unit-tested at the
   decision level, but actually overwriting a DLL inside a game install, and resetting it, has not
   been run.
-- **Known bugs remain.** Chronos fixes a substantial number of defects but not all of them. See the
+- **Known bugs remain.** Kronos fixes a substantial number of defects but not all of them. See the
   conversation history and the code for the ones still outstanding, notably unmanaged memory leaks
   in `FileSystemHelper.cs`, and a `Game.Equals` implementation with no matching `GetHashCode`.
 
@@ -98,11 +98,11 @@ Stated plainly, because the AI-assisted fixes above are not all equally proven:
   `VerifyEmbeddedSignature`, which overrides `dwUIContext` with the invalid value `0` and otherwise
   repeats what the constructor had already done, but that was not confirmed. It does not affect the
   import flow, which only handles `.dll` files.
-- **Chronos is unsigned**, so Windows SmartScreen will warn.
+- **Kronos is unsigned**, so Windows SmartScreen will warn.
 
 ## Licensing
 
-Chronos remains under the [GNU General Public License v3.0](LICENSE), the same licence as
+Kronos remains under the [GNU General Public License v3.0](LICENSE), the same licence as
 upstream, and upstream's copyright notices are preserved unmodified. AI-generated code has no
 copyright of its own; it is contributed here under GPL-3.0 on the same terms as the rest of the
 work, and the same licence applies to it as to any other contribution to this repository.

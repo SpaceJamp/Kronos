@@ -9,11 +9,11 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.WinUI;
-using Chronos.Helpers;
+using Kronos.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
-namespace Chronos;
+namespace Kronos;
 
 /// <summary>
 /// Provides application-specific behavior to supplement the default Application class.
@@ -195,7 +195,7 @@ public sealed partial class App : Application
                 if (File.Exists(manifestPath))
                 {
                     var fileInfo = new FileInfo(manifestPath);
-                    using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Chronos.Assets.static_manifest.json"))
+                    using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Kronos.Assets.static_manifest.json"))
                     {
                         if (staticManifestStream is not null)
                         {
@@ -256,11 +256,11 @@ public sealed partial class App : Application
         try
         {
             long installSize = 0;
-            installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Chronos"));
+            installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kronos"));
 
-            using (var chronosRegistryKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Chronos", true))
+            using (var kronosRegistryKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Kronos", true))
             {
-                var installLocation = chronosRegistryKey?.GetValue("InstallLocation") as string;
+                var installLocation = kronosRegistryKey?.GetValue("InstallLocation") as string;
                 if (string.IsNullOrEmpty(installLocation) == false && Directory.Exists(installLocation) == true)
                 {
                     installSize += CalculateDirectorySize(installLocation);
@@ -269,7 +269,7 @@ public sealed partial class App : Application
                 if (installSize > 0)
                 {
                     var installSizeKB = (int)(installSize / 1000);
-                    chronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
+                    kronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
                 }
             }
         }

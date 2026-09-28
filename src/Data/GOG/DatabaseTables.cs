@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SQLite;
 
-namespace Chronos.Data.GOG;
+namespace Kronos.Data.GOG;
 
 internal class InstalledBaseProduct
 {

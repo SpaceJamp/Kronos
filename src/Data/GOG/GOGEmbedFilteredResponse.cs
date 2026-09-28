@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.GOG;
+namespace Kronos.Data.GOG;
 
 /// <summary>
 /// This class is the json repsonse from https://embed.gog.com/games/ajax/filtered?mediaType=game&search=gameTitleGoesHere

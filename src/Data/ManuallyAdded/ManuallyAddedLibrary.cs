@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 
-namespace Chronos.Data.ManuallyAdded;
+namespace Kronos.Data.ManuallyAdded;
 
 public class ManuallyAddedLibrary : IGameLibrary
 {

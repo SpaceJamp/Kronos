@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository is **Chronos**, a private, personal modification of
+This repository is **Kronos**, a private, personal modification of
 [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
 [beeradmoore](https://github.com/beeradmoore). It is not published and does not accept reports, so
 there is no disclosure channel here.
@@ -23,7 +23,7 @@ DLSS Swapper downloads and swaps DLLs inside game installations. Two consequence
   importing them, and has an "allow untrusted" setting. Do not weaken that check, and do not
   distribute prebuilt DLL bundles from this repository.
 - **Local data lives outside the install directory.** Settings, the SQLite database, and a cache of
-  imported DLLs are written under `%LOCALAPPDATA%\Chronos` (or, for portable/Debug builds, inside
+  imported DLLs are written under `%LOCALAPPDATA%\Kronos` (or, for portable/Debug builds, inside
   the build output). Treat that directory as sensitive: it can contain DLLs you imported.
 
 Note that this path changed. Earlier builds used `%LOCALAPPDATA%\DLSS Swapper`, so a build from

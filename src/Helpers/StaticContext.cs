@@ -1,7 +1,7 @@
 /*
  using YamlDotNet.Serialization;
 
-namespace Chronos.Helpers
+namespace Kronos.Helpers
 {
     [YamlStaticContext]
     public partial class StaticContext : YamlDotNet.Serialization.StaticContext

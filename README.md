@@ -1,18 +1,18 @@
 <p align="center">
- <h2 align="center">Chronos
+ <h2 align="center">Kronos
 </h2>
  <p align="center">A tool that lets you conveniently download, manage, and swap <strong>DLSS</strong>, <strong>FSR</strong> and <strong>XeSS</strong> dlls, letting you upgrade or downgrade the DLSS, FSR and XeSS version in a game without the game needing an update.</p>
 </p>
 
 > [!IMPORTANT]
-> **Chronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
+> **Kronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
 > [beeradmoore](https://github.com/beeradmoore), which is licensed under the
-> [GNU GPL v3.0](LICENSE).** Chronos is a private, personal modification of that project. It is not
+> [GNU GPL v3.0](LICENSE).** Kronos is a private, personal modification of that project. It is not
 > affiliated with, endorsed by, or associated with the original DLSS Swapper maintainer.
 >
 > All original copyright notices are preserved, and the original author is credited in
 > [LICENSE](LICENSE), in the installer's file properties, and in the Credits section below. The
-> changes made here are listed in [What changed](#what-changed-in-chronos) and were written with AI
+> changes made here are listed in [What changed](#what-changed-in-kronos) and were written with AI
 > assistance, disclosed in [AI_ASSISTED.md](AI_ASSISTED.md).
 >
 > If you want the official DLSS Swapper, including signed binaries, use
@@ -22,7 +22,7 @@
 
 > [!NOTE]
 > **No prebuilt binaries are published from this repository.** There is no releases page here, and
-> Chronos is not on winget. If you want a ready-to-run DLSS Swapper, use the official project linked
+> Kronos is not on winget. If you want a ready-to-run DLSS Swapper, use the official project linked
 > above. This repository is source only.
 
 > [!NOTE]
@@ -31,27 +31,27 @@
 > OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
 > not involved, and for the things I checked by hand rather than taking on trust.
 
-## What changed in Chronos
+## What changed in Kronos
 
-Chronos is a private, personal modification of upstream DLSS Swapper. The significant changes
+Kronos is a private, personal modification of upstream DLSS Swapper. The significant changes
 relative to upstream are:
 
 **Renamed to avoid impersonation**
 
-- The product, assembly and output files are named `Chronos` (`Chronos.exe`). The installer uses its
+- The product, assembly and output files are named `Kronos` (`Kronos.exe`). The installer uses its
   own uninstall registry key and Start Menu entry, so it does not collide with an existing official
   installation.
-- The C# `RootNamespace` was changed to `Chronos` to match `AssemblyName`, which renamed every
+- The C# `RootNamespace` was changed to `Kronos` to match `AssemblyName`, which renamed every
   `namespace` and `using` in the codebase. It is kept in step with `AssemblyName` deliberately: the
   embedded resource names derive from the root namespace, and both the static DLL manifest and the
   acknowledgements page look resources up by name, so letting the two drift breaks startup.
-- **The on-disk data folder moved** to `%LOCALAPPDATA%\Chronos`, and the database is now
-  `chronos.db`. This is a behaviour change, and it is intentional: Chronos is a separate program and
-  should not read or write another product's data. **A Chronos build therefore starts with an empty
+- **The on-disk data folder moved** to `%LOCALAPPDATA%\Kronos`, and the database is now
+  `kronos.db`. This is a behaviour change, and it is intentional: Kronos is a separate program and
+  should not read or write another product's data. **A Kronos build therefore starts with an empty
   database** rather than inheriting an existing DLSS Swapper install's settings, game history and
-  downloaded DLLs. The uninstaller removes the `Chronos` folder only.
+  downloaded DLLs. The uninstaller removes the `Kronos` folder only.
 - `package/config.cmd` and the release workflow now produce
-  `Chronos-<version>-{portable.zip,installer.exe}`.
+  `Kronos-<version>-{portable.zip,installer.exe}`.
 
 **Correctness fixes**
 
@@ -111,15 +111,15 @@ relative to upstream are:
   migration, the zip-hash lookup, and path/Levenshtein helpers.
 
 **Not changed:** the app still fetches the DLL manifest from the upstream project's public
-`beeradmoore.github.io` endpoint, and still retrieves the DLLs themselves from NVIDIA. Chronos
+`beeradmoore.github.io` endpoint, and still retrieves the DLLs themselves from NVIDIA. Kronos
 depends on those remaining available, and deliberately does not repoint them.
 
-**Builds of Chronos are unsigned.** Upstream signs its releases via SignPath; those credentials are
+**Builds of Kronos are unsigned.** Upstream signs its releases via SignPath; those credentials are
 not available here, so expect a SmartScreen warning on first run.
 
 ## License
 
-Chronos remains under the [GNU General Public License v3.0](LICENSE), the same license as upstream.
+Kronos remains under the [GNU General Public License v3.0](LICENSE), the same license as upstream.
 It is a derivative work and cannot be relicensed. Per GPL-3.0 section 5(a), the modifications above
 are stated here. The original copyright notices are preserved in `LICENSE`, and beeradmoore is
 credited in the installer's file properties and in [Credits](#credits) below.
@@ -204,10 +204,10 @@ Please, come and share your DLSS experience over in [r/DLSS_Swapper](https://www
 Those are the only official sources. Do not install a build labelled "DLSS Swapper" from any other
 site, including this repository.
 
-**For Chronos**, there are no published binaries. This repository is source only, so the only way
+**For Kronos**, there are no published binaries. This repository is source only, so the only way
 to get a build is to compile it yourself — see [Building](#building). Two things follow from that:
 
-- Chronos is not on winget, and no installer or portable zip is attached to any release here. If you
+- Kronos is not on winget, and no installer or portable zip is attached to any release here. If you
   find one anywhere claiming to be from this project, it did not come from this repository.
 - Any build you make is unsigned, so Windows SmartScreen will warn on first run. The official project
   signs its releases via SignPath, so expect a difference.
@@ -220,11 +220,11 @@ Create a [feature request upstream](https://github.com/beeradmoore/dlss-swapper/
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) and a Windows SDK matching the
 project's target platform (`10.0.26100.0`). The solution is
-`Chronos.sln`.
+`Kronos.sln`.
 
 ```powershell
-dotnet build ".\Chronos.sln" -c Debug
-dotnet test ".\tests\Chronos.Tests\Chronos.Tests.csproj" -c Debug
+dotnet build ".\Kronos.sln" -c Debug
+dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -c Debug
 ```
 
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) are expected to
@@ -249,7 +249,7 @@ Then, from the `package` directory:
 .\build_all.cmd
 ```
 
-This produces `Output\Chronos-<version>-portable.zip` and `Output\Chronos-<version>-installer.exe`.
+This produces `Output\Kronos-<version>-portable.zip` and `Output\Kronos-<version>-installer.exe`.
 
 Two things to know before you use it:
 
@@ -263,7 +263,7 @@ Two things to know before you use it:
 ## Branding and assets
 
 The application icon is still upstream's original `src\Assets\icon.ico`, and the roughly sixty
-`Assets\*Logo*.png` / `*Tile*.png` files are upstream's MSIX tile set. Chronos does not ship its own
+`Assets\*Logo*.png` / `*Tile*.png` files are upstream's MSIX tile set. Kronos does not ship its own
 artwork.
 
 - `src\Assets\icon.ico` is the one that matters. It is used by `<ApplicationIcon>` in the csproj and
@@ -298,7 +298,7 @@ upstream DLSS Swapper, note that the underlying fixes may be worth sending upstr
 
 ## Upstream project
 
-Chronos is a derivative of DLSS Swapper. The original project, its maintainer, and its official
+Kronos is a derivative of DLSS Swapper. The original project, its maintainer, and its official
 releases live at:
 
 - GitHub: https://github.com/beeradmoore/dlss-swapper/
@@ -311,7 +311,7 @@ personal project and provides no support.
 
 ### Credits
 
-**Chronos would not exist without the original DLSS Swapper, by
+**Kronos would not exist without the original DLSS Swapper, by
 [beeradmoore](https://github.com/beeradmoore) and contributors.** The original project is the
 foundation of this one, and this project is released under the same licence with the original
 copyright notices intact. Please support the upstream project rather than treating this as a
@@ -320,5 +320,5 @@ replacement for it.
 Upstream DLSS Swapper receives free Windows code signing from
 [SignPath.io](https://signpath.io/) via the
 [SignPath Foundation](https://www.signpath.com/solutions/for-open-source-community-foundation).
-That sponsorship applies to the official project. Chronos builds are unsigned and are not covered
+That sponsorship applies to the official project. Kronos builds are unsigned and are not covered
 by it.

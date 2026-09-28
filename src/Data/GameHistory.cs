@@ -1,7 +1,7 @@
 using System;
 using SQLite;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public enum GameHistoryEventType
 {

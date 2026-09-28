@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Chronos.Data;
-using Chronos.Data.BattleNet;
-using Chronos.Data.EAApp;
-using Chronos.Data.EpicGamesStore;
-using Chronos.Data.GOG;
-using Chronos.Data.ManuallyAdded;
-using Chronos.Data.Steam;
-using Chronos.Data.UbisoftConnect;
-using Chronos.Data.Xbox;
+using Kronos.Data;
+using Kronos.Data.BattleNet;
+using Kronos.Data.EAApp;
+using Kronos.Data.EpicGamesStore;
+using Kronos.Data.GOG;
+using Kronos.Data.ManuallyAdded;
+using Kronos.Data.Steam;
+using Kronos.Data.UbisoftConnect;
+using Kronos.Data.Xbox;
 using Nito.AsyncEx;
 using SQLite;
 
-namespace Chronos;
+namespace Kronos;
 
 #if DEBUG
 public class SQLiteTableInfo

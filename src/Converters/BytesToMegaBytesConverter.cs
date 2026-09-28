@@ -3,7 +3,7 @@ using System.Globalization;
 using ByteSizeLib;
 using Microsoft.UI.Xaml.Data;
 
-namespace Chronos.Converters;
+namespace Kronos.Converters;
 
 class BytesToMegaBytesConverter : IValueConverter
 {

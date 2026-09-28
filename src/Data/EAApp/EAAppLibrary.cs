@@ -8,10 +8,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using Microsoft.Win32;
 
-namespace Chronos.Data.EAApp;
+namespace Kronos.Data.EAApp;
 
 internal class EAAppLibrary : IGameLibrary
 {

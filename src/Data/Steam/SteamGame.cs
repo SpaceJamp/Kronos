@@ -3,10 +3,10 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 using SQLite;
 
-namespace Chronos.Data.Steam;
+namespace Kronos.Data.Steam;
 
 [Table("steam_game")]
 internal partial class SteamGame : Game

@@ -7,11 +7,11 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Chronos.Extensions;
-using Chronos.Helpers;
-using Chronos.Helpers.FSR31;
+using Kronos.Extensions;
+using Kronos.Helpers;
+using Kronos.Helpers.FSR31;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
 {

@@ -1,7 +1,7 @@
-using Chronos.Data;
-using Chronos.Helpers;
-using Chronos.Pages;
-using Chronos.UserControls;
+using Kronos.Data;
+using Kronos.Helpers;
+using Kronos.Pages;
+using Kronos.UserControls;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -10,7 +10,7 @@ using System;
 using System.Runtime.InteropServices;
 using Windows.System;
 
-namespace Chronos;
+namespace Kronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

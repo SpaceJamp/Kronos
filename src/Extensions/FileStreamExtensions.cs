@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Chronos.Extensions;
+namespace Kronos.Extensions;
 
 internal static class FileStreamExtensions
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Chronos.Helpers.FSR31;
+namespace Kronos.Helpers.FSR31;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct ffxApiHeader

@@ -1,7 +1,7 @@
 using CommunityToolkit.WinUI.Collections;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 internal class GameGroup
 {

@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 using AsyncAwaitBestPractices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Chronos.Data;
-using Chronos.Helpers;
+using Kronos.Data;
+using Kronos.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class DLLPickerControlModel : ObservableObject
 {

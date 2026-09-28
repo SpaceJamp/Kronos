@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Chronos.Data.NVIDIA;
+namespace Kronos.Data.NVIDIA;
 
 public partial class NGXModelRow : ObservableObject
 {

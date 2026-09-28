@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Chronos.Helpers;
+using Kronos.Helpers;
 using Microsoft.UI.Xaml;
 
-namespace Chronos;
+namespace Kronos;
 
 public partial class MainWindowModel : ObservableObject
 {

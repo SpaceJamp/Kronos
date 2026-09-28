@@ -2,8 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Chronos.Data;
-using Chronos.Helpers;
+using Kronos.Data;
+using Kronos.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,7 +13,7 @@ using Windows.Storage;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public sealed partial class GameControl : FakeContentDialog
 {

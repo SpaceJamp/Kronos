@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging.Messages;
 
-namespace Chronos.Messages;
+namespace Kronos.Messages;
 
 internal class GameLibrariesStateChangedMessage : ValueChangedMessage<bool>
 {

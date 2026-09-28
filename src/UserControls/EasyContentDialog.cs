@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public class EasyContentDialog : ContentDialog
 {

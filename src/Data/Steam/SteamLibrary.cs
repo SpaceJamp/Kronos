@@ -1,6 +1,6 @@
-using Chronos.Data.Steam.Manifest;
-using Chronos.Helpers;
-using Chronos.Interfaces;
+using Kronos.Data.Steam.Manifest;
+using Kronos.Helpers;
+using Kronos.Interfaces;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ValveKeyValue;
 
-namespace Chronos.Data.Steam;
+namespace Kronos.Data.Steam;
 
 internal partial class SteamLibrary : IGameLibrary
 {

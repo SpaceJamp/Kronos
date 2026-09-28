@@ -1,6 +1,6 @@
 using System;
 
-namespace Chronos.Attributes;
+namespace Kronos.Attributes;
 
 [AttributeUsage(AttributeTargets.Property)]
 class TranslationPropertyAttribute : Attribute { }

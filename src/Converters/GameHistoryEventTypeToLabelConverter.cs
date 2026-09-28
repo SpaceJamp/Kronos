@@ -1,9 +1,9 @@
 using System;
-using Chronos.Data;
-using Chronos.Helpers;
+using Kronos.Data;
+using Kronos.Helpers;
 using Microsoft.UI.Xaml.Data;
 
-namespace Chronos.Converters;
+namespace Kronos.Converters;
 
 internal class GameHistoryEventTypeToLabelConverter : IValueConverter
 {

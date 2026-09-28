@@ -1,7 +1,7 @@
 using System.IO.Compression;
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Regression tests for the v1.1.7 zip -> raw dll migration in

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Chronos.Interfaces;
+using Kronos.Interfaces;
 
-namespace Chronos.Data;
+namespace Kronos.Data;
 
 public class GameLibrarySettings
 {

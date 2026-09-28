@@ -1,6 +1,6 @@
-using Chronos.Data;
+using Kronos.Data;
 
-namespace Chronos.Tests.Data;
+namespace Kronos.Tests.Data;
 
 /// <summary>
 /// Guards the "is this zip a DLL we already know about?" lookup used when importing. This used to

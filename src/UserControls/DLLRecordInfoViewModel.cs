@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public partial class DLLRecordInfoViewModel : ObservableObject
 {

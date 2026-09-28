@@ -4,7 +4,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.UI;
 
-namespace Chronos;
+namespace Kronos;
 
 public class WindowManager
 {

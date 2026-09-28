@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Chronos.Data.GitHub;
+namespace Kronos.Data.GitHub;
 
 internal class GitHubReleaseAsset
 {

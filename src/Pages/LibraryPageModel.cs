@@ -14,17 +14,17 @@ using System.Xml.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.WinUI;
-using Chronos.Data;
-using Chronos.Data.NVIDIA;
-using Chronos.Extensions;
-using Chronos.Helpers;
-using Chronos.UserControls;
+using Kronos.Data;
+using Kronos.Data.NVIDIA;
+using Kronos.Extensions;
+using Kronos.Helpers;
+using Kronos.UserControls;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 
-namespace Chronos.Pages;
+namespace Kronos.Pages;
 
 public partial class LibraryPageModel : ObservableObject
 {
@@ -213,7 +213,7 @@ public partial class LibraryPageModel : ObservableObject
                 new FileSystemHelper.FileFilter("Zip files", "*.zip"),
             };
 
-            finalExportZip = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "chronos_export.zip", defaultExtension: "zip");
+            finalExportZip = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "kronos_export.zip", defaultExtension: "zip");
 
             // User cancelled.
             if (string.IsNullOrWhiteSpace(finalExportZip))
@@ -1507,7 +1507,7 @@ public partial class LibraryPageModel : ObservableObject
 
         try
         {
-            var exportName = $"chronos_export_{dllRecord.DisplayName.Replace(" ", "_")}.zip";
+            var exportName = $"kronos_export_{dllRecord.DisplayName.Replace(" ", "_")}.zip";
 
             var expectedPathDirectory = Path.GetDirectoryName(dllRecord.LocalRecord.ExpectedPath);
             if (string.IsNullOrWhiteSpace(expectedPathDirectory) == false)

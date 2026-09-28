@@ -5,8 +5,8 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <RootNamespace>Chronos.Tests</RootNamespace>
-    <AssemblyName>Chronos.Tests</AssemblyName>
+    <RootNamespace>Kronos.Tests</RootNamespace>
+    <AssemblyName>Kronos.Tests</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Chronos.csproj" />
+    <ProjectReference Include="..\..\src\Kronos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

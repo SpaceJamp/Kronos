@@ -1,7 +1,7 @@
-using Chronos.Data;
+using Kronos.Data;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Chronos.UserControls;
+namespace Kronos.UserControls;
 
 public sealed partial class DLLRecordInfoControl : UserControl
 {

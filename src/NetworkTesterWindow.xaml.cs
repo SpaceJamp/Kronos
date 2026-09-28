@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 
-namespace Chronos;
+namespace Kronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

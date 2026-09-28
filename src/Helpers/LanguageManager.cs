@@ -4,9 +4,9 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Chronos.Attributes;
+using Kronos.Attributes;
 
-namespace Chronos.Helpers;
+namespace Kronos.Helpers;
 public class LanguageManager
 {
     public event Action? OnLanguageChanged;

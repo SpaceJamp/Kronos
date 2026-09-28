@@ -2,7 +2,7 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:usercontrols="using:Chronos.UserControls"
+    xmlns:usercontrols="using:Kronos.UserControls"
     >
 
     <Style x:Key="DefaultFakeButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">

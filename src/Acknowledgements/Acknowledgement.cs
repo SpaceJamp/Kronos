@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Chronos.Acknowledgements;
+namespace Kronos.Acknowledgements;
 
 public partial class Acknowledgement : ObservableObject, IComparable<Acknowledgement>
 {
