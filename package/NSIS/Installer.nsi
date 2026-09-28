@@ -4,7 +4,6 @@
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
-!include "StrContains.nsh"
 !include "FileFunc.nsh"
 
 ; define name of installer
@@ -25,10 +24,26 @@ Var UninstLog
 Var DEFAULT_INSTALL_PATH
 
 Function .onInit
-  ; Set default install location
-  StrCpy $INSTDIR "$PROGRAMFILES64\${APP_NAME}\\"
-  ; The missing \ is intentional
+  ; Default to Program Files when we can actually write there, and to a per user location when we
+  ; cannot. RequestExecutionLevel highest raises the UAC prompt, but if it is declined, or the
+  ; account is not an Administrator, this installer still runs, just unelevated. Offering
+  ; C:\Program Files to such a user means offering a location that is certain to fail, which is a
+  ; poor first impression and used to end with the install dying hundreds of files in.
   StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\${APP_NAME}"
+  ClearErrors
+  FileOpen $1 "$PROGRAMFILES64\.__kronos_probe" w
+  IfErrors use_per_user_path
+  FileClose $1
+  Delete "$PROGRAMFILES64\.__kronos_probe"
+  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
+  Goto have_default_path
+
+use_per_user_path:
+  StrCpy $DEFAULT_INSTALL_PATH "$LOCALAPPDATA\Programs\${APP_NAME}"
+  StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
+
+have_default_path:
+  ; The missing \ on $DEFAULT_INSTALL_PATH is intentional, it is compared against later.
   ClearErrors
   ReadRegStr $0 SHCTX "${UNINST_KEY}" "InstallLocation"
   ${If} ${Errors}
@@ -41,6 +56,12 @@ Function .onInit
 
   StrCmp $R0 0 NotRunning
     MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos is currently running. Please close it before continuing with installation." /SD IDOK
+    ; This used to fall through and carry on to the directory page. The guard in the install
+    ; section does stop before any files are written, so this was a warning that let the user walk
+    ; on and only find out at the point of installing, rather than being a half install. Bail here
+    ; instead, so the answer arrives before they have chosen anything.
+    SetErrorLevel 1
+    Quit
   NotRunning:
 FunctionEnd
 
@@ -72,6 +93,25 @@ Function .onVerifyInstDir
   ${If} $0 != "${APP_NAME}"
     StrCpy $INSTDIR "$INSTDIR\${APP_NAME}\"
   ${EndIf}
+
+  ; Check we can actually write here, now, before 600+ files are attempted. The usual cause is not
+  ; being elevated: RequestExecutionLevel highest raises the UAC prompt, but if that is declined, or
+  ; the account is not an Administrator, NSIS carries on unelevated rather than failing. The result
+  ; used to be extraction dying partway with a bare "Error opening file for writing:
+  ; \Kronos\SomeDependency.dll" and a half written install directory containing no uninstaller and
+  ; no registry entry, which gives the user nothing to act on.
+  ClearErrors
+  FileOpen $1 "$INSTDIR\.__kronos_write_test" w
+  IfErrors path_not_writable
+  FileClose $1
+  Delete "$INSTDIR\.__kronos_write_test"
+  Goto path_ok
+
+  path_not_writable:
+  MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos cannot write to this folder:$\r$\n$INSTDIR$\r$\n$\r$\nProgram Files needs administrator rights. Close this, right click the installer and choose 'Run as administrator', or pick a different folder such as your Downloads folder.$\r$\n$\r$\nNothing has been installed."
+  Abort
+
+  path_ok:
 FunctionEnd
 
 
