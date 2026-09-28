@@ -163,8 +163,8 @@ Name "Kronos"
 ; <Version> in the csproj and app_version in ..\config.cmd.
 ; NSIS requires VIProductVersion to be a 4 part number, and the assembly version is APP_VERSION
 ; with an implied trailing .0, so the two forms are both spelled out here.
-!define APP_VERSION "1.4.0"
-!define APP_VERSION_4PART "1.4.0.0"
+!define APP_VERSION "1.45"
+!define APP_VERSION_4PART "1.45.0.0"
 
 VIProductVersion "${APP_VERSION_4PART}"
 VIAddVersionKey "ProductName" "Kronos"

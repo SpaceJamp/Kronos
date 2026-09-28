@@ -1,9 +1,9 @@
 @echo off
 
 REM Keep in step with <Version> in the csproj and APP_VERSION in NSIS\Installer.nsi.
-REM 1.4.0 adds automatic Steam app id detection for manually added games. It is
+REM 1.45 is a 64-bit only build with automatic Steam app id detection. It is
 REM deliberately higher than upstream DLSS Swapper 1.2.6.1 so the update check stays quiet.
-set app_version=1.4.0
+set app_version=1.45
 set initial_directory=%cd%
 
 set csproj_file=..\src\Kronos.csproj
