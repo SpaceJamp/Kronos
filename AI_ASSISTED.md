@@ -1,6 +1,6 @@
 # AI assistance disclosure
 
-This fork was developed with the help of an AI coding assistant. This document records exactly
+Chronos was developed with the help of an AI coding assistant. This document records exactly
 what that covered, so nobody has to guess.
 
 ## Summary
@@ -8,7 +8,7 @@ what that covered, so nobody has to guess.
 - **The upstream code is not AI-generated.** This repository started as a copy of
   [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper), obtained as a source
   archive. Everything that project contains was written by its author and contributors.
-- **The changes made in this fork were written with AI assistance**, under my direction and review.
+- **The changes made in Chronos were written with AI assistance**, under my direction and review.
   That covers the bug fixes, the asset-type refactor, the test suite, the cancellation work, the
   rename, and the packaging fixes.
 - **I am responsible for all of it.** The AI is not an author and holds no rights. The commits in
@@ -18,7 +18,7 @@ The assistant used was Claude, via the OpenCode harness.
 
 ## What the AI wrote
 
-Everything in the "What changed in this fork" section of the README. Concretely:
+Everything in the "What changed in Chronos" section of the README. Concretely:
 
 **New files it authored**
 
@@ -26,7 +26,7 @@ Everything in the "What changed in this fork" section of the README. Concretely:
 | --- | --- |
 | `src/Data/DLLAssetTypeInfo.cs` | The asset-type registry that replaced nine hand-maintained if/else chains |
 | `tests/Chronos.Tests/*` | The entire xUnit test project, 91 tests |
-| `CONTRIBUTING.md`, `SECURITY.md` | Fork documentation |
+| `CONTRIBUTING.md`, `SECURITY.md` | Project documentation |
 
 **Existing files it edited**
 
@@ -47,7 +47,7 @@ Everything in the "What changed in this fork" section of the README. Concretely:
   concurrent dialogs, removed an unobserved thread-pool work item, and removed an O(n^2) re-hash
 - `src/Pages/SettingsPageModel.cs` — cleared a busy flag on failure
 - `package/*.cmd`, `package/NSIS/Installer.nsi`, `.github/workflows/*`, `.gitignore`, `*.sln`,
-  `*.csproj`, `README.md` — fork hygiene, rename, and packaging fixes
+  `*.csproj`, `README.md` — project hygiene, rename, and packaging fixes
 
 ## What the AI did not write
 
@@ -87,22 +87,22 @@ Stated plainly, because the AI-assisted fixes above are not all equally proven:
 - **The swap path was not tested against a real game.** The backup logic is unit-tested at the
   decision level, but actually overwriting a DLL inside a game install, and resetting it, has not
   been run.
-- **Known bugs remain.** The fork fixes a substantial number of defects but not all of them. See the
+- **Known bugs remain.** Chronos fixes a substantial number of defects but not all of them. See the
   conversation history and the code for the ones still outstanding, notably unmanaged memory leaks
   in `FileSystemHelper.cs`, and a `Game.Equals` implementation with no matching `GetHashCode`.
 
   One inherited bug was found while testing the `WinTrust` fix and is pinned by a test rather than
   fixed: signed `.exe` files such as `cmd.exe` are reported as `Valid` by Windows but rejected by
   `VerifyEmbeddedSignature`. Stashing the interop changes and re-running produced identical results,
-  so it predates this fork's work. The suspected cause is the object initializer in
+  so it predates the work done here. The suspected cause is the object initializer in
   `VerifyEmbeddedSignature`, which overrides `dwUIContext` with the invalid value `0` and otherwise
   repeats what the constructor had already done, but that was not confirmed. It does not affect the
   import flow, which only handles `.dll` files.
-- **The fork is unsigned**, so Windows SmartScreen will warn.
+- **Chronos is unsigned**, so Windows SmartScreen will warn.
 
 ## Licensing
 
-This fork remains under the [GNU General Public License v3.0](LICENSE), the same licence as
+Chronos remains under the [GNU General Public License v3.0](LICENSE), the same licence as
 upstream, and upstream's copyright notices are preserved unmodified. AI-generated code has no
 copyright of its own; it is contributed here under GPL-3.0 on the same terms as the rest of the
 work, and the same licence applies to it as to any other contribution to this repository.
