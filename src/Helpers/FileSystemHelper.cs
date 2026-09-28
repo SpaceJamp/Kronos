@@ -9,7 +9,7 @@ using Windows.Win32.System.Com;
 using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.Shell.Common;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 internal class FileSystemHelper
 {

@@ -7,18 +7,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.UserControls;
+using Chronos.Data;
+using Chronos.Helpers;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using DLSS_Swapper.Collections;
+using Chronos.Collections;
 using System.Collections.Specialized;
-using DLSS_Swapper.Data.DLSS;
+using Chronos.Data.DLSS;
 using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 public partial class SettingsPageModel : ObservableObject
 {
@@ -93,12 +93,12 @@ public partial class SettingsPageModel : ObservableObject
 
     public RefreshableObservableCollection<ComboBoxOption> LoggingLevelOptions { get; init; } = new RefreshableObservableCollection<ComboBoxOption>()
     {
-        new ComboBoxOption("SettingsPage_Logging_Off", (int)DLSS_Swapper.LoggingLevel.Off),
-        new ComboBoxOption("SettingsPage_Logging_Verbose", (int)DLSS_Swapper.LoggingLevel.Verbose),
-        new ComboBoxOption("SettingsPage_Logging_Debug", (int)DLSS_Swapper.LoggingLevel.Debug),
-        new ComboBoxOption("SettingsPage_Logging_Info", (int)DLSS_Swapper.LoggingLevel.Info),
-        new ComboBoxOption("SettingsPage_Logging_Warning", (int)DLSS_Swapper.LoggingLevel.Warning),
-        new ComboBoxOption("SettingsPage_Logging_Error", (int)DLSS_Swapper.LoggingLevel.Error),
+        new ComboBoxOption("SettingsPage_Logging_Off", (int)Chronos.LoggingLevel.Off),
+        new ComboBoxOption("SettingsPage_Logging_Verbose", (int)Chronos.LoggingLevel.Verbose),
+        new ComboBoxOption("SettingsPage_Logging_Debug", (int)Chronos.LoggingLevel.Debug),
+        new ComboBoxOption("SettingsPage_Logging_Info", (int)Chronos.LoggingLevel.Info),
+        new ComboBoxOption("SettingsPage_Logging_Warning", (int)Chronos.LoggingLevel.Warning),
+        new ComboBoxOption("SettingsPage_Logging_Error", (int)Chronos.LoggingLevel.Error),
     };
 
     [ObservableProperty]
@@ -313,7 +313,7 @@ public partial class SettingsPageModel : ObservableObject
         }
         else if (e.PropertyName == nameof(LoggingLevel))
         {
-            var loggingLevel  = (DLSS_Swapper.LoggingLevel)LoggingLevel.Value;
+            var loggingLevel  = (Chronos.LoggingLevel)LoggingLevel.Value;
             Settings.Instance.LoggingLevel = loggingLevel;
             Logger.ChangeLoggingLevel(loggingLevel);
         }

@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 using AsyncAwaitBestPractices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
+using Chronos.Data;
+using Chronos.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class DLLPickerControlModel : ObservableObject
 {

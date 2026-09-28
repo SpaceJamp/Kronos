@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using Microsoft.Win32;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace DLSS_Swapper.Data.UbisoftConnect;
+namespace Chronos.Data.UbisoftConnect;
 
 internal class UbisoftConnectLibrary : IGameLibrary
 {

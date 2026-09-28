@@ -2,11 +2,11 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 using SQLite;
 using Windows.Win32;
 
-namespace DLSS_Swapper.Data.EAApp;
+namespace Chronos.Data.EAApp;
 
 
 [Table("ea_app_game")]

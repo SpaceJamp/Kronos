@@ -2,19 +2,19 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Data;
+using Chronos.Data;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using System.Diagnostics;
 using System.IO;
 using Windows.System;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 using System.Collections.Generic;
 using System.Linq;
-using DLSS_Swapper.Data.DLSS;
+using Chronos.Data.DLSS;
 using System.ComponentModel;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class GameControlModel : ObservableObject
 {

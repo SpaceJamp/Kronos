@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 // Full implementaiton is found here, https://docs.microsoft.com/en-US/troubleshoot/windows/win32/get-information-authenticode-signed-executables
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 /*
 // To use

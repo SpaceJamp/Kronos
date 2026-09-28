@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DLSS_Swapper.Data.UbisoftConnect;
+namespace Chronos.Data.UbisoftConnect;
 
 internal class UbisoftConnectConfigurationItem
 {

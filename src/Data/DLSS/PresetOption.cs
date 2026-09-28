@@ -1,10 +1,10 @@
 
 using System.ComponentModel;
 using System.Text.Json.Serialization;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.JsonConverters;
+using Chronos.Helpers;
+using Chronos.JsonConverters;
 
-namespace DLSS_Swapper.Data.DLSS;
+namespace Chronos.Data.DLSS;
 
 public class PresetOption : INotifyPropertyChanged
 {

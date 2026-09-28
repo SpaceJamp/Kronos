@@ -1,7 +1,7 @@
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Pages;
-using DLSS_Swapper.UserControls;
+using Chronos.Data;
+using Chronos.Helpers;
+using Chronos.Pages;
+using Chronos.UserControls;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -10,7 +10,7 @@ using System;
 using System.Runtime.InteropServices;
 using Windows.System;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

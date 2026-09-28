@@ -4,9 +4,9 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using DLSS_Swapper.Attributes;
+using Chronos.Attributes;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 public class LanguageManager
 {
     public event Action? OnLanguageChanged;

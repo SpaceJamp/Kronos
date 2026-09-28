@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 internal partial class GameLibrarySelectorControl : UserControl
 {

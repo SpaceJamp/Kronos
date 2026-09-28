@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public class EasyContentDialog : ContentDialog
 {

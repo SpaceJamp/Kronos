@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 public partial class FailToLaunchWindowModel : ObservableObject
 {

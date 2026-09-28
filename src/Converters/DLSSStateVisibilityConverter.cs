@@ -1,9 +1,9 @@
-using DLSS_Swapper.Data;
+using Chronos.Data;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace DLSS_Swapper.Converters;
+namespace Chronos.Converters;
 
 class DLSSStateVisibilityConverter : DependencyObject, IValueConverter
 {

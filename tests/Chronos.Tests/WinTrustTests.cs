@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using DLSS_Swapper;
+using Chronos;
 
-namespace DLSS_Swapper.Tests;
+namespace Chronos.Tests;
 
 /// <summary>
 /// Tests for WinTrust.VerifyEmbeddedSignature, which decides whether an imported dll is trusted.

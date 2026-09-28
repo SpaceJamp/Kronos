@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 using SQLite;
 
-namespace DLSS_Swapper.Data.UbisoftConnect;
+namespace Chronos.Data.UbisoftConnect;
 
 [Table("ubisoft_connect_game")]
 internal class UbisoftConnectGame : Game

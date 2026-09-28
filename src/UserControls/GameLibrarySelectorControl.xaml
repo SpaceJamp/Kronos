@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="DLSS_Swapper.UserControls.GameLibrarySelectorControl"
+    x:Class="Chronos.UserControls.GameLibrarySelectorControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:DLSS_Swapper.UserControls"
+    xmlns:local="using:Chronos.UserControls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:data="using:DLSS_Swapper.Data"
+    xmlns:data="using:Chronos.Data"
     mc:Ignorable="d">
 
     <ListView

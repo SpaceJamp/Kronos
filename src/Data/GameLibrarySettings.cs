@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public class GameLibrarySettings
 {

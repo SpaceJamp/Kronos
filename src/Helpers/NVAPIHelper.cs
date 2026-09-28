@@ -9,10 +9,10 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Data.DLSS;
-using DLSS_Swapper.Data.NVIDIA;
-using DLSS_Swapper.UserControls;
+using Chronos.Data;
+using Chronos.Data.DLSS;
+using Chronos.Data.NVIDIA;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using NvAPIWrapper;
@@ -20,7 +20,7 @@ using NvAPIWrapper.DRS;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.General;
 
-namespace DLSS_Swapper.Helpers;
+namespace Chronos.Helpers;
 
 record NVAPIResult<T>
 {

@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Data.ManuallyAdded;
+using Chronos.Helpers;
+using Chronos.Data.ManuallyAdded;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 internal partial class ManuallyAddGameModel : ObservableObject
 {

@@ -8,10 +8,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 using Microsoft.Win32;
 
-namespace DLSS_Swapper.Data.EAApp;
+namespace Chronos.Data.EAApp;
 
 internal class EAAppLibrary : IGameLibrary
 {

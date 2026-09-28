@@ -1,6 +1,6 @@
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Tests for Game.GetPathsNeedingBackup, the decision that protects a game's original dll before

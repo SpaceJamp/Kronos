@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SQLite;
 
-namespace DLSS_Swapper.Data.GOG;
+namespace Chronos.Data.GOG;
 
 internal class InstalledBaseProduct
 {

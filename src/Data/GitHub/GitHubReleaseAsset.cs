@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.GitHub;
+namespace Chronos.Data.GitHub;
 
 internal class GitHubReleaseAsset
 {

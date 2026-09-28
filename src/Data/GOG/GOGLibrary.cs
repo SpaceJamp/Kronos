@@ -7,12 +7,12 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using Microsoft.Win32;
 using SQLite;
 
-namespace DLSS_Swapper.Data.GOG;
+namespace Chronos.Data.GOG;
 
 internal class GOGLibrary : IGameLibrary
 {

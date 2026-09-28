@@ -1,7 +1,7 @@
-using DLSS_Swapper.Data;
+using Chronos.Data;
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public sealed partial class DLLRecordInfoControl : UserControl
 {

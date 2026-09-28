@@ -9,7 +9,7 @@ using pb = global::Google.Protobuf;
 using pbc = global::Google.Protobuf.Collections;
 using pbr = global::Google.Protobuf.Reflection;
 using scg = global::System.Collections.Generic;
-namespace DLSS_Swapper.Data.BattleNet.Proto {
+namespace Chronos.Data.BattleNet.Proto {
 
   /// <summary>Holder for reflection information generated from battle_net_product_db.proto</summary>
   public static partial class BattleNetProductDbReflection {
@@ -84,22 +84,22 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             "QmF0dGxlTmV0LlByb3RvYgZwcm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
-          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption), typeof(global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType), typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption), typeof(global::DLSS_Swapper.Data.BattleNet.Proto.Operation), }, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting), global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting.Parser, new[]{ "Language", "Option" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings), global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings.Parser, new[]{ "InstallPath", "PlayRegion", "DesktopShortcut", "StartmenuShortcut", "LanguageSettings", "SelectedTextLanguage", "SelectedSpeechLanguage", "Languages", "GfxOverrideTags", "Versionbranch" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake), global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake.Parser, new[]{ "Product", "Uid", "Settings" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig), global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig.Parser, new[]{ "Region", "BuildConfig_" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState), global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState.Parser, new[]{ "Installed", "Playable", "UpdateComplete", "BackgroundDownloadAvailable", "BackgroundDownloadComplete", "CurrentVersion", "CurrentVersionStr", "InstalledBuildConfig", "BackgroundDownloadBuildConfig", "DecryptionKey", "CompletedInstallActions" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress), global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress.Parser, new[]{ "Progress", "Backgrounddownload", "Paused", "DownloadLimit" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress), global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress.Parser, new[]{ "Progress" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress), global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress.Parser, new[]{ "LastDiscSetUsed", "Progress", "DiscIgnored", "TotalToDownload", "DownloadRemaining" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState), global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState.Parser, new[]{ "BaseProductState", "BackfillProgress", "RepairProgress", "UpdateProgress" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations), global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations.Parser, new[]{ "ActiveOperation", "Priority" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall), global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall.Parser, new[]{ "Uid", "ProductCode", "Settings", "CachedProductState", "ProductOperations" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig), global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig.Parser, new[]{ "ProductCode", "MetadataHash", "Timestamp" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess), global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess.Parser, new[]{ "ProcessName", "Pid", "Uri" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings), global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings.Parser, new[]{ "DownloadLimit", "BackfillLimit" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::DLSS_Swapper.Data.BattleNet.Proto.ProductDb), global::DLSS_Swapper.Data.BattleNet.Proto.ProductDb.Parser, new[]{ "ProductInstalls", "ActiveInstalls", "ActiveProcesses", "ProductConfigs", "DownloadSettings" }, null, null, null, null)
+          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Chronos.Data.BattleNet.Proto.LanguageOption), typeof(global::Chronos.Data.BattleNet.Proto.LanguageSettingType), typeof(global::Chronos.Data.BattleNet.Proto.ShortcutOption), typeof(global::Chronos.Data.BattleNet.Proto.Operation), }, null, new pbr::GeneratedClrTypeInfo[] {
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.LanguageSetting), global::Chronos.Data.BattleNet.Proto.LanguageSetting.Parser, new[]{ "Language", "Option" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.UserSettings), global::Chronos.Data.BattleNet.Proto.UserSettings.Parser, new[]{ "InstallPath", "PlayRegion", "DesktopShortcut", "StartmenuShortcut", "LanguageSettings", "SelectedTextLanguage", "SelectedSpeechLanguage", "Languages", "GfxOverrideTags", "Versionbranch" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.InstallHandshake), global::Chronos.Data.BattleNet.Proto.InstallHandshake.Parser, new[]{ "Product", "Uid", "Settings" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.BuildConfig), global::Chronos.Data.BattleNet.Proto.BuildConfig.Parser, new[]{ "Region", "BuildConfig_" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.BaseProductState), global::Chronos.Data.BattleNet.Proto.BaseProductState.Parser, new[]{ "Installed", "Playable", "UpdateComplete", "BackgroundDownloadAvailable", "BackgroundDownloadComplete", "CurrentVersion", "CurrentVersionStr", "InstalledBuildConfig", "BackgroundDownloadBuildConfig", "DecryptionKey", "CompletedInstallActions" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.BackfillProgress), global::Chronos.Data.BattleNet.Proto.BackfillProgress.Parser, new[]{ "Progress", "Backgrounddownload", "Paused", "DownloadLimit" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.RepairProgress), global::Chronos.Data.BattleNet.Proto.RepairProgress.Parser, new[]{ "Progress" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.UpdateProgress), global::Chronos.Data.BattleNet.Proto.UpdateProgress.Parser, new[]{ "LastDiscSetUsed", "Progress", "DiscIgnored", "TotalToDownload", "DownloadRemaining" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.CachedProductState), global::Chronos.Data.BattleNet.Proto.CachedProductState.Parser, new[]{ "BaseProductState", "BackfillProgress", "RepairProgress", "UpdateProgress" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.ProductOperations), global::Chronos.Data.BattleNet.Proto.ProductOperations.Parser, new[]{ "ActiveOperation", "Priority" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.ProductInstall), global::Chronos.Data.BattleNet.Proto.ProductInstall.Parser, new[]{ "Uid", "ProductCode", "Settings", "CachedProductState", "ProductOperations" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.ProductConfig), global::Chronos.Data.BattleNet.Proto.ProductConfig.Parser, new[]{ "ProductCode", "MetadataHash", "Timestamp" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.ActiveProcess), global::Chronos.Data.BattleNet.Proto.ActiveProcess.Parser, new[]{ "ProcessName", "Pid", "Uri" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.DownloadSettings), global::Chronos.Data.BattleNet.Proto.DownloadSettings.Parser, new[]{ "DownloadLimit", "BackfillLimit" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Chronos.Data.BattleNet.Proto.ProductDb), global::Chronos.Data.BattleNet.Proto.ProductDb.Parser, new[]{ "ProductInstalls", "ActiveInstalls", "ActiveProcesses", "ProductConfigs", "DownloadSettings" }, null, null, null, null)
           }));
     }
     #endregion
@@ -151,7 +151,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[0]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[0]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -196,10 +196,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "option" field.</summary>
     public const int OptionFieldNumber = 2;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption option_ = global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone;
+    private global::Chronos.Data.BattleNet.Proto.LanguageOption option_ = global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption Option {
+    public global::Chronos.Data.BattleNet.Proto.LanguageOption Option {
       get { return option_; }
       set {
         option_ = value;
@@ -231,7 +231,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     public override int GetHashCode() {
       int hash = 1;
       if (Language.Length != 0) hash ^= Language.GetHashCode();
-      if (Option != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone) hash ^= Option.GetHashCode();
+      if (Option != global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone) hash ^= Option.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -254,7 +254,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
         output.WriteRawTag(10);
         output.WriteString(Language);
       }
-      if (Option != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
+      if (Option != global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
         output.WriteRawTag(16);
         output.WriteEnum((int) Option);
       }
@@ -272,7 +272,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
         output.WriteRawTag(10);
         output.WriteString(Language);
       }
-      if (Option != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
+      if (Option != global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
         output.WriteRawTag(16);
         output.WriteEnum((int) Option);
       }
@@ -289,7 +289,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       if (Language.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(Language);
       }
-      if (Option != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
+      if (Option != global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Option);
       }
       if (_unknownFields != null) {
@@ -307,7 +307,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       if (other.Language.Length != 0) {
         Language = other.Language;
       }
-      if (other.Option != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
+      if (other.Option != global::Chronos.Data.BattleNet.Proto.LanguageOption.LangoptionNone) {
         Option = other.Option;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
@@ -334,7 +334,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           }
           case 16: {
-            Option = (global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption) input.ReadEnum();
+            Option = (global::Chronos.Data.BattleNet.Proto.LanguageOption) input.ReadEnum();
             break;
           }
         }
@@ -361,7 +361,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           }
           case 16: {
-            Option = (global::DLSS_Swapper.Data.BattleNet.Proto.LanguageOption) input.ReadEnum();
+            Option = (global::Chronos.Data.BattleNet.Proto.LanguageOption) input.ReadEnum();
             break;
           }
         }
@@ -386,7 +386,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[1]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[1]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -451,10 +451,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "desktop_shortcut" field.</summary>
     public const int DesktopShortcutFieldNumber = 3;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption desktopShortcut_ = global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone;
+    private global::Chronos.Data.BattleNet.Proto.ShortcutOption desktopShortcut_ = global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption DesktopShortcut {
+    public global::Chronos.Data.BattleNet.Proto.ShortcutOption DesktopShortcut {
       get { return desktopShortcut_; }
       set {
         desktopShortcut_ = value;
@@ -463,10 +463,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "startmenu_shortcut" field.</summary>
     public const int StartmenuShortcutFieldNumber = 4;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption startmenuShortcut_ = global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone;
+    private global::Chronos.Data.BattleNet.Proto.ShortcutOption startmenuShortcut_ = global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption StartmenuShortcut {
+    public global::Chronos.Data.BattleNet.Proto.ShortcutOption StartmenuShortcut {
       get { return startmenuShortcut_; }
       set {
         startmenuShortcut_ = value;
@@ -475,10 +475,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "language_settings" field.</summary>
     public const int LanguageSettingsFieldNumber = 5;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType languageSettings_ = global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone;
+    private global::Chronos.Data.BattleNet.Proto.LanguageSettingType languageSettings_ = global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType LanguageSettings {
+    public global::Chronos.Data.BattleNet.Proto.LanguageSettingType LanguageSettings {
       get { return languageSettings_; }
       set {
         languageSettings_ = value;
@@ -511,12 +511,12 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "languages" field.</summary>
     public const int LanguagesFieldNumber = 8;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting> _repeated_languages_codec
-        = pb::FieldCodec.ForMessage(66, global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting> languages_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.LanguageSetting> _repeated_languages_codec
+        = pb::FieldCodec.ForMessage(66, global::Chronos.Data.BattleNet.Proto.LanguageSetting.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.LanguageSetting> languages_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.LanguageSetting>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSetting> Languages {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.LanguageSetting> Languages {
       get { return languages_; }
     }
 
@@ -578,9 +578,9 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       int hash = 1;
       if (InstallPath.Length != 0) hash ^= InstallPath.GetHashCode();
       if (PlayRegion.Length != 0) hash ^= PlayRegion.GetHashCode();
-      if (DesktopShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) hash ^= DesktopShortcut.GetHashCode();
-      if (StartmenuShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) hash ^= StartmenuShortcut.GetHashCode();
-      if (LanguageSettings != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) hash ^= LanguageSettings.GetHashCode();
+      if (DesktopShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) hash ^= DesktopShortcut.GetHashCode();
+      if (StartmenuShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) hash ^= StartmenuShortcut.GetHashCode();
+      if (LanguageSettings != global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) hash ^= LanguageSettings.GetHashCode();
       if (SelectedTextLanguage.Length != 0) hash ^= SelectedTextLanguage.GetHashCode();
       if (SelectedSpeechLanguage.Length != 0) hash ^= SelectedSpeechLanguage.GetHashCode();
       hash ^= languages_.GetHashCode();
@@ -612,15 +612,15 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
         output.WriteRawTag(18);
         output.WriteString(PlayRegion);
       }
-      if (DesktopShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (DesktopShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         output.WriteRawTag(24);
         output.WriteEnum((int) DesktopShortcut);
       }
-      if (StartmenuShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (StartmenuShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         output.WriteRawTag(32);
         output.WriteEnum((int) StartmenuShortcut);
       }
-      if (LanguageSettings != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
+      if (LanguageSettings != global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
         output.WriteRawTag(40);
         output.WriteEnum((int) LanguageSettings);
       }
@@ -659,15 +659,15 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
         output.WriteRawTag(18);
         output.WriteString(PlayRegion);
       }
-      if (DesktopShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (DesktopShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         output.WriteRawTag(24);
         output.WriteEnum((int) DesktopShortcut);
       }
-      if (StartmenuShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (StartmenuShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         output.WriteRawTag(32);
         output.WriteEnum((int) StartmenuShortcut);
       }
-      if (LanguageSettings != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
+      if (LanguageSettings != global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
         output.WriteRawTag(40);
         output.WriteEnum((int) LanguageSettings);
       }
@@ -704,13 +704,13 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       if (PlayRegion.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(PlayRegion);
       }
-      if (DesktopShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (DesktopShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) DesktopShortcut);
       }
-      if (StartmenuShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (StartmenuShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) StartmenuShortcut);
       }
-      if (LanguageSettings != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
+      if (LanguageSettings != global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) LanguageSettings);
       }
       if (SelectedTextLanguage.Length != 0) {
@@ -744,13 +744,13 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       if (other.PlayRegion.Length != 0) {
         PlayRegion = other.PlayRegion;
       }
-      if (other.DesktopShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (other.DesktopShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         DesktopShortcut = other.DesktopShortcut;
       }
-      if (other.StartmenuShortcut != global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
+      if (other.StartmenuShortcut != global::Chronos.Data.BattleNet.Proto.ShortcutOption.ShortcutNone) {
         StartmenuShortcut = other.StartmenuShortcut;
       }
-      if (other.LanguageSettings != global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
+      if (other.LanguageSettings != global::Chronos.Data.BattleNet.Proto.LanguageSettingType.LangsettingNone) {
         LanguageSettings = other.LanguageSettings;
       }
       if (other.SelectedTextLanguage.Length != 0) {
@@ -794,15 +794,15 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           }
           case 24: {
-            DesktopShortcut = (global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
+            DesktopShortcut = (global::Chronos.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
             break;
           }
           case 32: {
-            StartmenuShortcut = (global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
+            StartmenuShortcut = (global::Chronos.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
             break;
           }
           case 40: {
-            LanguageSettings = (global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType) input.ReadEnum();
+            LanguageSettings = (global::Chronos.Data.BattleNet.Proto.LanguageSettingType) input.ReadEnum();
             break;
           }
           case 50: {
@@ -853,15 +853,15 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           }
           case 24: {
-            DesktopShortcut = (global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
+            DesktopShortcut = (global::Chronos.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
             break;
           }
           case 32: {
-            StartmenuShortcut = (global::DLSS_Swapper.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
+            StartmenuShortcut = (global::Chronos.Data.BattleNet.Proto.ShortcutOption) input.ReadEnum();
             break;
           }
           case 40: {
-            LanguageSettings = (global::DLSS_Swapper.Data.BattleNet.Proto.LanguageSettingType) input.ReadEnum();
+            LanguageSettings = (global::Chronos.Data.BattleNet.Proto.LanguageSettingType) input.ReadEnum();
             break;
           }
           case 50: {
@@ -906,7 +906,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[2]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[2]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -964,10 +964,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "settings" field.</summary>
     public const int SettingsFieldNumber = 3;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings settings_;
+    private global::Chronos.Data.BattleNet.Proto.UserSettings settings_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings Settings {
+    public global::Chronos.Data.BattleNet.Proto.UserSettings Settings {
       get { return settings_; }
       set {
         settings_ = value;
@@ -1093,7 +1093,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       }
       if (other.settings_ != null) {
         if (settings_ == null) {
-          Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+          Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
         }
         Settings.MergeFrom(other.Settings);
       }
@@ -1126,7 +1126,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 26: {
             if (settings_ == null) {
-              Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+              Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
             }
             input.ReadMessage(Settings);
             break;
@@ -1160,7 +1160,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 26: {
             if (settings_ == null) {
-              Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+              Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
             }
             input.ReadMessage(Settings);
             break;
@@ -1187,7 +1187,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[3]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[3]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1422,7 +1422,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[4]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[4]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1548,23 +1548,23 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "installed_build_config" field.</summary>
     public const int InstalledBuildConfigFieldNumber = 8;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> _repeated_installedBuildConfig_codec
-        = pb::FieldCodec.ForMessage(66, global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> installedBuildConfig_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.BuildConfig> _repeated_installedBuildConfig_codec
+        = pb::FieldCodec.ForMessage(66, global::Chronos.Data.BattleNet.Proto.BuildConfig.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig> installedBuildConfig_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> InstalledBuildConfig {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig> InstalledBuildConfig {
       get { return installedBuildConfig_; }
     }
 
     /// <summary>Field number for the "background_download_build_config" field.</summary>
     public const int BackgroundDownloadBuildConfigFieldNumber = 9;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> _repeated_backgroundDownloadBuildConfig_codec
-        = pb::FieldCodec.ForMessage(74, global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> backgroundDownloadBuildConfig_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.BuildConfig> _repeated_backgroundDownloadBuildConfig_codec
+        = pb::FieldCodec.ForMessage(74, global::Chronos.Data.BattleNet.Proto.BuildConfig.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig> backgroundDownloadBuildConfig_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.BuildConfig> BackgroundDownloadBuildConfig {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.BuildConfig> BackgroundDownloadBuildConfig {
       get { return backgroundDownloadBuildConfig_; }
     }
 
@@ -1957,7 +1957,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[5]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[5]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2266,7 +2266,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[6]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[6]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2464,7 +2464,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[7]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[7]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2810,7 +2810,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[8]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[8]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2845,10 +2845,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "base_product_state" field.</summary>
     public const int BaseProductStateFieldNumber = 1;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState baseProductState_;
+    private global::Chronos.Data.BattleNet.Proto.BaseProductState baseProductState_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState BaseProductState {
+    public global::Chronos.Data.BattleNet.Proto.BaseProductState BaseProductState {
       get { return baseProductState_; }
       set {
         baseProductState_ = value;
@@ -2857,10 +2857,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "backfill_progress" field.</summary>
     public const int BackfillProgressFieldNumber = 2;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress backfillProgress_;
+    private global::Chronos.Data.BattleNet.Proto.BackfillProgress backfillProgress_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress BackfillProgress {
+    public global::Chronos.Data.BattleNet.Proto.BackfillProgress BackfillProgress {
       get { return backfillProgress_; }
       set {
         backfillProgress_ = value;
@@ -2869,10 +2869,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "repair_progress" field.</summary>
     public const int RepairProgressFieldNumber = 3;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress repairProgress_;
+    private global::Chronos.Data.BattleNet.Proto.RepairProgress repairProgress_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress RepairProgress {
+    public global::Chronos.Data.BattleNet.Proto.RepairProgress RepairProgress {
       get { return repairProgress_; }
       set {
         repairProgress_ = value;
@@ -2881,10 +2881,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "update_progress" field.</summary>
     public const int UpdateProgressFieldNumber = 4;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress updateProgress_;
+    private global::Chronos.Data.BattleNet.Proto.UpdateProgress updateProgress_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress UpdateProgress {
+    public global::Chronos.Data.BattleNet.Proto.UpdateProgress UpdateProgress {
       get { return updateProgress_; }
       set {
         updateProgress_ = value;
@@ -3017,25 +3017,25 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       }
       if (other.baseProductState_ != null) {
         if (baseProductState_ == null) {
-          BaseProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState();
+          BaseProductState = new global::Chronos.Data.BattleNet.Proto.BaseProductState();
         }
         BaseProductState.MergeFrom(other.BaseProductState);
       }
       if (other.backfillProgress_ != null) {
         if (backfillProgress_ == null) {
-          BackfillProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress();
+          BackfillProgress = new global::Chronos.Data.BattleNet.Proto.BackfillProgress();
         }
         BackfillProgress.MergeFrom(other.BackfillProgress);
       }
       if (other.repairProgress_ != null) {
         if (repairProgress_ == null) {
-          RepairProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress();
+          RepairProgress = new global::Chronos.Data.BattleNet.Proto.RepairProgress();
         }
         RepairProgress.MergeFrom(other.RepairProgress);
       }
       if (other.updateProgress_ != null) {
         if (updateProgress_ == null) {
-          UpdateProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress();
+          UpdateProgress = new global::Chronos.Data.BattleNet.Proto.UpdateProgress();
         }
         UpdateProgress.MergeFrom(other.UpdateProgress);
       }
@@ -3060,28 +3060,28 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           case 10: {
             if (baseProductState_ == null) {
-              BaseProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState();
+              BaseProductState = new global::Chronos.Data.BattleNet.Proto.BaseProductState();
             }
             input.ReadMessage(BaseProductState);
             break;
           }
           case 18: {
             if (backfillProgress_ == null) {
-              BackfillProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress();
+              BackfillProgress = new global::Chronos.Data.BattleNet.Proto.BackfillProgress();
             }
             input.ReadMessage(BackfillProgress);
             break;
           }
           case 26: {
             if (repairProgress_ == null) {
-              RepairProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress();
+              RepairProgress = new global::Chronos.Data.BattleNet.Proto.RepairProgress();
             }
             input.ReadMessage(RepairProgress);
             break;
           }
           case 34: {
             if (updateProgress_ == null) {
-              UpdateProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress();
+              UpdateProgress = new global::Chronos.Data.BattleNet.Proto.UpdateProgress();
             }
             input.ReadMessage(UpdateProgress);
             break;
@@ -3107,28 +3107,28 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             break;
           case 10: {
             if (baseProductState_ == null) {
-              BaseProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.BaseProductState();
+              BaseProductState = new global::Chronos.Data.BattleNet.Proto.BaseProductState();
             }
             input.ReadMessage(BaseProductState);
             break;
           }
           case 18: {
             if (backfillProgress_ == null) {
-              BackfillProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.BackfillProgress();
+              BackfillProgress = new global::Chronos.Data.BattleNet.Proto.BackfillProgress();
             }
             input.ReadMessage(BackfillProgress);
             break;
           }
           case 26: {
             if (repairProgress_ == null) {
-              RepairProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.RepairProgress();
+              RepairProgress = new global::Chronos.Data.BattleNet.Proto.RepairProgress();
             }
             input.ReadMessage(RepairProgress);
             break;
           }
           case 34: {
             if (updateProgress_ == null) {
-              UpdateProgress = new global::DLSS_Swapper.Data.BattleNet.Proto.UpdateProgress();
+              UpdateProgress = new global::Chronos.Data.BattleNet.Proto.UpdateProgress();
             }
             input.ReadMessage(UpdateProgress);
             break;
@@ -3155,7 +3155,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[9]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[9]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3188,10 +3188,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "active_operation" field.</summary>
     public const int ActiveOperationFieldNumber = 1;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.Operation activeOperation_ = global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate;
+    private global::Chronos.Data.BattleNet.Proto.Operation activeOperation_ = global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.Operation ActiveOperation {
+    public global::Chronos.Data.BattleNet.Proto.Operation ActiveOperation {
       get { return activeOperation_; }
       set {
         activeOperation_ = value;
@@ -3234,7 +3234,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (ActiveOperation != global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate) hash ^= ActiveOperation.GetHashCode();
+      if (ActiveOperation != global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate) hash ^= ActiveOperation.GetHashCode();
       if (Priority != 0) hash ^= Priority.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -3254,7 +3254,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (ActiveOperation != global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate) {
+      if (ActiveOperation != global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate) {
         output.WriteRawTag(8);
         output.WriteEnum((int) ActiveOperation);
       }
@@ -3272,7 +3272,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (ActiveOperation != global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate) {
+      if (ActiveOperation != global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate) {
         output.WriteRawTag(8);
         output.WriteEnum((int) ActiveOperation);
       }
@@ -3290,7 +3290,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (ActiveOperation != global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate) {
+      if (ActiveOperation != global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) ActiveOperation);
       }
       if (Priority != 0) {
@@ -3308,7 +3308,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       if (other == null) {
         return;
       }
-      if (other.ActiveOperation != global::DLSS_Swapper.Data.BattleNet.Proto.Operation.OpUpdate) {
+      if (other.ActiveOperation != global::Chronos.Data.BattleNet.Proto.Operation.OpUpdate) {
         ActiveOperation = other.ActiveOperation;
       }
       if (other.Priority != 0) {
@@ -3334,7 +3334,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            ActiveOperation = (global::DLSS_Swapper.Data.BattleNet.Proto.Operation) input.ReadEnum();
+            ActiveOperation = (global::Chronos.Data.BattleNet.Proto.Operation) input.ReadEnum();
             break;
           }
           case 16: {
@@ -3361,7 +3361,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            ActiveOperation = (global::DLSS_Swapper.Data.BattleNet.Proto.Operation) input.ReadEnum();
+            ActiveOperation = (global::Chronos.Data.BattleNet.Proto.Operation) input.ReadEnum();
             break;
           }
           case 16: {
@@ -3390,7 +3390,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[10]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[10]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3450,10 +3450,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "settings" field.</summary>
     public const int SettingsFieldNumber = 3;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings settings_;
+    private global::Chronos.Data.BattleNet.Proto.UserSettings settings_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings Settings {
+    public global::Chronos.Data.BattleNet.Proto.UserSettings Settings {
       get { return settings_; }
       set {
         settings_ = value;
@@ -3462,10 +3462,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "cached_product_state" field.</summary>
     public const int CachedProductStateFieldNumber = 4;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState cachedProductState_;
+    private global::Chronos.Data.BattleNet.Proto.CachedProductState cachedProductState_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState CachedProductState {
+    public global::Chronos.Data.BattleNet.Proto.CachedProductState CachedProductState {
       get { return cachedProductState_; }
       set {
         cachedProductState_ = value;
@@ -3474,10 +3474,10 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "product_operations" field.</summary>
     public const int ProductOperationsFieldNumber = 5;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations productOperations_;
+    private global::Chronos.Data.BattleNet.Proto.ProductOperations productOperations_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations ProductOperations {
+    public global::Chronos.Data.BattleNet.Proto.ProductOperations ProductOperations {
       get { return productOperations_; }
       set {
         productOperations_ = value;
@@ -3629,19 +3629,19 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       }
       if (other.settings_ != null) {
         if (settings_ == null) {
-          Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+          Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
         }
         Settings.MergeFrom(other.Settings);
       }
       if (other.cachedProductState_ != null) {
         if (cachedProductState_ == null) {
-          CachedProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState();
+          CachedProductState = new global::Chronos.Data.BattleNet.Proto.CachedProductState();
         }
         CachedProductState.MergeFrom(other.CachedProductState);
       }
       if (other.productOperations_ != null) {
         if (productOperations_ == null) {
-          ProductOperations = new global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations();
+          ProductOperations = new global::Chronos.Data.BattleNet.Proto.ProductOperations();
         }
         ProductOperations.MergeFrom(other.ProductOperations);
       }
@@ -3674,21 +3674,21 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 26: {
             if (settings_ == null) {
-              Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+              Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
             }
             input.ReadMessage(Settings);
             break;
           }
           case 34: {
             if (cachedProductState_ == null) {
-              CachedProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState();
+              CachedProductState = new global::Chronos.Data.BattleNet.Proto.CachedProductState();
             }
             input.ReadMessage(CachedProductState);
             break;
           }
           case 42: {
             if (productOperations_ == null) {
-              ProductOperations = new global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations();
+              ProductOperations = new global::Chronos.Data.BattleNet.Proto.ProductOperations();
             }
             input.ReadMessage(ProductOperations);
             break;
@@ -3722,21 +3722,21 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 26: {
             if (settings_ == null) {
-              Settings = new global::DLSS_Swapper.Data.BattleNet.Proto.UserSettings();
+              Settings = new global::Chronos.Data.BattleNet.Proto.UserSettings();
             }
             input.ReadMessage(Settings);
             break;
           }
           case 34: {
             if (cachedProductState_ == null) {
-              CachedProductState = new global::DLSS_Swapper.Data.BattleNet.Proto.CachedProductState();
+              CachedProductState = new global::Chronos.Data.BattleNet.Proto.CachedProductState();
             }
             input.ReadMessage(CachedProductState);
             break;
           }
           case 42: {
             if (productOperations_ == null) {
-              ProductOperations = new global::DLSS_Swapper.Data.BattleNet.Proto.ProductOperations();
+              ProductOperations = new global::Chronos.Data.BattleNet.Proto.ProductOperations();
             }
             input.ReadMessage(ProductOperations);
             break;
@@ -3763,7 +3763,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[11]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[11]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4035,7 +4035,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[12]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[12]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4296,7 +4296,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[13]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[13]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4531,7 +4531,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::DLSS_Swapper.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[14]; }
+      get { return global::Chronos.Data.BattleNet.Proto.BattleNetProductDbReflection.Descriptor.MessageTypes[14]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4567,54 +4567,54 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
 
     /// <summary>Field number for the "product_installs" field.</summary>
     public const int ProductInstallsFieldNumber = 1;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall> _repeated_productInstalls_codec
-        = pb::FieldCodec.ForMessage(10, global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall> productInstalls_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.ProductInstall> _repeated_productInstalls_codec
+        = pb::FieldCodec.ForMessage(10, global::Chronos.Data.BattleNet.Proto.ProductInstall.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductInstall> productInstalls_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductInstall>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductInstall> ProductInstalls {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductInstall> ProductInstalls {
       get { return productInstalls_; }
     }
 
     /// <summary>Field number for the "active_installs" field.</summary>
     public const int ActiveInstallsFieldNumber = 2;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake> _repeated_activeInstalls_codec
-        = pb::FieldCodec.ForMessage(18, global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake> activeInstalls_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.InstallHandshake> _repeated_activeInstalls_codec
+        = pb::FieldCodec.ForMessage(18, global::Chronos.Data.BattleNet.Proto.InstallHandshake.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.InstallHandshake> activeInstalls_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.InstallHandshake>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.InstallHandshake> ActiveInstalls {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.InstallHandshake> ActiveInstalls {
       get { return activeInstalls_; }
     }
 
     /// <summary>Field number for the "active_processes" field.</summary>
     public const int ActiveProcessesFieldNumber = 3;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess> _repeated_activeProcesses_codec
-        = pb::FieldCodec.ForMessage(26, global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess> activeProcesses_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.ActiveProcess> _repeated_activeProcesses_codec
+        = pb::FieldCodec.ForMessage(26, global::Chronos.Data.BattleNet.Proto.ActiveProcess.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ActiveProcess> activeProcesses_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ActiveProcess>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ActiveProcess> ActiveProcesses {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ActiveProcess> ActiveProcesses {
       get { return activeProcesses_; }
     }
 
     /// <summary>Field number for the "product_configs" field.</summary>
     public const int ProductConfigsFieldNumber = 4;
-    private static readonly pb::FieldCodec<global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig> _repeated_productConfigs_codec
-        = pb::FieldCodec.ForMessage(34, global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig.Parser);
-    private readonly pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig> productConfigs_ = new pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig>();
+    private static readonly pb::FieldCodec<global::Chronos.Data.BattleNet.Proto.ProductConfig> _repeated_productConfigs_codec
+        = pb::FieldCodec.ForMessage(34, global::Chronos.Data.BattleNet.Proto.ProductConfig.Parser);
+    private readonly pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductConfig> productConfigs_ = new pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductConfig>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::DLSS_Swapper.Data.BattleNet.Proto.ProductConfig> ProductConfigs {
+    public pbc::RepeatedField<global::Chronos.Data.BattleNet.Proto.ProductConfig> ProductConfigs {
       get { return productConfigs_; }
     }
 
     /// <summary>Field number for the "download_settings" field.</summary>
     public const int DownloadSettingsFieldNumber = 5;
-    private global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings downloadSettings_;
+    private global::Chronos.Data.BattleNet.Proto.DownloadSettings downloadSettings_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings DownloadSettings {
+    public global::Chronos.Data.BattleNet.Proto.DownloadSettings DownloadSettings {
       get { return downloadSettings_; }
       set {
         downloadSettings_ = value;
@@ -4732,7 +4732,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
       productConfigs_.Add(other.productConfigs_);
       if (other.downloadSettings_ != null) {
         if (downloadSettings_ == null) {
-          DownloadSettings = new global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings();
+          DownloadSettings = new global::Chronos.Data.BattleNet.Proto.DownloadSettings();
         }
         DownloadSettings.MergeFrom(other.DownloadSettings);
       }
@@ -4773,7 +4773,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 42: {
             if (downloadSettings_ == null) {
-              DownloadSettings = new global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings();
+              DownloadSettings = new global::Chronos.Data.BattleNet.Proto.DownloadSettings();
             }
             input.ReadMessage(DownloadSettings);
             break;
@@ -4815,7 +4815,7 @@ namespace DLSS_Swapper.Data.BattleNet.Proto {
           }
           case 42: {
             if (downloadSettings_ == null) {
-              DownloadSettings = new global::DLSS_Swapper.Data.BattleNet.Proto.DownloadSettings();
+              DownloadSettings = new global::Chronos.Data.BattleNet.Proto.DownloadSettings();
             }
             input.ReadMessage(DownloadSettings);
             break;

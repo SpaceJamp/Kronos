@@ -1,7 +1,7 @@
 using System;
 using Microsoft.UI.Xaml.Data;
 
-namespace DLSS_Swapper.Converters;
+namespace Chronos.Converters;
 
 internal class BitmapImageUriConverter : IValueConverter
 {

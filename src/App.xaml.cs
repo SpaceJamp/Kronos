@@ -9,11 +9,11 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.WinUI;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 /// <summary>
 /// Provides application-specific behavior to supplement the default Application class.
@@ -195,7 +195,7 @@ public sealed partial class App : Application
                 if (File.Exists(manifestPath))
                 {
                     var fileInfo = new FileInfo(manifestPath);
-                    using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("DLSS_Swapper.Assets.static_manifest.json"))
+                    using (var staticManifestStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Chronos.Assets.static_manifest.json"))
                     {
                         if (staticManifestStream is not null)
                         {
@@ -256,11 +256,11 @@ public sealed partial class App : Application
         try
         {
             long installSize = 0;
-            installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DLSS Swapper"));
+            installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Chronos"));
 
-            using (var dlssSwapperRegistryKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\DLSS Swapper", true))
+            using (var chronosRegistryKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Chronos", true))
             {
-                var installLocation = dlssSwapperRegistryKey?.GetValue("InstallLocation") as string;
+                var installLocation = chronosRegistryKey?.GetValue("InstallLocation") as string;
                 if (string.IsNullOrEmpty(installLocation) == false && Directory.Exists(installLocation) == true)
                 {
                     installSize += CalculateDirectorySize(installLocation);
@@ -269,7 +269,7 @@ public sealed partial class App : Application
                 if (installSize > 0)
                 {
                     var installSizeKB = (int)(installSize / 1000);
-                    dlssSwapperRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
+                    chronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
                 }
             }
         }

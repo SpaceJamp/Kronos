@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.

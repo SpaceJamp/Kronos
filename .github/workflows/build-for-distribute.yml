@@ -1,4 +1,4 @@
-name: Build DLSS Swapper (fork, unsigned)
+name: Build Chronos (unsigned)
 
 on:
   push:
@@ -93,14 +93,14 @@ jobs:
     - name: Extract version from csproj
       shell: pwsh
       run: |
-        $ver = Select-String '<Version>(.+?)</Version>' "${{ github.workspace }}\src\Unofficial DLSS Swapper.csproj" | % { $_.Matches[0].Groups[1].Value }
+        $ver = Select-String '<Version>(.+?)</Version>' "${{ github.workspace }}\src\Chronos.csproj" | % { $_.Matches[0].Groups[1].Value }
         echo "VERSION=$ver" >> $env:GITHUB_ENV
           
-    - name: Build DLSS Swapper portable
+    - name: Build Chronos portable
       run: ${{ github.workspace }}\package\build_Portable.cmd
       working-directory: ${{ github.workspace }}\package\
 
-    - name: Build DLSS Swapper installer
+    - name: Build Chronos installer
       run: ${{ github.workspace }}\package\build_Installer.cmd
       working-directory: ${{ github.workspace }}\package\
     
@@ -115,25 +115,25 @@ jobs:
     # your own HSM/cloud signing service) and add a step here. Do not reuse the upstream SignPath
     # identifiers.
 
-    - name: Package DLSS Swapper portable
+    - name: Package Chronos portable
       run: ${{ github.workspace }}\package\package_Portable.cmd
       working-directory: ${{ github.workspace }}\package\
 
     - name: Upload portable build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Unofficial.DLSS.Swapper-${{ env.VERSION }}-portable
-        path: ${{ github.workspace }}\package\Output\Unofficial.DLSS.Swapper-${{ env.VERSION }}-portable.zip
+        name: Chronos-${{ env.VERSION }}-portable
+        path: ${{ github.workspace }}\package\Output\Chronos-${{ env.VERSION }}-portable.zip
         if-no-files-found: error
 
-    - name: Package DLSS Swapper installer
+    - name: Package Chronos installer
       run: ${{ github.workspace }}\package\package_Installer.cmd
       working-directory: ${{ github.workspace }}\package\
 
     - name: Upload installer build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Unofficial.DLSS.Swapper-${{ env.VERSION }}-installer
-        path: ${{ github.workspace }}\package\Output\Unofficial.DLSS.Swapper-${{ env.VERSION }}-installer.exe
+        name: Chronos-${{ env.VERSION }}-installer
+        path: ${{ github.workspace }}\package\Output\Chronos-${{ env.VERSION }}-installer.exe
         if-no-files-found: error
 

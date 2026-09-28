@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class GameFilterControlViewModel : ObservableObject
 {

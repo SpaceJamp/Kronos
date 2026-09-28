@@ -5,7 +5,7 @@ using Microsoft.UI.Text;
 using Windows.UI.Text;
 using HtmlAgilityPack;
 
-namespace DLSS_Swapper.Builders;
+namespace Chronos.Builders;
 
 class TextBlockBuilder
 {

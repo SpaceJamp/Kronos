@@ -1,6 +1,6 @@
 using System;
 
-namespace DLSS_Swapper.Data.NVIDIA;
+namespace Chronos.Data.NVIDIA;
 
 public class NGXModel
 {

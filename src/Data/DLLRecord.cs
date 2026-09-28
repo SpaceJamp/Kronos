@@ -7,11 +7,11 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using DLSS_Swapper.Extensions;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Helpers.FSR31;
+using Chronos.Extensions;
+using Chronos.Helpers;
+using Chronos.Helpers.FSR31;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
 {

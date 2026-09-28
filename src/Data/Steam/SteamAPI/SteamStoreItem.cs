@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace DLSS_Swapper.Data.Steam.SteamAPI;
+namespace Chronos.Data.Steam.SteamAPI;
 
 internal class SteamStoreItem
 {

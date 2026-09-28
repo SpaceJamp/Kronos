@@ -1,8 +1,8 @@
-using DLSS_Swapper.Pages;
+using Chronos.Pages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 class ListGridViewTemplateSelector : DataTemplateSelector
 {

@@ -1,14 +1,14 @@
 using System;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.UserControls;
+using Chronos.Data;
+using Chronos.Helpers;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 /// <summary>
 /// An empty page that can be used on its own or navigated to within a Frame.

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Data.NVIDIA;
+using Chronos.Data.NVIDIA;
 
-namespace DLSS_Swapper.UserControls;
+namespace Chronos.UserControls;
 
 public partial class NGXModelImporterModel : ObservableObject
 {

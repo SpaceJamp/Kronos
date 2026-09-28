@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-namespace DLSS_Swapper.Extensions;
+namespace Chronos.Extensions;
 
 internal static class FileVersionInfoExtensions
 {

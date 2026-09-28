@@ -1,9 +1,9 @@
 using System;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Helpers;
+using Chronos.Data;
+using Chronos.Helpers;
 using Microsoft.UI.Xaml.Data;
 
-namespace DLSS_Swapper.Converters;
+namespace Chronos.Converters;
 
 internal class GameHistoryEventTypeToLabelConverter : IValueConverter
 {

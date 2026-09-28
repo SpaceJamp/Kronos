@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Data.BattleNet;
-using DLSS_Swapper.Data.EAApp;
-using DLSS_Swapper.Data.EpicGamesStore;
-using DLSS_Swapper.Data.GOG;
-using DLSS_Swapper.Data.ManuallyAdded;
-using DLSS_Swapper.Data.Steam;
-using DLSS_Swapper.Data.UbisoftConnect;
-using DLSS_Swapper.Data.Xbox;
+using Chronos.Data;
+using Chronos.Data.BattleNet;
+using Chronos.Data.EAApp;
+using Chronos.Data.EpicGamesStore;
+using Chronos.Data.GOG;
+using Chronos.Data.ManuallyAdded;
+using Chronos.Data.Steam;
+using Chronos.Data.UbisoftConnect;
+using Chronos.Data.Xbox;
 using Nito.AsyncEx;
 using SQLite;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 #if DEBUG
 public class SQLiteTableInfo

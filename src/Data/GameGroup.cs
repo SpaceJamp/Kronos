@@ -1,7 +1,7 @@
 using CommunityToolkit.WinUI.Collections;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 internal class GameGroup
 {

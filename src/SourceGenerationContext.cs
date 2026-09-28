@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using DLSS_Swapper.Data.BattleNet;
-using DLSS_Swapper.Data.DLSS;
-using DLSS_Swapper.Data.EAApp;
-using DLSS_Swapper.Data.Steam.SteamAPI;
+using Chronos.Data.BattleNet;
+using Chronos.Data.DLSS;
+using Chronos.Data.EAApp;
+using Chronos.Data.Steam.SteamAPI;
 using Microsoft.UI.Windowing;
 
-namespace DLSS_Swapper;
+namespace Chronos;
 
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(Data.GitHub.GitHubRelease))]

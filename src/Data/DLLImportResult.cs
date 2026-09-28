@@ -1,4 +1,4 @@
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public record DLLImportResult
 {

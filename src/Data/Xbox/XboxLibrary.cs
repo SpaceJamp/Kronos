@@ -7,11 +7,11 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using Windows.Management.Deployment;
 
-namespace DLSS_Swapper.Data.Xbox;
+namespace Chronos.Data.Xbox;
 
 internal class XboxLibrary : IGameLibrary
 {

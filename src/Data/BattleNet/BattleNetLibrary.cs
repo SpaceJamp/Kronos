@@ -5,12 +5,12 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using DLSS_Swapper.Data.BattleNet.Proto;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data.BattleNet.Proto;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 using Microsoft.Win32;
 
-namespace DLSS_Swapper.Data.BattleNet;
+namespace Chronos.Data.BattleNet;
 
 internal partial class BattleNetLibrary : IGameLibrary
 {

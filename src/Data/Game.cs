@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using DLSS_Swapper.Extensions;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
-using DLSS_Swapper.UserControls;
+using Chronos.Extensions;
+using Chronos.Helpers;
+using Chronos.Interfaces;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml.Controls;
 using NvAPIWrapper.DRS;
 using SixLabors.ImageSharp;
@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 public abstract partial class Game : ObservableObject, IComparable<Game>, IEquatable<Game> //, INotifyPropertyChanged
 {
@@ -679,7 +679,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     Logger.Error(err);
                     if (App.CurrentApp.IsAdminUser() is false)
                     {
-                        return (false, "Unable to reset to default. Running DLSS Swapper as administrator may fix this.", true);
+                        return (false, "Unable to reset to default. Running Chronos as administrator may fix this.", true);
                     }
                     else
                     {
@@ -889,7 +889,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Logger.Error(err);
                 if (App.CurrentApp.IsAdminUser() is false)
                 {
-                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running DLSS Swapper as administrator may fix this.", true);
+                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Chronos as administrator may fix this.", true);
 
                 }
                 else
@@ -939,7 +939,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 Logger.Error(err);
                 if (App.CurrentApp.IsAdminUser() is false)
                 {
-                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running DLSS Swapper as administrator may fix this.", true);
+                    return (false, "Unable to swap dll as we are unable to write to the target directory. Running Chronos as administrator may fix this.", true);
                 }
                 else
                 {

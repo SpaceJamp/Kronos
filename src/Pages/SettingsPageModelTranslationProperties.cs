@@ -1,8 +1,8 @@
-using DLSS_Swapper.Attributes;
-using DLSS_Swapper.Helpers;
-using DLSS_Swapper.Interfaces;
+using Chronos.Attributes;
+using Chronos.Helpers;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 public class SettingsPageModelTranslationProperties : LocalizedViewModelBase
 {

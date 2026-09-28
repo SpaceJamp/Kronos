@@ -1,8 +1,8 @@
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Data.ManuallyAdded;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data;
+using Chronos.Data.ManuallyAdded;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Tests for the equality contract on Game, GameAsset and LocalRecord.

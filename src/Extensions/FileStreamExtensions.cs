@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace DLSS_Swapper.Extensions;
+namespace Chronos.Extensions;
 
 internal static class FileStreamExtensions
 {

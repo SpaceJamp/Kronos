@@ -1,6 +1,6 @@
 using System;
 
-namespace DLSS_Swapper.Attributes;
+namespace Chronos.Attributes;
 
 [AttributeUsage(AttributeTargets.Property)]
 class TranslationPropertyAttribute : Attribute { }

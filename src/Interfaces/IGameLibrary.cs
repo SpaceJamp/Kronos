@@ -1,17 +1,17 @@
-using DLSS_Swapper.Data;
-using DLSS_Swapper.Data.EpicGamesStore;
-using DLSS_Swapper.Data.GOG;
-using DLSS_Swapper.Data.Steam;
-using DLSS_Swapper.Data.UbisoftConnect;
-using DLSS_Swapper.Data.Xbox;
-using DLSS_Swapper.Data.ManuallyAdded;
-using DLSS_Swapper.Data.BattleNet;
+using Chronos.Data;
+using Chronos.Data.EpicGamesStore;
+using Chronos.Data.GOG;
+using Chronos.Data.Steam;
+using Chronos.Data.UbisoftConnect;
+using Chronos.Data.Xbox;
+using Chronos.Data.ManuallyAdded;
+using Chronos.Data.BattleNet;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DLSS_Swapper.Data.EAApp;
+using Chronos.Data.EAApp;
 
-namespace DLSS_Swapper.Interfaces;
+namespace Chronos.Interfaces;
 
 [Flags]
 public enum GameLibrary : uint

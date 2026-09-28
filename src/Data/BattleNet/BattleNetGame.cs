@@ -1,8 +1,8 @@
 using SQLite;
 using System.Threading.Tasks;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 
-namespace DLSS_Swapper.Data.BattleNet;
+namespace Chronos.Data.BattleNet;
 
 [Table("battlenet_game")]
 internal class BattleNetGame : Game

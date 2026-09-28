@@ -1,5 +1,5 @@
-using DLSS_Swapper.Data;
-using DLSS_Swapper.UserControls;
+using Chronos.Data;
+using Chronos.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -9,12 +9,12 @@ using Windows.System;
 using AsyncAwaitBestPractices;
 using CommunityToolkit.WinUI;
 using System.Threading;
-using DLSS_Swapper.Helpers;
+using Chronos.Helpers;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace DLSS_Swapper.Pages;
+namespace Chronos.Pages;
 
 
 /// <summary>

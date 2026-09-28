@@ -2,7 +2,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 
-namespace DLSS_Swapper.Converters;
+namespace Chronos.Converters;
 
 internal class NullableBoolToObjectConverter : DependencyObject, IValueConverter
 {

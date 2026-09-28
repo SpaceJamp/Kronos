@@ -1,6 +1,6 @@
-using DLSS_Swapper.Data;
+using Chronos.Data;
 
-namespace DLSS_Swapper.Tests.Data;
+namespace Chronos.Tests.Data;
 
 /// <summary>
 /// Guards the "is this zip a DLL we already know about?" lookup used when importing. This used to

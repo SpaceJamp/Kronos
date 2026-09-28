@@ -2,11 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using DLSS_Swapper.Extensions;
-using DLSS_Swapper.Helpers.FSR31;
+using Chronos.Extensions;
+using Chronos.Helpers.FSR31;
 using SQLite;
 
-namespace DLSS_Swapper.Data;
+namespace Chronos.Data;
 
 [Table("game_asset")]
 public class GameAsset : IEquatable<GameAsset>

@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 using SQLite;
 
-namespace DLSS_Swapper.Data.EpicGamesStore;
+namespace Chronos.Data.EpicGamesStore;
 
 [Table("epic_games_store_game")]
 internal class EpicGamesStoreGame : Game

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Xml;
-using DLSS_Swapper.Interfaces;
+using Chronos.Interfaces;
 using SQLite;
 
-namespace DLSS_Swapper.Data.Xbox;
+namespace Chronos.Data.Xbox;
 
 [Table("xbox_game")]
 public class XboxGame : Game

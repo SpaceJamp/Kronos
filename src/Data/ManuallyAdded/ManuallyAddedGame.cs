@@ -2,11 +2,11 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using DLSS_Swapper.Data.Steam;
-using DLSS_Swapper.Interfaces;
+using Chronos.Data.Steam;
+using Chronos.Interfaces;
 using SQLite;
 
-namespace DLSS_Swapper.Data.ManuallyAdded;
+namespace Chronos.Data.ManuallyAdded;
 
 [Table("manually_added_game")]
 public class ManuallyAddedGame : Game
