@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kronos.Data;
+using Kronos.Data.ManuallyAdded;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using System.Diagnostics;
@@ -363,6 +364,109 @@ public partial class GameControlModel : ObservableObject
         }
 
         Game.PromptToBrowseCustomCover();
+    }
+
+    /// <summary>
+    /// Links a manually added game to a store appid so it gets a cover, and unlinks it when the
+    /// box is cleared.
+    /// </summary>
+    /// <remarks>
+    /// The add-game dialog can set an appid, but only for games being added at that moment. Without
+    /// this, a repack that was added before the appid field existed could never be given artwork,
+    /// because there was nowhere to type one. The fetch itself is silent, so the result is reported
+    /// here rather than left to the log.
+    /// </remarks>
+    [RelayCommand]
+    async Task LinkStoreGameAsync()
+    {
+        if (Game is not ManuallyAddedGame manuallyAddedGame)
+        {
+            return;
+        }
+
+        if (gameControlWeakReference.TryGetTarget(out GameControl? gameControl) == false)
+        {
+            return;
+        }
+
+        var appIdBox = new TextBox
+        {
+            Text = manuallyAddedGame.LinkedAppId,
+            PlaceholderText = "e.g. 3669870",
+        };
+
+        var dialog = new EasyContentDialog(gameControl.XamlRoot)
+        {
+            Title = "Link to store game",
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Paste the Steam app id of the game this is a copy of to use its cover art. Leave it empty to remove the link.",
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    appIdBox,
+                },
+            },
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var entered = appIdBox.Text?.Trim() ?? string.Empty;
+
+        // An empty box is a legitimate unlink, so it is only rejected when it is neither empty nor
+        // a usable appid.
+        if (entered.Length > 0 && manuallyAddedGame.GetLinkedAppId() is null)
+        {
+            var invalidDialog = new EasyContentDialog(gameControl.XamlRoot)
+            {
+                Title = "That is not a Steam app id",
+                CloseButtonText = ResourceHelper.GetString("General_Close"),
+                DefaultButton = ContentDialogButton.Close,
+                Content = $"'{entered}' is not a valid Steam app id. They are whole numbers, for example 3669870.",
+            };
+            await invalidDialog.ShowAsync();
+            return;
+        }
+
+        manuallyAddedGame.SetLinkedAppId(entered);
+        await Game.SaveToDatabaseAsync();
+
+        if (manuallyAddedGame.HasCachedStoreCover)
+        {
+            // Already had a cover and we are not changing anything meaningful.
+            return;
+        }
+
+        if (entered.Length == 0)
+        {
+            return;
+        }
+
+        // Force a reprocess so the cover is fetched now rather than whenever the 7 day cache
+        // refresh happens to come around.
+        await ReloadGameCommand.ExecuteAsync(null);
+
+        if (manuallyAddedGame.HasCachedStoreCover == false)
+        {
+            var noCoverDialog = new EasyContentDialog(gameControl.XamlRoot)
+            {
+                Title = "No cover found",
+                CloseButtonText = ResourceHelper.GetString("General_Close"),
+                DefaultButton = ContentDialogButton.Close,
+                Content = $"Steam did not return a cover for app id {entered}. Double check the id, and note that a store page has to exist for it.",
+            };
+            await noCoverDialog.ShowAsync();
+        }
     }
 
     [RelayCommand]

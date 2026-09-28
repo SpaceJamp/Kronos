@@ -136,6 +136,16 @@
                     <Button HorizontalAlignment="Stretch" Background="Transparent" VerticalAlignment="Stretch" Command="{x:Bind ViewModel.AddCoverImageCommand}" AllowDrop="True" DragEnter="CoverButton_DragEnter" DragOver="CoverButton_DragOver" Drop="CoverButton_Drop" />
                 </Grid>
                 <Button Content="{x:Bind ViewModel.TranslationProperties.AddCustomCoverText, Mode=OneWay}" HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AddCoverImageCommand}" />
+                <!--
+                    A manually added game has no store page to fetch artwork from, so a repack gets a
+                    blank tile until it is linked to the appid of the game it copies. Only meaningful
+                    for manually added games, so it is hidden for everything else.
+                -->
+                <Button x:Name="LinkStoreGameButton"
+                        Content="Link to store game"
+                        HorizontalAlignment="Stretch"
+                        Visibility="{x:Bind ViewModel.IsManuallyAdded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Command="{x:Bind ViewModel.LinkStoreGameCommand}" />
             </StackPanel>
 
             <Grid Grid.Column="1" >
