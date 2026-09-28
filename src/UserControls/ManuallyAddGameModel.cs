@@ -56,7 +56,13 @@ internal partial class ManuallyAddGameModel : ObservableObject
     {
         try
         {
-            var match = await SteamAppIdLookup.FindBestMatchAsync(_game.Title).ConfigureAwait(false);
+            // NOTE: deliberately no ConfigureAwait(false) on either await. This starts on the UI
+            // thread from the add game dialog, and the continuations below raise PropertyChanged
+            // for the appid box and the cover preview. Letting them resume on the thread pool means
+            // the bindings are updated off the UI thread, which WinUI does not support, and the
+            // preview silently never appears. The lookups themselves still do their own internal
+            // ConfigureAwait(false), so nothing is blocked waiting on the UI thread.
+            var match = await SteamAppIdLookup.FindBestMatchAsync(_game.Title);
             if (match is null)
             {
                 return;
@@ -76,7 +82,7 @@ internal partial class ManuallyAddGameModel : ObservableObject
 
             // Pull the artwork now so the dialog can preview it. The user can see a wrong match and
             // correct the id before committing, which is the whole safety net for auto-detection.
-            await _game.ImportStoreCoverAsync().ConfigureAwait(false);
+            await _game.ImportStoreCoverAsync();
             OnPropertyChanged(nameof(Game));
             OnPropertyChanged(nameof(HasCoverImage));
         }
