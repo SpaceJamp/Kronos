@@ -113,15 +113,25 @@ Function .onVerifyInstDir
   ; deliberately chooses some other folder has chosen it, so it is used exactly as given. The only
   ; job left is to fail early and clearly if it cannot be written to, instead of extracting 600+
   ; files and dying on the first one.
+  ;
+  ; Create the folder before testing it. FileOpen on a path whose directory does not exist fails
+  ; with "path not found" rather than "access denied", and NSIS surfaces both through the same
+  ; error flag, so probing a folder that has not been created yet reported "Kronos cannot write to
+  ; this folder" for a location that is perfectly writable. On a first install that is every install,
+  ; because %LOCALAPPDATA%\Programs\Kronos does not exist beforehand.
+  ClearErrors
+  CreateDirectory "$INSTDIR"
+  IfErrors folder_unusable
+
   ClearErrors
   FileOpen $1 "$INSTDIR\.__kronos_write_test" w
-  IfErrors path_not_writable
+  IfErrors folder_unusable
   FileClose $1
   Delete "$INSTDIR\.__kronos_write_test"
   Goto path_ok
 
-  path_not_writable:
-  MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos cannot write to this folder:$\r$\n$INSTDIR$\r$\n$\r$\nPick a different folder, for example your Downloads folder, or one under your user profile. Program Files needs administrator rights, and if the installer was not run as administrator it will not be able to write there.$\r$\n$\r$\nNothing has been installed."
+  folder_unusable:
+  MessageBox MB_OK|MB_ICONEXCLAMATION "Kronos cannot use this folder:$\r$\n$INSTDIR$\r$\n$\r$\nIt could not be created, or is not writable. Pick a different folder, for example one under your user profile.$\r$\n$\r$\nIf you chose Program Files, it needs administrator rights, and this installer no longer requests them.$\r$\n$\r$\nNothing has been installed."
   Abort
 
   path_ok:
