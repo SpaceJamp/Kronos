@@ -8,7 +8,7 @@
 > **Chronos is based on [DLSS Swapper](https://github.com/beeradmoore/dlss-swapper) by
 > [beeradmoore](https://github.com/beeradmoore), which is licensed under the
 > [GNU GPL v3.0](LICENSE).** Chronos is a private, personal modification of that project. It is not
-> affiliated with, endorsed by, or associated with the original DLSS Swapper maintainer or with NVIDIA.
+> affiliated with, endorsed by, or associated with the original DLSS Swapper maintainer.
 >
 > All original copyright notices are preserved, and the original author is credited in
 > [LICENSE](LICENSE), in the installer's file properties, and in the Credits section below. The
