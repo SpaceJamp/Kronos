@@ -4,6 +4,7 @@ using System.Linq;
 using Kronos.Data;
 using Kronos.Extensions;
 using Kronos.Helpers;
+using Kronos.UserControls;
 
 namespace Kronos.Tests;
 
@@ -305,6 +306,131 @@ public class SwapVersionAdvisorTests
         // Only DLSS, not DLSS_G, deduplicated, and sorted. The blank version is dropped because it
         // carries no information and would render as an empty entry in the warning.
         Assert.Equal(new[] { "3.0.0.0", "3.1.0.0" }, versions);
+    }
+
+    // ---- Combining warnings into one message ----
+    //
+    // The repack warning and the downgrade warning used to be separate ContentDialogs. The DLL picker
+    // is itself a ContentDialog, so showing a second one threw 0x80000019 "Only a single
+    // ContentDialog can be open at any time" and killed the app. That is fixed by using the picker's
+    // own InfoBar; these tests cover the text composition that replaced the two dialogs.
+
+    [Fact]
+    public void ARepackOnItsOwnStillWarns()
+    {
+        var text = SwapVersionAdvisor.ComposeWarning(isRepack: true, downgradeWarning: null);
+
+        Assert.NotNull(text);
+        Assert.Contains("repack", text!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ADowngradeOnItsOwnStillWarns()
+    {
+        var downgrade = SwapVersionAdvisor.BuildWarning(
+            SwapVersionAdvisor.Advice.Downgrade, new[] { "3.0.0.0" }, "2.5.0.0");
+
+        var text = SwapVersionAdvisor.ComposeWarning(isRepack: false, downgradeWarning: downgrade);
+
+        Assert.NotNull(text);
+        Assert.Contains("2.5", text!);
+    }
+
+    [Fact]
+    public void ARepackAndADowngradeProduceOneMessageCarryingBoth()
+    {
+        // This is the combination that produced two dialogs, and so the crash.
+        var downgrade = SwapVersionAdvisor.BuildWarning(
+            SwapVersionAdvisor.Advice.Downgrade, new[] { "3.0.0.0" }, "2.5.0.0");
+
+        var text = SwapVersionAdvisor.ComposeWarning(isRepack: true, downgradeWarning: downgrade);
+
+        Assert.NotNull(text);
+        Assert.Contains("repack", text!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("2.5", text);
+    }
+
+    [Fact]
+    public void TheCombinedMessageAsksOnlyOnce()
+    {
+        // Two "Continue anyway?" questions in one dialog would be nonsense.
+        var downgrade = SwapVersionAdvisor.BuildWarning(
+            SwapVersionAdvisor.Advice.Downgrade, new[] { "3.0.0.0" }, "2.5.0.0");
+
+        var text = SwapVersionAdvisor.ComposeWarning(isRepack: true, downgradeWarning: downgrade);
+
+        Assert.NotNull(text);
+        var occurrences = text!.Split("Continue anyway?").Length - 1;
+        Assert.Equal(1, occurrences);
+    }
+
+    [Fact]
+    public void NothingToWarnAboutMeansNoMessageAtAll()
+    {
+        Assert.Null(SwapVersionAdvisor.ComposeWarning(isRepack: false, downgradeWarning: null));
+    }
+
+    [Fact]
+    public void TheDowngradeExplanationComesAfterTheRepackOne()
+    {
+        // The version specific detail is the part that actually tells the user what will break, so it
+        // is read last.
+        var downgrade = SwapVersionAdvisor.BuildWarning(
+            SwapVersionAdvisor.Advice.Downgrade, new[] { "3.0.0.0" }, "2.5.0.0");
+
+        var text = SwapVersionAdvisor.ComposeWarning(isRepack: true, downgradeWarning: downgrade)!;
+
+        Assert.True(
+            text.IndexOf("repack", StringComparison.OrdinalIgnoreCase) < text.IndexOf("Frame Generation", StringComparison.OrdinalIgnoreCase),
+            "The repack warning should come first and the downgrade explanation after it.");
+    }
+
+    // ---- Warning then proceed on the second press ----
+
+    [Fact]
+    public void AWarningStopsTheFirstAttempt()
+    {
+        var accepted = false;
+
+        Assert.True(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+    }
+
+    [Fact]
+    public void TheSecondAttemptProceedsWithoutWarningAgain()
+    {
+        var accepted = false;
+
+        Assert.True(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+        Assert.False(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+    }
+
+    [Fact]
+    public void AcceptingOneWarningDoesNotCarryOverToTheNext()
+    {
+        // Otherwise a later swap of something the user was never shown would proceed silently.
+        var accepted = false;
+
+        Assert.True(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+        Assert.False(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+        Assert.True(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
+    }
+
+    [Fact]
+    public void ASwapWithNothingToWarnAboutProceedsImmediately()
+    {
+        var accepted = false;
+
+        Assert.False(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: false, ref accepted));
+    }
+
+    [Fact]
+    public void AnUnwarnedSwapClearsAnyLeftoverAcceptance()
+    {
+        // A warning that is no longer applicable must not leave the next one pre-approved.
+        var accepted = true;
+
+        Assert.False(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: false, ref accepted));
+        Assert.True(DLLPickerControlModel.ShouldShowWarningAndStop(hasWarning: true, ref accepted));
     }
 
     [Fact]

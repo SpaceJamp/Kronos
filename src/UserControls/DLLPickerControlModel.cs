@@ -22,6 +22,21 @@ public partial class DLLPickerControlModel : ObservableObject
 {
     WeakReference<GameControl> _gameControlWeakReference;
     WeakReference<EasyContentDialog> _parentDialogWeakReference;
+
+    /// <summary>
+    /// Set once a warning has been shown for the current selection, cleared once the swap proceeds.
+    /// </summary>
+    /// <remarks>
+    /// The warning is delivered through the picker's own InfoBar rather than a second
+    /// <see cref="ContentDialog"/>, because the picker is itself a ContentDialog and WinUI allows only
+    /// one at a time. Showing another from in here throws 0x80000019 and kills the process. An InfoBar
+    /// needs no second dialog.
+    ///
+    /// That leaves the warning needing a second press of Swap to act on, which this flag tracks. It is
+    /// cleared on the way through so a later, different selection warns again rather than inheriting
+    /// consent for something the user was never shown.
+    /// </remarks>
+    bool _pendingWarningAccepted;
     WeakReference<DLLPickerControl> _dllPickerControlWeakReference;
 
     public Game Game { get; private set; }
@@ -225,52 +240,36 @@ public partial class DLLPickerControlModel : ObservableObject
             return;
         }
 
-        if (Game.IsRepack)
-        {
-            // A repack bundles its own runtime and often its own launcher, so a swapped dll can be
-            // ignored or make the launcher misbehave. Say so before doing it, but do not block:
-            // plenty of people swap repacks deliberately.
-            var warning = new EasyContentDialog(App.CurrentApp.MainWindow.Content.XamlRoot)
-            {
-                Title = ResourceHelper.GetString("General_Warning"),
-                Content = "This game is flagged as a repack. Repacks often ship their own runtime or launcher, so a swapped DLL may be ignored, or may stop the repack's launcher from working. Swapping may also invalidate the repack's integrity check.\n\nContinue anyway?",
-                PrimaryButtonText = ResourceHelper.GetString("General_Import"),
-                CloseButtonText = ResourceHelper.GetString("General_Cancel"),
-                DefaultButton = ContentDialogButton.Close,
-            };
-
-            if (await warning.ShowAsync() != ContentDialogResult.Primary)
-            {
-                return;
-            }
-        }
-
-        // Warn, but do not block, when the chosen runtime is older than what the game already has.
-        // This was completely silent before: the swap validated that the file existed, that its hash
-        // matched the record and that it was signed, but never compared versions, so picking an old
-        // entry from a long list silently disabled DLSS Frame Generation with nothing to explain it.
+        // Warnings are shown in the picker's own InfoBar, never in a second ContentDialog.
         //
-        // The baseline is the game's own backup record, which holds the version that was on disk
-        // before the first swap and so is the version the game shipped with. It is compared against
-        // the dll actually in the game now, because after a swap that is the swapped one, and telling
-        // someone they are downgrading from a version they themselves installed an hour ago would be
-        // noise.
-        var downgradeWarning = BuildDowngradeWarning(SelectedDLLRecord);
-        if (downgradeWarning is not null)
-        {
-            var versionWarning = new EasyContentDialog(App.CurrentApp.MainWindow.Content.XamlRoot)
-            {
-                Title = ResourceHelper.GetString("General_Warning"),
-                Content = downgradeWarning,
-                PrimaryButtonText = ResourceHelper.GetString("General_Import"),
-                CloseButtonText = ResourceHelper.GetString("General_Cancel"),
-                DefaultButton = ContentDialogButton.Close,
-            };
+        // This crashed the app with COMException 0x80000019, "Only a single ContentDialog can be open
+        // at any time", from inside this method. The DLL picker *is* a ContentDialog: GameControlModel
+        // builds one, hands it to DLLPickerControl, and awaits its ShowAsync, so SwapDllAsync runs
+        // while that dialog is still open. WinUI permits exactly one, so any ShowAsync from in here
+        // throws and, being unhandled, takes the process down.
+        //
+        // The pre-existing repack warning had the same latent bug and would have crashed the same way
+        // on a repack swap. It simply was not hit, because repack swaps are rare. The downgrade warning
+        // added for 1.46 hit it on the first use, because swapping an older Call of Duty runtime is
+        // exactly the case that triggers a downgrade.
+        //
+        // The InfoBar is part of the picker's own content, so showing a message in it needs no second
+        // dialog and cannot collide with anything.
+        var warningText = SwapVersionAdvisor.ComposeWarning(
+            Game.IsRepack,
+            BuildDowngradeWarning(SelectedDLLRecord));
 
-            if (await versionWarning.ShowAsync() != ContentDialogResult.Primary)
-            {
-                return;
-            }
+        if (ShouldShowWarningAndStop(warningText is not null, ref _pendingWarningAccepted))
+        {
+            // Show it and stop. The second press of Swap proceeds, so the warning cannot be missed and
+            // cannot be dismissed by accident.
+            ShowTempInfoBar(
+                ResourceHelper.GetString("General_Warning"),
+                warningText!,
+                duration: 30.0,
+                severity: InfoBarSeverity.Warning);
+
+            return;
         }
 
         var didUpdate = await Game.UpdateDllAsync(SelectedDLLRecord);
@@ -345,12 +344,50 @@ public partial class DLLPickerControlModel : ObservableObject
     }
 
     /// <summary>
+    /// Whether a warning is waiting for a second press of Swap to be accepted.
+    /// </summary>
+    /// <remarks>
+    /// Exposed so the "warn, then proceed on the second press" rule can be tested without a UI, which
+    /// is the part that actually matters: the crash came from this path, and the sequencing is easy to
+    /// get subtly wrong.
+    /// </remarks>
+    internal bool IsWaitingForWarningAcceptance => _pendingWarningAccepted;
+
+    /// <summary>
+    /// Decides whether a swap should stop and show a warning, given the current state.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="hasWarning"/> is false when there is nothing to warn about, in which case the
+    /// swap proceeds and the pending state is cleared so it cannot leak into a later swap.
+    /// </remarks>
+    internal static bool ShouldShowWarningAndStop(bool hasWarning, ref bool warningAccepted)
+    {
+        if (hasWarning == false)
+        {
+            warningAccepted = false;
+
+            return false;
+        }
+
+        if (warningAccepted)
+        {
+            warningAccepted = false;
+
+            return false;
+        }
+
+        warningAccepted = true;
+
+        return true;
+    }
+
+    /// <summary>
     /// Builds the "this is an older runtime" warning for a candidate dll, or null when there is
     /// nothing to say.
     /// </summary>
     /// <remarks>
     /// Split out of <see cref="SwapDllAsync"/> so the logic is one call away from a test. It needs no
-    /// UI, so it can be exercised directly; the dialog that presents the result cannot.
+    /// UI, so it can be exercised directly; presenting the result cannot be.
     /// </remarks>
     internal string? BuildDowngradeWarning(DLLRecord dllRecord)
     {
