@@ -118,6 +118,41 @@ public class InstallRegistryScopeTests
     }
 
     [Fact]
+    public void TheInstallSizeThreadIsABackgroundThread()
+    {
+        // THE REGRESSION. Thread.IsBackground defaults to false, and the work is a full walk of the
+        // install directory, 642 files and roughly 300 MB on a real install. As a foreground thread it
+        // kept the process alive, so closing Kronos waited for the walk to finish and appeared to
+        // hang. Nothing else in the codebase catches this, which is why the thread is built by a
+        // method that can be reached from a test.
+        var thread = App.CreateInstallSizeThread(() => { });
+
+        Assert.True(thread.IsBackground,
+            "The install size thread must be a background thread, or it holds the process open at shutdown.");
+    }
+
+    [Fact]
+    public void TheInstallSizeThreadIsNamedForDiagnostics()
+    {
+        // Cosmetic, but a thread with no name shows up as an unnamed entry in a debugger, which makes
+        // it hard to tell what is holding the process open.
+        Assert.False(string.IsNullOrWhiteSpace(App.CreateInstallSizeThread(() => { }).Name));
+    }
+
+    [Fact]
+    public void TheInstallSizeThreadRunsTheWorkItWasGiven()
+    {
+        // Confirms the ThreadStart is wired through rather than dropped, which a test that only
+        // checked IsBackground would not catch.
+        using var started = new ManualResetEventSlim(false);
+        var thread = App.CreateInstallSizeThread(() => started.Set());
+
+        thread.Start();
+
+        Assert.True(started.Wait(TimeSpan.FromSeconds(10)), "The install size thread did not run its work.");
+    }
+
+    [Fact]
     public void TheUninstallRootIsTheOneAppsAndFeaturesReads()
     {
         Assert.Equal(@"Software\Microsoft\Windows\CurrentVersion\Uninstall", App.UninstallKeyRoot);
