@@ -1,7 +1,22 @@
-title: DLSS Swapper
-repository: beeradmoore/dlss-swapper
-remote_theme: pages-themes/slate@v0.2.0
-plugins:
-- jekyll-remote-theme
-- jekyll-default-layout
-- jekyll-optional-front-matter
+# Kronos's manifest site. These are static files served as-is.
+#
+# The manifest itself is a copy of src/Assets/static_manifest.json, written by
+# package/update_manifest.cmd and committed. Nothing generates it at build time,
+# and CI neither builds nor deploys this folder.
+title: Kronos
+description: DLL manifest and download links for Kronos.
+repository: SpaceJamp/kronos-dlss-swapper
+
+# No theme and no plugins.
+#
+# remote_theme: pages-themes/slate@v0.2.0 used to be configured here, along with
+# jekyll-remote-theme, jekyll-default-layout and jekyll-optional-front-matter.
+# None of them did anything: index.html carries no front matter, so no layout was
+# ever applied, and _includes/head-custom.html is only reachable from a layout.
+#
+# They were still being installed, and jekyll-remote-theme's rubyzip < 3.0 pin is
+# what held the dependency tree below a security fix. See docs/Gemfile.
+#
+# _includes/head-custom.html is left in place even though it is now unreachable,
+# since removing it serves no purpose beyond tidying and would lose the favicon
+# and manifest snippet it holds should a layout ever be introduced.
