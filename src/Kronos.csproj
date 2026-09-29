@@ -43,6 +43,51 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!--
+  Build metadata, injected at compile time and read back by src\BuildInfo.cs.
+
+  BuildInfo.GitBranch, GitCommit, GitTag and BuildTimestamp were auto properties that nothing ever
+  assigned, so the Settings page showed a build date of 1 January 1970, because the timestamp was 0
+  and FromUnixTimeSeconds(0) is the epoch. The commit was blank for the same reason.
+
+  Written into the assembly as attributes rather than as a generated source file, so there is no
+  generated file to be stale, out of date with the build, or committed by accident.
+
+  This has to be a TARGET, not a bare ItemGroup. A bare ItemGroup is evaluated when the project is
+  loaded, which is before the SDK has run InitializeSourceControlInformation and assigned
+  SourceRevisionId, so $(SourceRevisionId) expanded to nothing and KronosGitCommit was written as an
+  empty string. The informational version still showed the commit, because that is assembled during
+  GenerateAssemblyInfo, long after evaluation. Injecting at BeforeTargets="GetAssemblyAttributes" is
+  therefore both necessary and sufficient.
+
+  SourceRevisionId comes from the git checkout, so the commit is populated even for a build made
+  straight from an IDE. The branch and tag are passed in by the build scripts with -p:, because MSBuild
+  cannot run git while evaluating properties, and both are optional: a build from an archive with no
+  git available leaves them empty, which is why BuildInfo treats an empty tag as "not a release build"
+  rather than as an error.
+  -->
+  <Target Name="AddKronosBuildMetadata" BeforeTargets="GetAssemblyAttributes">
+    <ItemGroup>
+      <AssemblyMetadata Include="KronosGitBranch" Value="$(KronosGitBranch)" />
+      <AssemblyMetadata Include="KronosGitCommit" Value="$(SourceRevisionId)" />
+      <AssemblyMetadata Include="KronosGitTag" Value="$(KronosGitTag)" />
+      <AssemblyMetadata Include="KronosBuildTimestamp" Value="$([System.DateTime]::UtcNow.ToString(&quot;o&quot;))" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <!--
+    So the tests can reach internal types such as BuildInfo without those becoming part of the app's
+    public surface. Helpers that predate this were simply made public instead, which is why DllBackupStack
+    and MassUpgradePlanner are public while BuildInfo is not.
+
+    BuildInfo needs it for ParseTimestamp, which is the part with real logic in it. The four properties
+    cannot be usefully asserted on from a test anyway, because they are read once from this assembly's
+    own attributes, so a test would only ever be reading the values of the build it is running in.
+    -->
+    <InternalsVisibleTo Include="Kronos.Tests" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Release' OR '$(Configuration)'=='Release_Portable'">
     <Optimize>True</Optimize>
   </PropertyGroup>
