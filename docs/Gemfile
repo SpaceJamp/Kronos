@@ -1,3 +1,23 @@
 source 'https://rubygems.org'
-gem 'github-pages', group: :jekyll_plugins
+
+# This site is index.html (a redirect), manifest.json, site.webmanifest and a few
+# images. Jekyll's only job is to copy them into _site: no page has front matter,
+# so no layout is ever applied and nothing renders. Everything here is what that
+# copy needs and no more.
+gem 'jekyll', '~> 4.4'
 gem 'webrick', '~> 1.8'
+
+# github-pages used to be the only gem here, and it is why the dependency tree was
+# stuck. It pins jekyll-remote-theme to 0.4.3, which requires rubyzip < 3.0, while
+# rubyzip's path traversal advisory (GHSA-47m2-wp7j-p9vc) is fixed in 3.4.0. No
+# amount of re-resolving could get past that, and github-pages has not had a
+# release since August 2024, so the pin was never going to move.
+#
+# The pin was also doing nothing. remote_theme pointed at pages-themes/slate, but
+# with no page carrying front matter there was no layout to apply and nothing ever
+# used it. Dropping the meta-gem drops jekyll-remote-theme, and with it rubyzip, so
+# the advisory goes away rather than being worked around.
+#
+# The cost is that jekyll moves from the 3.10.0 github-pages pinned to 4.4. That
+# was unavoidable: 3.10 was only ever reachable through the meta-gem, and it was
+# also what held activesupport and nokogiri below their security fixes.
