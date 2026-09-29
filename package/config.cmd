@@ -10,7 +10,7 @@ REM
 REM 1.47 adds a mass update for the games library, tick games and preview what would change before
 REM anything is written, and fixes a startup crash from updating a bound property off the UI thread.
 REM Still deliberately higher than upstream DLSS Swapper 1.2.6.1 so the update check stays quiet.
-set app_version=1.48
+set app_version=1.49
 set initial_directory=%cd%
 
 set csproj_file=..\src\Kronos.csproj
