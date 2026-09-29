@@ -118,6 +118,33 @@ unchanged; the same `dotnet publish` output is installed.
   install is registered under `HKLM`, and the old HKCU-only lookup found nothing, so the "Estimated
   size" shown in Apps & features silently stopped updating for anyone who installed for all users.
 
+**Swapping down is now warned about**
+
+- Kronos now says something before swapping in an **older DLSS runtime than the game is already
+  using**. Frame Generation and some other DLSS dependent features can stop working when the runtime
+  is older than the version the game shipped with, usually showing up as stutter or no frame
+  generation at all. Previously the swap was completely silent: `UpdateDllAsync` checked that the
+  file existed, that its hash matched and that it was signed, but never compared versions, so
+  choosing an old entry from a long list broke the game with nothing on screen to explain it. The
+  warning asks rather than blocks, because downgrading deliberately is a valid reason to be in that
+  dialog, and the same dialog already warns about repacks. A version that cannot be read produces no
+  warning rather than a guess.
+- No database change was needed for this. The baseline is the game's own backup record, which already
+  stored the version on disk before the first overwrite, so it is the runtime the game shipped with.
+
+**Swaps can be undone more than once**
+
+- DLL backups are now a numbered chain, `nvngx_dlss.dll.kronosbak1`, `.kronosbak2` and so on, rather
+  than a single `.dlsss`. The single backup was **moved** back over the file when you reset, which
+  consumed it, and that had two consequences: a second reset had nothing to restore, and the next
+  swap after a reset saved the swapped file as the new "original", so the runtime the game shipped
+  with was gone for good. Backups are now copied rather than moved and the chain is kept intact, so
+  you can step back through as many swaps as you made.
+- A legacy `.dlsss` from an earlier version is adopted as the bottom of the chain rather than
+  discarded, so an existing install is not backed up a second time. Games whose DLL changed
+  externally, for example by a game update, have the whole chain cleared, since every entry then
+  describes a state the game can no longer run in.
+
 **Correctness fixes**
 
 - Game DLL records are no longer deleted from the database *before* the install folder is scanned.

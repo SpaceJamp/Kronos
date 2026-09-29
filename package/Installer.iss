@@ -29,7 +29,7 @@
 ; package_Installer.cmd as /DAppVersion, so there is one place to change rather than three that
 ; have to agree. The literal below is only a fallback for running ISCC by hand.
 #ifndef AppVersion
-  #define AppVersion 1.45
+  #define AppVersion 1.46
 #endif
 
 [Setup]
