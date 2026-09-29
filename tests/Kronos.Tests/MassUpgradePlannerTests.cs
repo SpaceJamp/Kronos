@@ -411,6 +411,84 @@ public class MassUpgradePlannerTests
         Assert.Single(plan.Items, x => x.NeedsConfirmation);
     }
 
+    // ---- The executor's thread safety ----
+    //
+    // This is what actually broke the first run. The executor looked games up itself, via
+    // GameManager.GetGameCollection, which returns a WinRT ICollectionView. It runs after a
+    // ConfigureAwait(false), so it is on a thread pool thread, and touching the collection view there
+    // throws COMException 0x8001010E. The failure was immediate and total: the first item, every time,
+    // before any file was written.
+
+    [Fact]
+    public void TheExecutorIsGivenTheGamesRatherThanLookingThemUp()
+    {
+        // A compile time property of the signature. If someone reintroduces a GameManager lookup inside
+        // the executor this will not catch it, but the summary below and the threading note on the
+        // method are there for whoever does.
+        var method = typeof(MassUpgradeExecutor).GetMethod(nameof(MassUpgradeExecutor.ExecuteAsync))!;
+        var parameters = method.GetParameters().Select(x => x.ParameterType).ToList();
+
+        Assert.Contains(typeof(IReadOnlyList<Game>), parameters);
+    }
+
+    [Fact]
+    public void TheExecutorDoesNotCallTheCollectionViewItself()
+    {
+        // The actual invariant. GameManager.GetGameCollection is the only route to the WinRT collection
+        // view, and calling it from the executor is what caused the crash, so its absence is worth
+        // pinning.
+        //
+        // Comments are stripped first because the file deliberately explains the mistake in prose, and
+        // naming the method in a comment is the whole point of those notes. Only executable code counts.
+        var code = StripComments(ReadSourceFile(nameof(MassUpgradeExecutor)));
+
+        Assert.DoesNotContain("GetGameCollection", code, StringComparison.Ordinal);
+        Assert.Contains("TouchesWinRt", ReadSourceFile(nameof(MassUpgradeExecutor)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheExecutorDeclaresThatItTouchesNoWinRt()
+    {
+        // Documented as a property so a future change adding a WinRT call has something to update, and
+        // so a reader can see the rule without reading the whole implementation.
+        Assert.False(MassUpgradeExecutor.TouchesWinRt);
+    }
+
+    /// <summary>
+    /// Removes line and block comments so an assertion about code does not trip over prose explaining
+    /// why that code must not come back.
+    /// </summary>
+    internal static string StripComments(string source)
+    {
+        var withoutBlockComments = System.Text.RegularExpressions.Regex.Replace(source, @"/\*.*?\*/", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        return string.Join("\n", withoutBlockComments
+            .Split('\n')
+            .Select(line =>
+            {
+                var index = line.IndexOf("//", StringComparison.Ordinal);
+
+                return index < 0 ? line : line[..index];
+            }));
+    }
+
+    static string ReadSourceFile(string typeName)
+    {
+        // The test runs from the test output directory, so walk up to the repository and read the file.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && Directory.Exists(Path.Combine(dir.FullName, "src")) == false)
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+
+        var path = Path.Combine(dir!.FullName, "src", "Helpers", typeName + ".cs");
+        Assert.True(File.Exists(path), $"Could not find {path}");
+
+        return File.ReadAllText(path);
+    }
+
     // ---- The summary the user reads before approving ----
 
     [Fact]

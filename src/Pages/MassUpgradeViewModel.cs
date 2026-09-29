@@ -190,8 +190,16 @@ public partial class MassUpgradeViewModel : ObservableObject
 
         try
         {
+            // The games are collected here, on the UI thread, and passed in. The executor cannot look
+            // them up itself: GameManager.GetGameCollection returns a WinRT ICollectionView, and
+            // calling it from the executor's continuation, which runs on a thread pool thread after
+            // ConfigureAwait(false), throws COMException 0x8001010E. That is what stopped the very
+            // first mass update on its first item.
+            var selectedGames = GetSelectedGames();
+
             var results = await MassUpgradeExecutor.ExecuteAsync(
                 plan,
+                selectedGames,
                 ResolveTarget,
                 OnProgress).ConfigureAwait(true);
 

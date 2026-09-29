@@ -43,10 +43,18 @@ public static class MassUpgradeExecutor
     /// Looks up the release to write for a plan item. Injected so the executor can be tested without
     /// a real library, and so the plan's record choice cannot drift from the one actually written.
     /// </param>
+    /// <param name="games">
+    /// The games the plan was built from, looked up on the calling thread. Required rather than
+    /// resolved from here, because <see cref="GameManager.GetGameCollection"/> returns a WinRT
+    /// <c>ICollectionView</c> and calling it off the UI thread throws 0x8001010E. An earlier version
+    /// looked games up from inside this class, which runs after a ConfigureAwait(false) and so is on a
+    /// thread pool thread, and it failed on the very first item every time.
+    /// </param>
     /// <param name="report">Called after each item, for progress.</param>
     /// <param name="cancellation">Stops between items. Never interrupts a file write midway.</param>
     public static async Task<IReadOnlyList<Result>> ExecuteAsync(
         MassUpgradePlanner.Plan plan,
+        IReadOnlyList<Game> games,
         Func<MassUpgradePlanner.PlanItem, DLLRecord?> resolveTarget,
         Action<Result>? report = null,
         CancellationToken cancellationToken = default)
@@ -57,6 +65,13 @@ public static class MassUpgradeExecutor
         {
             return results;
         }
+
+        // Indexed once, on the calling thread, so the per item lookup is a plain dictionary hit and no
+        // WinRT call happens on the background thread at all.
+        var gamesById = (games ?? Array.Empty<Game>())
+            .Where(x => string.IsNullOrWhiteSpace(x.ID) == false)
+            .GroupBy(x => x.ID, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
         var changes = plan.Items
             .Where(x => x.Kind == MassUpgradePlanner.ActionKind.Upgrade)
@@ -74,7 +89,7 @@ public static class MassUpgradeExecutor
                 continue;
             }
 
-            var result = await ApplyOneAsync(item, resolveTarget).ConfigureAwait(false);
+            var result = await ApplyOneAsync(item, gamesById, resolveTarget).ConfigureAwait(false);
             results.Add(result);
             report?.Invoke(result);
         }
@@ -84,15 +99,28 @@ public static class MassUpgradeExecutor
 
     static async Task<Result> ApplyOneAsync(
         MassUpgradePlanner.PlanItem item,
+        IReadOnlyDictionary<string, Game> gamesById,
         Func<MassUpgradePlanner.PlanItem, DLLRecord?> resolveTarget)
     {
-        var game = FindGame(item.GameId);
-        if (game is null)
+        if (gamesById.TryGetValue(item.GameId, out var game) == false)
         {
             return new Result(item, false, "The game is no longer in the library.", false);
         }
 
-        var record = resolveTarget(item);
+        DLLRecord? record;
+        try
+        {
+            record = resolveTarget(item);
+        }
+        catch (Exception err)
+        {
+            // The resolver reads DLLManager's collections, which are bound to the UI thread. If it ever
+            // throws, that is one item failing rather than the whole run ending.
+            Logger.Error(err);
+
+            return new Result(item, false, err.Message, false);
+        }
+
         if (record?.LocalRecord is null)
         {
             return new Result(item, false, "The selected file is not available locally.", false);
@@ -117,23 +145,21 @@ public static class MassUpgradeExecutor
         }
     }
 
-    static Game? FindGame(string gameId)
-    {
-        if (string.IsNullOrWhiteSpace(gameId))
-        {
-            return null;
-        }
-
-        var collection = GameManager.Instance.GetGameCollection();
-
-        if (collection is null)
-        {
-            return null;
-        }
-
-        return collection.Cast<Game>()
-            .FirstOrDefault(x => string.Equals(x.ID, gameId, StringComparison.OrdinalIgnoreCase));
-    }
+    /// <summary>
+    /// The executor makes no WinRT calls at all.
+    /// </summary>
+    /// <remarks>
+    /// Worth stating because getting this wrong is invisible until it runs. An earlier version called
+    /// <see cref="GameManager.GetGameCollection"/> from <c>ApplyOneAsync</c>, which runs after a
+    /// <c>ConfigureAwait(false)</c> and so is on a thread pool thread. That returns a WinRT
+    /// <c>ICollectionView</c>, which requires the UI thread, and it failed on the first item of every
+    /// run with COMException 0x8001010E. The games are now passed in by the caller, which looks them up
+    /// before the executor starts.
+    ///
+    /// If a WinRT call is ever added here, it must be resolved on the caller's thread and passed in the
+    /// same way.
+    /// </remarks>
+    internal static bool TouchesWinRt => false;
 
     /// <summary>
     /// Builds the end of run report, naming the failures and why the rest succeeded.
