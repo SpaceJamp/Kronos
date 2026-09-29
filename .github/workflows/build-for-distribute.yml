@@ -77,6 +77,54 @@ jobs:
     - name: Display .NET Info
       run: dotnet --info
 
+    # Restore in locked mode before anything is built.
+    #
+    # The lock files are committed, and a plain restore would quietly update them instead of
+    # failing, so without this the locks would drift on whoever's machine last built it and a broken
+    # PackageReference pairing would only surface as an unrelated build error much later. --locked-mode
+    # fails immediately and says what is wrong.
+    #
+    # The restore also runs the NuGet audit configured in the csproj, with mode "all" so transitive
+    # packages are covered. Advisories come back as warnings rather than errors on purpose: a
+    # transitive one inside a package we cannot update should not be able to block every build, which
+    # is how a guard gets disabled. They are worth reading in this log.
+    - name: Restore with the committed dependency lock
+      run: dotnet restore src/Kronos.csproj --locked-mode
+      working-directory: ${{ github.workspace }}
+
+    # The test suite existed and was maintained, but nothing ran it. Everything above this point
+    # could pass with a change that broke the app's own logic.
+    #
+    # Release rather than Debug, so this is testing what actually ships. The test project has no
+    # UseWinUI, so it does not need the Windows App SDK runtime the app itself does.
+    - name: Run tests
+      run: dotnet test tests/Kronos.Tests/Kronos.Tests.csproj --configuration Release --nologo
+      working-directory: ${{ github.workspace }}
+
+    # docs/manifest.json is a committed copy of src/Assets/static_manifest.json, written by
+    # package/update_manifest.cmd. Nothing checked that the copy was current, so the manifest the
+    # site serves and the manifest embedded in the app could drift apart with no signal at all.
+    #
+    # The upstream check above only compares src/Assets against upstream, and is informational, so it
+    # would not have caught this either.
+    - name: Check docs manifest matches the bundled manifest
+      shell: pwsh
+      working-directory: ${{ github.workspace }}
+      run: |
+        $bundled = (Get-FileHash "src\Assets\static_manifest.json" -Algorithm SHA256).Hash
+        $published = (Get-FileHash "docs\manifest.json" -Algorithm SHA256).Hash
+
+        if ($bundled -ne $published)
+        {
+            Write-Host "docs/manifest.json does not match src/Assets/static_manifest.json"
+            Write-Host "  bundled : $bundled"
+            Write-Host "  published: $published"
+            Write-Host "Run package\update_manifest.cmd and commit the result."
+            exit 1
+        }
+
+        Write-Host "docs/manifest.json matches the bundled manifest."
+
     # Inno Setup replaced NSIS for the installer. ISCC.exe is installed per-user by winget, so the
     # per-user path is the one that exists on a GitHub runner. package_Installer.cmd checks the
     # machine-wide locations as well and does not need anything on PATH.
