@@ -428,17 +428,32 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                                 AssetVersion = gameAsset.DisplayName,
                             });
 
-                            // If the DLL was changed externally (eg. game update) we delete the backup.
-                            // This fixes the issue where looking at your game it may appear to be downgraded but
-                            // in reality it is because the game updated to a newer version than you had swapped to.
-                            var expectedBackupPath = $"{gameAsset.Path}.dlsss";
-                            if (File.Exists(expectedBackupPath))
+                            // If the DLL was changed externally (eg. a game update) the backup is stale,
+                            // because it no longer describes the file the game shipped with. Keeping it
+                            // would mean "reset" restored a runtime from before the update, which is
+                            // worse than having no reset at all.
+                            //
+                            // The whole chain goes, not just the newest entry. Once the game's own file
+                            // has changed underneath us, every entry describes a state that no longer
+                            // exists, so leaving older ones behind would let a user step back several
+                            // versions into a state the game cannot run in.
+                            //
+                            // The legacy .dlsss is included because an install carried over from a
+                            // previous version still has one, and it is just as stale.
+                            var staleBackupPaths = DllBackupStack.GetStackedBackupPaths(gameAsset.Path).ToList();
+                            var legacyBackupPath = $"{gameAsset.Path}{DllBackupStack.LegacyBackupSuffix}";
+                            if (File.Exists(legacyBackupPath))
+                            {
+                                staleBackupPaths.Add(legacyBackupPath);
+                            }
+
+                            foreach (var staleBackupPath in staleBackupPaths)
                             {
                                 var tempBackupGameAsset = new GameAsset()
                                 {
                                     Id = ID,
                                     AssetType = DLLManager.Instance.GetAssetBackupType(gameAsset.AssetType),
-                                    Path = expectedBackupPath,
+                                    Path = staleBackupPath,
                                 };
                                 tempBackupGameAsset.LoadVersionAndHash();
 
@@ -452,7 +467,16 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                                     AssetVersion = tempBackupGameAsset.DisplayName,
                                 });
 
-                                File.Delete(expectedBackupPath);
+                                try
+                                {
+                                    File.Delete(staleBackupPath);
+                                }
+                                catch (Exception deleteErr)
+                                {
+                                    // A backup that cannot be deleted is a stale file on disk, not a
+                                    // reason to abandon the rest of the scan.
+                                    Logger.Error(deleteErr);
+                                }
                             }
                         }
                     }
@@ -672,7 +696,12 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                 try
                 {
-                    File.Move(existingBackupRecord.Path, existingRecord.Path, true);
+                    // Copy rather than move, and preserve the backup. The old code moved the backup
+                    // over the dll, which consumed it: a second reset had nothing left to restore, and
+                    // the next swap then captured the swapped file as the new "original", so the
+                    // runtime the game shipped with was gone for good. Copying leaves the chain
+                    // intact, which is what makes repeated undo possible.
+                    File.Copy(existingBackupRecord.Path, existingRecord.Path, true);
                 }
                 catch (UnauthorizedAccessException err)
                 {
@@ -715,8 +744,16 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 UpdateCurrentAsset(newGameAsset, gameAssetType);
 
                 GameAssets.Remove(existingRecord);
-                GameAssets.Remove(existingBackupRecord);
                 GameAssets.Add(newGameAsset);
+
+                // The backup record is deliberately kept. The file behind it is still on disk and now
+                // holds exactly what was just restored, because the restore copied rather than moved.
+                // Removing only the record would leave the chain files untracked, and the next
+                // database rewrite would orphan them, so a second reset would find nothing to do.
+                //
+                // Its Version and Hash need no update for the same reason: the backup's contents and
+                // the dll's contents are now identical, so the values already recorded for the backup
+                // are the correct ones for both.
             }
 
             using (await Database.Instance.Mutex.LockAsync())
@@ -768,13 +805,16 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 continue;
             }
 
-            // Backup records store the ".dlsss" path, not the dll path, so compare against that.
-            var backupPath = record.Path + ".dlsss";
+            // Backup records store the backup path, not the dll path, so compare against both the
+            // numbered chain and the legacy ".dlsss" an install from a previous version may have.
+            var legacyBackupPath = record.Path + DllBackupStack.LegacyBackupSuffix;
+            var chainPaths = DllBackupStack.GetStackedBackupPaths(record.Path);
 
-            // Only skip when the original is both stored on disk *and* recorded. Either one on its
-            // own is not enough: a file with no record gets orphaned by the database rewrite, and a
-            // record with no file cannot be used to reset.
-            if (trackedBackupPaths.Contains(backupPath) && File.Exists(backupPath))
+            var isTrackedAndOnDisk = chainPaths.Any(path =>
+                trackedBackupPaths.Contains(path) && File.Exists(path))
+                || (trackedBackupPaths.Contains(legacyBackupPath) && File.Exists(legacyBackupPath));
+
+            if (isTrackedAndOnDisk)
             {
                 continue;
             }
@@ -783,6 +823,31 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
         return needsBackup;
+    }
+
+    /// <summary>
+    /// Moves a legacy backup into the versioned chain, tolerating failure.
+    /// </summary>
+    /// <remarks>
+    /// Best effort on purpose. If the move fails, the next line copies the current file into the chain
+    /// instead, so the game still gets a valid baseline. The only cost of a failed move is that the
+    /// stale .dlsss is left behind, which the external-change scan in ProcessGame cleans up.
+    /// </remarks>
+    internal static void TryMoveBackup(string fromPath, string toPath)
+    {
+        try
+        {
+            if (File.Exists(fromPath) == false || File.Exists(toPath))
+            {
+                return;
+            }
+
+            File.Move(fromPath, toPath);
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err);
+        }
     }
 
     /// <summary>
@@ -843,6 +908,21 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         foreach (var existingRecord in existingRecords)
         {
+            // Write into the versioned chain rather than overwriting a single .dlsss. The old scheme
+            // had one backup per dll which the first reset consumed, so a second reset had nothing to
+            // restore and a second swap then captured the swapped file as the new "original",
+            // permanently losing the runtime the game shipped with. Chaining keeps the baseline
+            // intact and makes repeated undo possible.
+            var legacyBackupPath = $"{existingRecord.Path}{DllBackupStack.LegacyBackupSuffix}";
+            var chainIndex = DllBackupStack.GetNextBackupIndex(existingRecord.Path);
+            var chainedBackupPath = DllBackupStack.GetStackedBackupPath(existingRecord.Path, chainIndex);
+
+            // Adopt a legacy .dlsss as the bottom of the chain rather than starting again, so an
+            // install carried over from a previous version keeps its existing baseline.
+            if (chainIndex == 1 && File.Exists(legacyBackupPath) && File.Exists(chainedBackupPath) == false)
+            {
+                TryMoveBackup(legacyBackupPath, chainedBackupPath);
+            }
             var dllPath = Path.GetDirectoryName(existingRecord.Path);
             if (string.IsNullOrEmpty(dllPath))
             {
@@ -850,27 +930,27 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 return (false, "Unable to swap dll. Please check your error log for more information.", false);
             }
 
-            var backupDllPath = $"{existingRecord.Path}.dlsss";
-
             if (pathsNeedingBackup.Contains(existingRecord.Path) == false)
             {
-                // The original for this dll is already stored and recorded, leave it alone.
+                // The current content of this dll is already in the chain, leave it alone. Backing it
+                // up again would push the game's shipped runtime further down the chain and make undo
+                // need more steps to reach it.
                 continue;
             }
 
             try
             {
-                if (File.Exists(backupDllPath) == false)
+                if (File.Exists(chainedBackupPath) == false)
                 {
-                    // Never clobber an existing backup, it holds the game's original dll.
-                    File.Copy(existingRecord.Path, backupDllPath);
+                    // Never clobber an existing entry, the chain holds every previous state.
+                    File.Copy(existingRecord.Path, chainedBackupPath);
                 }
 
                 // The file may already have been on disk with no record pointing at it, which used to
                 // orphan it during the database rewrite below. Record it either way.
                 var isAlreadyTracked = GameAssets.Any(x =>
                     x.AssetType == backupRecordType &&
-                    string.Equals(x.Path, backupDllPath, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(x.Path, chainedBackupPath, StringComparison.OrdinalIgnoreCase));
 
                 if (isAlreadyTracked == false)
                 {
@@ -878,7 +958,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     {
                         Id = ID,
                         AssetType = backupRecordType,
-                        Path = backupDllPath,
+                        Path = chainedBackupPath,
                         Version = existingRecord.Version,
                         Hash = existingRecord.Hash,
                     });
