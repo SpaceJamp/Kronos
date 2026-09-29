@@ -221,6 +221,29 @@ public class BuildInfoAndUpdateTests
         Assert.Contains("DefaultRepository", source);
     }
 
+    [Fact]
+    public void TheReleaseNotesLinkUsesThisAppsOwnRepositoryNotUpstreams()
+    {
+        // BuildInfo.GitTag is this app's tag, such as v1.48. It was being interpolated into
+        // beeradmoore/dlss-swapper's release URL, which is upstream, and upstream has no v1.48, so the
+        // link could only ever reach a 404.
+        var source = ReadRepoFile("src", "Pages", "SettingsPageModel.cs");
+
+        Assert.DoesNotContain("beeradmoore/dlss-swapper/releases", source);
+        Assert.Contains("https://github.com/{repository}/releases", source);
+    }
+
+    [Fact]
+    public void TheRepositoryIsNotTheOldForkPath()
+    {
+        // GitHub redirects the old path for git, so a stale name here is invisible until something
+        // reads it without credentials. That is precisely what the update check does.
+        var source = ReadRepoFile("src", "Data", "GitHub", "GitHubUpdater.cs");
+
+        Assert.DoesNotContain("unofficial-dlss-swapper\"", source);
+        Assert.Contains("kronos-dlss-swapper", source);
+    }
+
     // ---------------------------------------------------------------- repack tag layout
 
     [Fact]
