@@ -19,15 +19,80 @@ using Windows.System;
 namespace Kronos.Data.GitHub;
 
 /// <summary>
+/// The outcome of an update check.
+/// </summary>
+/// <remarks>
+/// Added because "no update" and "the check failed" both used to come back as a null
+/// <c>GitHubRelease</c>, and the settings page turned both into "No new updates available". A dead
+/// endpoint therefore looked exactly like being up to date, which is why a check pointing at a
+/// repository that no longer exists was reported as working and doing nothing.
+/// </remarks>
+internal enum UpdateCheckResult
+{
+    /// <summary>No newer version than the running one.</summary>
+    UpToDate,
+
+    /// <summary>A newer version exists.</summary>
+    UpdateAvailable,
+
+    /// <summary>The check could not be completed, so nothing is known either way.</summary>
+    Failed,
+}
+
+/// <summary>
 /// Helper class to be notified of updates of the app (which is Debug and Release builds)
 /// </summary>
 internal class GitHubUpdater
 {
     /// <summary>
+    /// The repository releases are read from.
+    /// </summary>
+    /// <remarks>
+    /// In one place, because it was previously repeated in two string literals and a private or
+    /// renamed repository 404s without saying so anywhere the user could see.
+    ///
+    /// Note that GitHub answers 404, not 403, for a repository that exists but is private and the
+    /// request is unauthenticated. A private repository cannot be read by this code at all, because
+    /// there is no token and adding one would mean shipping a credential to every install. Update
+    /// checking only works against a public repository or a custom feed URL.
+    /// </remarks>
+    internal const string DefaultRepository = "SpaceJamp/unofficial-dlss-swapper";
+
+    /// <summary>
+    /// The API root for a repository's releases.
+    /// </summary>
+    internal static string GetLatestReleaseApiUrl(string? repository = null)
+    {
+        return $"https://api.github.com/repos/{NormaliseRepository(repository)}/releases/latest";
+    }
+
+    /// <summary>
+    /// The API root for one tag of a repository.
+    /// </summary>
+    internal static string GetReleaseByTagApiUrl(string tag, string? repository = null)
+    {
+        return $"https://api.github.com/repos/{NormaliseRepository(repository)}/releases/tags/{tag}";
+    }
+
+    /// <summary>
+    /// Falls back to <see cref="DefaultRepository"/> for an empty or whitespace value.
+    /// </summary>
+    /// <remarks>
+    /// An empty repository string would otherwise produce a URL like "repos//releases/latest", which
+    /// fails in a way that looks like a network problem rather than a misconfiguration.
+    /// </remarks>
+    internal static string NormaliseRepository(string? repository)
+    {
+        return string.IsNullOrWhiteSpace(repository)
+            ? DefaultRepository
+            : repository.Trim().Trim('/');
+    }
+
+    /// <summary>
     /// Queries GitHub and returns the latest GitHubRelease object, or null if the request failed.
     /// </summary>
     /// <returns>Latest GitHubRelease object, or null if the request failed</returns>
-    internal async Task<GitHubRelease?> FetchLatestRelease(bool forceCheck)
+    internal async Task<GitHubRelease?> FetchLatestRelease(bool forceCheck, string? repository = null)
     {
         var shouldDownload = true;
         var releasesFile = Storage.GetReleasesPath();
@@ -60,7 +125,7 @@ internal class GitHubUpdater
             {
                 using (var memoryStream = new MemoryStream())
                 {
-                    var fileDownloader = new FileDownloader("https://api.github.com/repos/SpaceJamp/unofficial-dlss-swapper/releases/latest", 0);
+                    var fileDownloader = new FileDownloader(GetLatestReleaseApiUrl(repository), 0);
                     await fileDownloader.DownloadFileToStreamAsync(memoryStream).ConfigureAwait(false);
 
                     memoryStream.Position = 0;
@@ -99,7 +164,7 @@ internal class GitHubUpdater
         {
             using (var memoryStream = new MemoryStream())
             {
-                var fileDownloader = new FileDownloader($"https://api.github.com/repos/SpaceJamp/unofficial-dlss-swapper/releases/tags/{tag}", 0);
+                var fileDownloader = new FileDownloader(GetReleaseByTagApiUrl(tag), 0);
                 await fileDownloader.DownloadFileToStreamAsync(memoryStream).ConfigureAwait(false);
                 memoryStream.Position = 0;
                 var githubRelease = JsonSerializer.Deserialize(memoryStream, SourceGenerationContext.Default.GitHubRelease);
@@ -146,6 +211,82 @@ internal class GitHubUpdater
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Checks for an update and says which of the three things happened.
+    /// </summary>
+    /// <remarks>
+    /// This is the method the UI should call. <see cref="CheckForNewGitHubRelease"/> cannot express
+    /// the difference between "you are up to date" and "the check did not complete", because both are
+    /// a null release, and the settings page reported that null as "No new updates available".
+    ///
+    /// A private repository, a renamed repository, a rate limited request and a genuine outage all land
+    /// in <see cref="UpdateCheckResult.Failed"/>, and all of them previously looked like success.
+    /// </remarks>
+    internal async Task<(UpdateCheckResult Result, GitHubRelease? Release)> CheckForUpdateAsync(
+        bool forceCheck,
+        string? repository = null)
+    {
+        try
+        {
+            var release = await FetchLatestRelease(forceCheck, repository).ConfigureAwait(false);
+
+            if (release is null)
+            {
+                return (UpdateCheckResult.Failed, null);
+            }
+
+            var isNewer = release.GetVersionNumber() > GetCurrentVersionNumber();
+
+            return isNewer
+                ? (UpdateCheckResult.UpdateAvailable, release)
+                : (UpdateCheckResult.UpToDate, release);
+        }
+        catch (Exception err)
+        {
+            // FetchLatestRelease already swallows its own failures and returns null, so this only sees
+            // something unexpected. Logged rather than shown, because the caller reports it.
+            Logger.Error(err);
+
+            return (UpdateCheckResult.Failed, null);
+        }
+    }
+
+    /// <summary>
+    /// The running version, packed for comparison against a release.
+    /// </summary>
+    /// <remarks>
+    /// Extracted from CheckForNewGitHubRelease, which computed it inline. It also needed reading from
+    /// a test, where App.CurrentApp is null because there is no Application, so it takes the version as
+    /// a parameter rather than fetching it.
+    /// </remarks>
+    internal static ulong GetCurrentVersionNumber(System.Version? version = null)
+    {
+        version ??= App.CurrentApp.GetVersion();
+
+        return ((ulong)version.Major << 48) +
+               ((ulong)version.Minor << 32) +
+               ((ulong)version.Build << 16) +
+               ((ulong)version.Revision);
+    }
+
+    /// <summary>
+    /// Whether a release is newer than a given version.
+    /// </summary>
+    /// <remarks>
+    /// The comparison the update check rests on, separated so it can be tested directly. It is strictly
+    /// greater than, so a release of the same version does not prompt, and it compares packed numbers
+    /// so 1.10.0.0 correctly sorts above 1.9.0.0, which a string comparison would not.
+    /// </remarks>
+    internal static bool IsNewerThan(GitHubRelease release, System.Version currentVersion)
+    {
+        if (release is null)
+        {
+            return false;
+        }
+
+        return release.GetVersionNumber() > GetCurrentVersionNumber(currentVersion);
     }
 
 
