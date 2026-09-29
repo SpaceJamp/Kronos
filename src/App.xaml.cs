@@ -281,34 +281,30 @@ public sealed partial class App : Application
             long installSize = 0;
             installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kronos"));
 
-            // The uninstall entry lives in the hive the installer ran as. A per user install is
-            // registered under HKCU, a machine wide one under HKLM, so this used to find nothing at
-            // all for an all users install and quietly stop tracking the size.
-            var perUserKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(UninstallKeyPath, false);
-            var allUsersKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(UninstallKeyPath, false);
-
-            Microsoft.Win32.RegistryKey? readKey = null;
-            Microsoft.Win32.RegistryKey hive;
-            switch (SelectInstallRegistryHive(perUserKey is not null, allUsersKey is not null))
+            // Find this install's own uninstall entry by looking for it, rather than assuming a name
+            // and a hive. All three of the obvious assumptions were wrong:
+            //
+            //  * The subkey name is the installer's choice, not ours. The NSIS installer wrote
+            //    ...\Uninstall\Kronos. Inno Setup writes ...\Uninstall\{AppId}_is1, confirmed against
+            //    a real install, where it came out as {64E9E8E5-...}_is1. A hard coded name silently
+            //    stops matching the moment the installer changes.
+            //
+            //  * The hive depends on the scope the installer ran at: per user goes to HKCU, all
+            //    users to HKLM.
+            //
+            //  * A 32-bit installer writes to the WOW6432Node view. The previous NSIS script was a
+            //    32-bit program, so an install made by it can sit in the 32-bit view while this
+            //    64-bit app reads the 64-bit one. Both views are searched.
+            var entry = FindInstallUninstallEntry();
+            if (entry is null)
             {
-                case Microsoft.Win32.RegistryHive.CurrentUser:
-                    readKey = perUserKey;
-                    hive = Microsoft.Win32.Registry.CurrentUser;
-                    break;
-                case Microsoft.Win32.RegistryHive.LocalMachine:
-                    readKey = allUsersKey;
-                    hive = Microsoft.Win32.Registry.LocalMachine;
-                    break;
-                default:
-                    perUserKey?.Dispose();
-                    allUsersKey?.Dispose();
-                    return;
+                return;
             }
 
-            using (readKey)
-            using (allUsersKey)
+            using var key = OpenUninstallEntry(entry.Value, false);
+            if (key is not null)
             {
-                var installLocation = readKey?.GetValue("InstallLocation") as string;
+                var installLocation = key.GetValue("InstallLocation") as string;
                 if (string.IsNullOrEmpty(installLocation) == false && Directory.Exists(installLocation) == true)
                 {
                     installSize += CalculateDirectorySize(installLocation);
@@ -320,22 +316,20 @@ public sealed partial class App : Application
                 }
 
                 var installSizeKB = (int)(installSize / 1000);
-                var existingSize = readKey?.GetValue("EstimatedSize") as int?;
+                var existingSize = key.GetValue("EstimatedSize") as int?;
 
                 // HKLM is writable only by an elevated process, and this one deliberately runs
                 // unelevated (see the IsAdminUser check above). A machine wide install therefore
                 // keeps whatever the installer recorded, which is a close enough answer for a
                 // nicety, rather than throwing on every single launch.
-                var hiveIsWritable = hive == Microsoft.Win32.Registry.CurrentUser || IsAdminUser();
+                var hiveIsWritable = entry.Value.Hive == Microsoft.Win32.RegistryHive.CurrentUser || IsAdminUser();
                 if (ShouldWriteInstallSize(existingSize, installSizeKB, hiveIsWritable) == false)
                 {
                     return;
                 }
 
-                using (var writeKey = hive.OpenSubKey(UninstallKeyPath, true))
-                {
-                    writeKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
-                }
+                using var writeKey = OpenUninstallEntry(entry.Value, true);
+                writeKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
             }
         }
         catch (Exception err)
@@ -345,18 +339,122 @@ public sealed partial class App : Application
     }
 
     /// <summary>
-    /// Path of the uninstall entry, written by the installer and read back here for the install
-    /// location and the size shown in Apps &amp; features.
+    /// Root of the Windows uninstall entries, which is where Apps &amp; features reads from.
     /// </summary>
-    internal const string UninstallKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Kronos";
+    internal const string UninstallKeyRoot = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
+
+    /// <summary>
+    /// The DisplayName this product is registered under, matched by <see cref="IsThisProduct"/>.
+    /// </summary>
+    internal const string ProductDisplayName = "Kronos";
+
+    /// <summary>
+    /// Identifies one uninstall entry: the hive and registry view it lives in, plus its subkey.
+    /// </summary>
+    internal readonly record struct UninstallEntryRef(
+        Microsoft.Win32.RegistryHive Hive,
+        Microsoft.Win32.RegistryView View,
+        string SubKey);
+
+    /// <summary>
+    /// Hives and registry views searched for the uninstall entry, in the order they are tried.
+    /// </summary>
+    /// <remarks>
+    /// HKCU is searched first because that is where a per user install is registered, and it is the
+    /// only one of the four an unelevated process can write to. The 64-bit view of each is tried
+    /// before the 32-bit one for the same reason.
+    /// </remarks>
+    internal static readonly (Microsoft.Win32.RegistryHive Hive, Microsoft.Win32.RegistryView View)[] SearchedHives =
+    [
+        (Microsoft.Win32.RegistryHive.CurrentUser, Microsoft.Win32.RegistryView.Registry64),
+        (Microsoft.Win32.RegistryHive.CurrentUser, Microsoft.Win32.RegistryView.Registry32),
+        (Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64),
+        (Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry32),
+    ];
+
+    /// <summary>
+    /// Locates this install's own uninstall entry, or null when it is not registered anywhere.
+    /// </summary>
+    /// <remarks>
+    /// Identifies the entry by its DisplayName. See the remarks on <c>CalculateInstallSize</c> for
+    /// why neither the subkey name, the hive, nor the registry view can be assumed.
+    /// </remarks>
+    internal static UninstallEntryRef? FindInstallUninstallEntry()
+    {
+        foreach (var (hive, view) in SearchedHives)
+        {
+            try
+            {
+                using var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(hive, view);
+                using var root = baseKey.OpenSubKey(UninstallKeyRoot);
+                if (root is null)
+                {
+                    continue;
+                }
+
+                foreach (var subKey in root.GetSubKeyNames())
+                {
+                    using var candidate = root.OpenSubKey(subKey);
+                    if (IsThisProduct(candidate?.GetValue("DisplayName") as string))
+                    {
+                        return new UninstallEntryRef(hive, view, subKey);
+                    }
+                }
+            }
+            catch (Exception err)
+            {
+                // One unreadable hive or view must not stop the others being searched.
+                Logger.Error(err);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether an uninstall entry's DisplayName identifies this product.
+    /// </summary>
+    /// <remarks>
+    /// Inno Setup appends a version, and wrote "Kronos version 1.45" on a real install, while the
+    /// NSIS installer wrote a bare "Kronos". Only those two forms are accepted.
+    ///
+    /// This deliberately does not match on a plain prefix. A test in this project asserted that
+    /// "Kronos Manager" must not match, and it failed, because "Kronos " is a prefix of it. The
+    /// version allowance rests on how one installer happens to format its DisplayName, which is not
+    /// a contract, so a loose match would risk reading and rewriting a different product's uninstall
+    /// entry. Two words is narrow enough to be safe and wide enough to cover both installers.
+    /// </remarks>
+    internal static bool IsThisProduct(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return false;
+        }
+
+        var trimmed = displayName.Trim();
+        if (string.Equals(trimmed, ProductDisplayName, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return trimmed.StartsWith(ProductDisplayName + " version", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Opens a previously located uninstall entry for reading or writing.
+    /// </summary>
+    internal static Microsoft.Win32.RegistryKey? OpenUninstallEntry(UninstallEntryRef entry, bool writable)
+    {
+        var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(entry.Hive, entry.View);
+        return baseKey.OpenSubKey($@"{UninstallKeyRoot}\{entry.SubKey}", writable);
+    }
 
     /// <summary>
     /// Picks the hive that holds this install's uninstall entry, or null when there is none.
     /// </summary>
     /// <remarks>
-    /// Extracted from <see cref="CalculateInstallSize"/> so the choice can be tested. The decision
-    /// matters because the hive depends on the scope the installer ran at, and reading only HKCU
-    /// silently loses the install size for every machine wide install.
+    /// Kept alongside <see cref="FindInstallUninstallEntry"/> because the writability rule depends on
+    /// which hive was found, and pinning the preference is worth a test of its own.
     /// </remarks>
     internal static Microsoft.Win32.RegistryHive? SelectInstallRegistryHive(bool perUserExists, bool allUsersExists)
     {
@@ -373,9 +471,7 @@ public sealed partial class App : Application
         }
 
         return null;
-    }
-
-    /// <summary>
+    }    /// <summary>
     /// Whether the freshly measured size is worth writing back to the uninstall entry.
     /// </summary>
     /// <remarks>

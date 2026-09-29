@@ -71,6 +71,19 @@ UninstallDisplayName=Kronos
 UninstallDisplayIcon={app}\Kronos.exe
 DisableProgramGroupPage=yes
 
+; There is deliberately no attempt to control the uninstall registry key name here. Inno Setup has
+; no directive for it: UninstallKeyName, UninstallRegistryKey, AppUninstallKey, UninstallKey,
+; UninstallSubkey and AppUninstallKeyName were each compiled and all six were rejected with
+; "Unrecognized [Setup] section directive". The key name is always derived from AppId, which on a
+; real install produced ...\Uninstall\{64E9E8E5-6CA2-41AE-896C-BBE9F1271B88}_is1.
+;
+; That is why src\App.xaml.cs locates its own entry by DisplayName across every hive and registry
+; view instead of hard coding a path. Pinning the key name in the app, as the previous code did
+; with ...\Uninstall\Kronos, was only ever working because the NSIS installer happened to agree.
+;
+; AppId still does its real job, which is telling Inno that a previous version of this product is
+; already installed so an upgrade replaces it rather than sitting alongside it.
+
 ; Output is written to package\Output, where the build scripts expect it.
 OutputDir=Output
 OutputBaseFilename=Kronos-{#AppVersion}-installer
