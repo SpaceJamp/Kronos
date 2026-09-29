@@ -170,8 +170,106 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     public string ExpectedCustomCoverImage => Path.Combine(Storage.GetImageCachePath(), $"{ID}_custom_400_600.png");
     //public string ExpectedCustomCoverImage => Path.Combine(Storage.GetImageCachePath(), $"{ID}_custom_600_900.webp");
 
+    /// <summary>
+    /// The DLL files tracked for this game.
+    /// </summary>
+    /// <remarks>
+    /// Mutated from two different thread pool threads. Game.ProcessGame replaces the whole list at the
+    /// end of a scan, and Game.UpdateDllAsync and Game.ResetDllAsync edit it in place while a mass
+    /// update runs on a pool thread. Two threads doing that at once can corrupt the list's internal
+    /// array, losing rows or throwing.
+    ///
+    /// The field is private and every mutation goes through <see cref="ReplaceGameAssets"/>,
+    /// <see cref="RemoveGameAsset"/>, <see cref="AddGameAsset"/> or <see cref="AddGameAssets"/>, which
+    /// take <see cref="_gameAssetsLock"/>. Reads are not locked: the public property hands out the
+    /// list itself, which is what existing call sites expect, and locking a read that then leaks the
+    // reference would not be safe anyway. Callers that need a consistent view use
+    /// <see cref="GetGameAssetsSnapshot"/>, which copies under the lock.
+    /// </remarks>
+    readonly List<GameAsset> _gameAssets = new List<GameAsset>();
+
+    readonly object _gameAssetsLock = new();
+
+    /// <summary>
+    /// The tracked files. Read only, and not a safe thing to enumerate.
+    /// </summary>
+    /// <remarks>
+    /// Kept as a public property because many call sites want a count or a FirstOrDefault and locking
+    /// those would mean handing out a reference while still holding the lock, which protects nothing.
+    ///
+    /// Enumerating this while a mass update is running can throw, because a List enumerator
+    /// invalidates when the list changes under it. Anything that iterates, especially anything that
+    /// awaits in the middle, must use <see cref="GetGameAssetsSnapshot"/> instead. The rule is not
+    /// "only mutate under the lock", it is "only enumerate under the lock".
+    /// </remarks>
     [Ignore]
-    public List<GameAsset> GameAssets { get; } = new List<GameAsset>();
+    public List<GameAsset> GameAssets => _gameAssets;
+
+    /// <summary>
+    /// A point in time copy, safe to enumerate while a scan or a swap is writing.
+    /// </summary>
+    /// <remarks>
+    /// Enumerating <see cref="GameAssets"/> directly while another thread is mutating it is the actual
+    /// hazard, so anything that iterates for longer than a moment uses this instead.
+    /// </remarks>
+    internal List<GameAsset> GetGameAssetsSnapshot()
+    {
+        lock (_gameAssetsLock)
+        {
+            return new List<GameAsset>(_gameAssets);
+        }
+    }
+
+    /// <summary>Replaces the tracked files wholesale, as a completed scan does.</summary>
+    internal void ReplaceGameAssets(IEnumerable<GameAsset> assets)
+    {
+        var replacement = assets?.ToList() ?? new List<GameAsset>();
+
+        lock (_gameAssetsLock)
+        {
+            _gameAssets.Clear();
+            _gameAssets.AddRange(replacement);
+        }
+    }
+
+    /// <summary>Adds tracked files, as a swap does.</summary>
+    internal void AddGameAssets(IEnumerable<GameAsset> assets)
+    {
+        if (assets is null)
+        {
+            return;
+        }
+
+        var toAdd = assets.ToList();
+
+        lock (_gameAssetsLock)
+        {
+            _gameAssets.AddRange(toAdd);
+        }
+    }
+
+    /// <summary>Removes one tracked file.</summary>
+    internal void RemoveGameAsset(GameAsset asset)
+    {
+        if (asset is null)
+        {
+            return;
+        }
+
+        lock (_gameAssetsLock)
+        {
+            _gameAssets.Remove(asset);
+        }
+    }
+
+    /// <summary>Empties the tracked files, before they are repopulated from the database.</summary>
+    internal void ClearGameAssets()
+    {
+        lock (_gameAssetsLock)
+        {
+            _gameAssets.Clear();
+        }
+    }
 
     [Ignore]
     public bool NeedsProcessing { get; set; } = false;
@@ -552,8 +650,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 }
 
                 // The scan completed successfully, so it is now safe to replace the known records.
-                GameAssets.Clear();
-                GameAssets.AddRange(newGameAssets);
+                ReplaceGameAssets(newGameAssets);
 
                 App.CurrentApp.RunOnUIThread(() =>
                 {
@@ -566,7 +663,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
                 }
 
-                if (GameAssets.Any())
+                // A snapshot, read after the replace above, so it sees what was just written rather than
+                // racing a mass update that may be mutating the list on another thread.
+                if (GetGameAssetsSnapshot().Any())
                 {
                     newHasSwappableItems = true;
 
@@ -687,7 +786,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     internal async Task<(bool Success, string Message, bool PromptToRelaunchAsAdmin)> ResetDllAsync(GameAssetType gameAssetType)
     {
         var backupRecordType = DLLManager.Instance.GetAssetBackupType(gameAssetType);
-        var existingBackupRecords = this.GameAssets.Where(x => x.AssetType == backupRecordType).ToList();
+        // Snapshots, not the live list. A mass update runs this same method from a thread pool thread
+        // against the same game, so reading the live list here can walk a collection that is changing
+        // underneath it.
+        var existingBackupRecords = GetGameAssetsSnapshot().Where(x => x.AssetType == backupRecordType).ToList();
 
         if (existingBackupRecords.Count == 0)
         {
@@ -700,7 +802,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             foreach (var existingBackupRecord in existingBackupRecords)
             {
                 var primaryRecordName = existingBackupRecord.Path.Replace(".dlsss", string.Empty);
-                var existingRecords = this.GameAssets.Where(x => x.AssetType == gameAssetType && x.Path.Equals(primaryRecordName)).ToList();
+                var existingRecords = GetGameAssetsSnapshot().Where(x => x.AssetType == gameAssetType && x.Path.Equals(primaryRecordName)).ToList();
 
                 if (existingRecords.Count != 1)
                 {
@@ -759,8 +861,8 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                 UpdateCurrentAsset(newGameAsset, gameAssetType);
 
-                GameAssets.Remove(existingRecord);
-                GameAssets.Add(newGameAsset);
+                RemoveGameAsset(existingRecord);
+                AddGameAssets(new[] { newGameAsset });
 
                 // The backup record is deliberately kept. The file behind it is still on disk and now
                 // holds exactly what was just restored, because the restore copied rather than moved.
@@ -888,7 +990,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return (false, "Downloaded dll not found.", false);
         }
 
-        var existingRecords = this.GameAssets.Where(x => x.AssetType == dllRecord.AssetType).ToList();
+        var existingRecords = GetGameAssetsSnapshot().Where(x => x.AssetType == dllRecord.AssetType).ToList();
         if (existingRecords.Count == 0)
         {
             return (false, "Unable to swap dll as there were no dll records to update.", false);
@@ -964,7 +1066,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                 // The file may already have been on disk with no record pointing at it, which used to
                 // orphan it during the database rewrite below. Record it either way.
-                var isAlreadyTracked = GameAssets.Any(x =>
+                //
+                // Read from a snapshot, and note that it has to see entries added earlier in this same
+                // loop, so the snapshot is taken once per iteration rather than once per method.
+                var isAlreadyTracked = GetGameAssetsSnapshot().Any(x =>
                     x.AssetType == backupRecordType &&
                     string.Equals(x.Path, chainedBackupPath, StringComparison.OrdinalIgnoreCase));
 
@@ -1056,9 +1161,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         foreach (var existingRecrod in existingRecords)
         {
-            GameAssets.Remove(existingRecrod);
+            RemoveGameAsset(existingRecrod);
         }
-        GameAssets.AddRange(newGameAssets);
+        AddGameAssets(newGameAssets);
 
         // This should never be null.
         // Using FirstOrDefault as there may be multiple, but we only care about using the information of the first.
@@ -1618,6 +1723,12 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
     void UpdateCurrentDLLsFromGameAssets()
     {
+        // Snapshotted once and reused throughout, rather than reading the live list repeatedly. This
+        // runs on the UI thread but a mass update mutates the same list from a pool thread, and it
+        // iterates several times, so a live read here could both throw and produce an inconsistent set
+        // of Current* properties.
+        var gameAssets = GetGameAssetsSnapshot();
+
         CurrentDLSS = null;
         CurrentDLSS_G = null;
         CurrentDLSS_D = null;
@@ -1629,18 +1740,18 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         CurrentXeLL = null;
 
         // NOTE: DLL type
-        MultipleDLSSFound = GameAssets.Count(x => x.AssetType == GameAssetType.DLSS) > 1;
-        MultipleDLSSGFound = GameAssets.Count(x => x.AssetType == GameAssetType.DLSS_G) > 1;
-        MultipleDLSSDFound = GameAssets.Count(x => x.AssetType == GameAssetType.DLSS_D) > 1;
-        MultipleFSR31DX12Found = GameAssets.Count(x => x.AssetType == GameAssetType.FSR_31_DX12) > 1;
-        MultipleFSR31VKFound = GameAssets.Count(x => x.AssetType == GameAssetType.FSR_31_VK) > 1;
-        MultipleXeSSFound = GameAssets.Count(x => x.AssetType == GameAssetType.XeSS) > 1;
-        MultipleXeSSFGFound = GameAssets.Count(x => x.AssetType == GameAssetType.XeSS_FG) > 1;
-        MultipleXeSSDX11Found = GameAssets.Count(x => x.AssetType == GameAssetType.XeSS_DX11) > 1;
-        MultipleXeLLFound = GameAssets.Count(x => x.AssetType == GameAssetType.XeLL) > 1;
+        MultipleDLSSFound = gameAssets.Count(x => x.AssetType == GameAssetType.DLSS) > 1;
+        MultipleDLSSGFound = gameAssets.Count(x => x.AssetType == GameAssetType.DLSS_G) > 1;
+        MultipleDLSSDFound = gameAssets.Count(x => x.AssetType == GameAssetType.DLSS_D) > 1;
+        MultipleFSR31DX12Found = gameAssets.Count(x => x.AssetType == GameAssetType.FSR_31_DX12) > 1;
+        MultipleFSR31VKFound = gameAssets.Count(x => x.AssetType == GameAssetType.FSR_31_VK) > 1;
+        MultipleXeSSFound = gameAssets.Count(x => x.AssetType == GameAssetType.XeSS) > 1;
+        MultipleXeSSFGFound = gameAssets.Count(x => x.AssetType == GameAssetType.XeSS_FG) > 1;
+        MultipleXeSSDX11Found = gameAssets.Count(x => x.AssetType == GameAssetType.XeSS_DX11) > 1;
+        MultipleXeLLFound = gameAssets.Count(x => x.AssetType == GameAssetType.XeLL) > 1;
 
         // NOTE: DLL type
-        foreach (var gameAsset in GameAssets)
+        foreach (var gameAsset in gameAssets)
         {
             if (gameAsset.AssetType == GameAssetType.DLSS)
             {
@@ -1693,13 +1804,13 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     {
         await LoadCoverImageAsync();
 
-        GameAssets.Clear();
+        ClearGameAssets();
         using (await Database.Instance.Mutex.LockAsync())
         {
             var gameAssets = await Database.Instance.Connection.Table<GameAsset>().Where(ga => ga.Id == ID).ToListAsync().ConfigureAwait(false);
             if (gameAssets?.Any() == true)
             {
-                GameAssets.AddRange(gameAssets);
+                AddGameAssets(gameAssets);
             }
         }
 
@@ -1720,9 +1831,14 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         // TODO: Add auto reload by storing last full reload time on game
 
-        if (GameAssets.Any())
+        // Snapshotted once. This method is off the UI thread after the ConfigureAwait(false) above,
+        // and a mass update can be mutating the same list concurrently, so each of the loops below would
+        // otherwise be walking a list that can change under its enumerator.
+        var trackedAssets = GetGameAssetsSnapshot();
+
+        if (trackedAssets.Any())
         {
-            foreach (var gameAsset in GameAssets)
+            foreach (var gameAsset in trackedAssets)
             {
                 // Check that each of the game assets exist, after we will check if they are what we expect them to be
                 if (File.Exists(gameAsset.Path) == false)
@@ -1735,7 +1851,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             if (NeedsProcessing == false)
             {
                 var unknownGameAssets = new List<GameAsset>();
-                foreach (var gameAsset in GameAssets)
+                foreach (var gameAsset in trackedAssets)
                 {
                     if (DLLManager.Instance.IsInKnownGameAsset(gameAsset, this) == false)
                     {
@@ -1747,7 +1863,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     GameManager.Instance.AddUnknownGameAssets(GameLibrary, Title, unknownGameAssets);
                 }
 
-                foreach (var gameAsset in GameAssets)
+                foreach (var gameAsset in trackedAssets)
                 {
                     var fileVersionInfo = FileVersionInfo.GetVersionInfo(gameAsset.Path);
                     var freshVersion = fileVersionInfo.GetFormattedFileVersion();

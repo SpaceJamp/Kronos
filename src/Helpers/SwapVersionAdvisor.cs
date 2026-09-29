@@ -110,7 +110,9 @@ public static class SwapVersionAdvisor
     /// </remarks>
     internal static string GetShippedVersion(Game game, GameAssetType assetType, GameAssetType backupAssetType)
     {
-        var backup = game.GameAssets
+        // A snapshot, not the live list. See GetGameAssetsSnapshot: enumerating it while a swap is
+        // mutating it on a background thread can throw.
+        var backup = game.GetGameAssetsSnapshot()
             .FirstOrDefault(x => x.AssetType == backupAssetType && string.IsNullOrWhiteSpace(x.Path) == false);
 
         return backup?.Version ?? string.Empty;
