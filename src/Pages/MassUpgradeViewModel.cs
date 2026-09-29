@@ -188,19 +188,31 @@ public partial class MassUpgradeViewModel : ObservableObject
         IsRunning = true;
         OnPropertyChanged(nameof(HasSelection));
 
+        // Everything the executor needs is snapshotted here, on the UI thread, before it starts.
+        // The executor runs its continuation on a thread pool thread, so it cannot read these itself:
+        // the game collection is a WinRT ICollectionView and throws 0x8001010E, and the DLL records
+        // are ObservableCollections that DLLManager mutates from the UI thread, so reading them
+        // concurrently gives a torn or stale view.
+        var selectedGames = GetSelectedGames();
+        var librarySnapshot = GetLibraryRecords();
+        var allowDevDlls = Settings.Instance.AllowDebugDlls;
+
+        // Resolving the target up front, on this thread, rather than per item on the executor's. The
+        // library does not change while a run is in progress in any way that matters, and resolving
+        // once means the preview and what is written cannot disagree.
+        var targets = new Dictionary<string, DLLRecord?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in plan.Items.Where(x => x.Kind == MassUpgradePlanner.ActionKind.Upgrade))
+        {
+            targets[item.GameId + "|" + item.AssetType] =
+                MassUpgradePlanner.FindTargetRecord(librarySnapshot, item.AssetType, allowDevDlls);
+        }
+
         try
         {
-            // The games are collected here, on the UI thread, and passed in. The executor cannot look
-            // them up itself: GameManager.GetGameCollection returns a WinRT ICollectionView, and
-            // calling it from the executor's continuation, which runs on a thread pool thread after
-            // ConfigureAwait(false), throws COMException 0x8001010E. That is what stopped the very
-            // first mass update on its first item.
-            var selectedGames = GetSelectedGames();
-
             var results = await MassUpgradeExecutor.ExecuteAsync(
                 plan,
                 selectedGames,
-                ResolveTarget,
+                item => targets.GetValueOrDefault(item.GameId + "|" + item.AssetType),
                 OnProgress).ConfigureAwait(true);
 
             await ShowInfoAsync(xamlRoot, "Mass update finished", MassUpgradeExecutor.Summarise(results))
@@ -232,13 +244,14 @@ public partial class MassUpgradeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Finds the release to write for a plan item.
+    /// Finds the release to write for a plan item, on the caller's thread.
     /// </summary>
     /// <remarks>
-    /// Re-resolved at write time rather than carried in the plan item, so a record that has since been
-    /// deleted from the library fails that one item cleanly instead of writing a stale file.
+    /// Only used by the tests and by the preview path. The run itself resolves every target up front
+    /// on the UI thread, because the executor's continuation is on a thread pool thread and reading
+    /// DLLManager's ObservableCollections from there races the UI thread's own mutations of them.
     /// </remarks>
-    DLLRecord? ResolveTarget(MassUpgradePlanner.PlanItem item)
+    internal DLLRecord? ResolveTarget(MassUpgradePlanner.PlanItem item)
     {
         return MassUpgradePlanner.FindTargetRecord(
             GetLibraryRecords(),

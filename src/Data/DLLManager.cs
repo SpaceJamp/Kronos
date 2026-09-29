@@ -961,13 +961,26 @@ internal class DLLManager
             return;
         }
 
-        var recordList = info.Records(this);
-        recordList.Remove(dllRecord);
-
-        if (ImportedManifest is not null)
+        // Both of these are ObservableCollections that back the DLL library page's list, so removing
+        // from them raises CollectionChanged against live bindings. Every other mutation of these
+        // collections in this file is inside App.CurrentApp.RunOnUIThread for exactly that reason, and
+        // this was the one that was not.
+        //
+        // The only current caller is a UI thread command, so it is correct as it stands. It is wrapped
+        // anyway because the import worker in LibraryPageModel is a Task.Run with an await in the
+        // middle, and a call from there would throw 0x8001010E the first time an item container
+        // happened to be realised. Being defensive here is one line and removes a whole class of
+        // future crash from a function that is otherwise easy to call from anywhere.
+        App.CurrentApp.RunOnUIThread(() =>
         {
-            info.ManifestRecords(ImportedManifest).Remove(dllRecord);
-        }
+            var recordList = info.Records(this);
+            recordList.Remove(dllRecord);
+
+            if (ImportedManifest is not null)
+            {
+                info.ManifestRecords(ImportedManifest).Remove(dllRecord);
+            }
+        });
     }
 
     internal static string DllNameForGameAssetType(GameAssetType gameAssetType)
