@@ -216,7 +216,11 @@ public sealed partial class App : Application
                             {
                                 using (var fileWriter = File.Create(manifestPath))
                                 {
-                                    var length = fileWriter.Length;
+                                    // No length check here. It used to read fileWriter.Length into an
+                                    // unused local, which was always 0 because File.Create has
+                                    // already truncated the file by that point, and the size
+                                    // comparison that actually matters is the one above against
+                                    // fileInfo, taken before anything was opened for writing.
                                     staticManifestStream.CopyTo(fileWriter);
                                 }
                             }
@@ -242,7 +246,7 @@ public sealed partial class App : Application
 
 #if !PORTABLE
         // No need to calculate this for portable app.
-        var calculateInstallSizeThread = new Thread(CalculateInstallSize);
+        var calculateInstallSizeThread = CreateInstallSizeThread(CalculateInstallSize);
         calculateInstallSizeThread.Start();
 #endif
 
@@ -319,10 +323,15 @@ public sealed partial class App : Application
                 var existingSize = key.GetValue("EstimatedSize") as int?;
 
                 // HKLM is writable only by an elevated process, and this one deliberately runs
-                // unelevated (see the IsAdminUser check above). A machine wide install therefore
-                // keeps whatever the installer recorded, which is a close enough answer for a
-                // nicety, rather than throwing on every single launch.
-                var hiveIsWritable = entry.Value.Hive == Microsoft.Win32.RegistryHive.CurrentUser || IsAdminUser();
+                // unelevated: the IsAdminUser check at the top of this method already returned if it
+                // was, because an elevated process's HKEY_CURRENT_USER is the administrator's hive
+                // rather than the user's, so a write would land in someone else's account.
+                //
+                // So there is deliberately no "|| IsAdminUser()" here. It would always be false by
+                // this point, and it read as though elevated HKLM writes were supported. They are not,
+                // and adding them back would reintroduce the cross account write the early return
+                // exists to prevent.
+                var hiveIsWritable = entry.Value.Hive == Microsoft.Win32.RegistryHive.CurrentUser;
                 if (ShouldWriteInstallSize(existingSize, installSizeKB, hiveIsWritable) == false)
                 {
                     return;
@@ -336,6 +345,29 @@ public sealed partial class App : Application
         {
             Logger.Error(err);
         }
+    }
+
+    /// <summary>
+    /// Builds the thread that measures the install size, wrapping the given work.
+    /// </summary>
+    /// <remarks>
+    /// The work is passed in and this is static so that <see cref="Thread.IsBackground"/> can be
+    /// asserted in a test. It cannot be an instance method reached through <c>App.CurrentApp</c>,
+    /// because that is <c>(App)Application.Current</c> and is null in a test process.
+    ///
+    /// The thread has to be a background one. The work walks the whole install directory, 642 files
+    /// and roughly 300 MB on a real install, so it is easily still running when the user closes the
+    /// window. A foreground thread, which is what <see cref="Thread"/> defaults to, keeps the
+    /// process alive until it finishes, so closing Kronos appeared to hang. Nothing else in the
+    /// codebase catches that, so this method exists mainly to be pinned by a test.
+    /// </remarks>
+    internal static Thread CreateInstallSizeThread(ThreadStart work)
+    {
+        return new Thread(work)
+        {
+            IsBackground = true,
+            Name = "Kronos install size measurement",
+        };
     }
 
     /// <summary>
@@ -445,7 +477,14 @@ public sealed partial class App : Application
     /// </summary>
     internal static Microsoft.Win32.RegistryKey? OpenUninstallEntry(UninstallEntryRef entry, bool writable)
     {
-        var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(entry.Hive, entry.View);
+        // The base key has to be disposed, and it cannot be disposed here, because the subkey
+        // returned below is a child of it and becomes invalid once the parent closes. That is why
+        // this returns the subkey rather than opening it for the caller: the caller owns the
+        // lifetime via its own using.
+        //
+        // The previous version left the base key undisposed, leaking a registry handle on every
+        // launch, twice over, since this is called for the read and again for the write.
+        using var baseKey = Microsoft.Win32.RegistryKey.OpenBaseKey(entry.Hive, entry.View);
         return baseKey.OpenSubKey($@"{UninstallKeyRoot}\{entry.SubKey}", writable);
     }
 
