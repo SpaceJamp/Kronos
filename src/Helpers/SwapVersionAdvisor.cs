@@ -174,6 +174,76 @@ public static class SwapVersionAdvisor
     }
 
     /// <summary>
+    /// Concatenates every applicable reason into the body of a single warning dialog, or returns null
+    /// when there is nothing to warn about.
+    /// </summary>
+    /// <remarks>
+    /// Exists because <c>ContentDialog</c> permits only one open at a time, and WinUI throws
+    /// "Only a single ContentDialog can be open at any time" if a second is shown before the first has
+    /// finished closing. Showing the repack warning and the downgrade warning as two sequential dialogs
+    /// therefore crashes the app for any game that is both a repack and a downgrade, which is a common
+    /// combination and reproducible every time.
+    ///
+    /// Combining them into one dialog is the correct fix rather than a semaphore. A semaphore would
+    /// stop the crash but still interrupt the user with two dialogs in a row for what is a single
+    /// decision, and it would only work within one process for one call site, so any other pair of
+    /// warnings added later would reintroduce the same crash.
+    /// </remarks>
+    internal static string? ComposeWarning(bool isRepack, string? downgradeWarning)
+    {
+        var hasRepack = isRepack;
+        var hasDowngrade = string.IsNullOrWhiteSpace(downgradeWarning) == false;
+
+        if (hasRepack == false && hasDowngrade == false)
+        {
+            return null;
+        }
+
+        if (hasRepack && hasDowngrade == false)
+        {
+            return RepackWarningText;
+        }
+
+        if (hasRepack == false)
+        {
+            // Already a full warning ending in its own "Continue anyway?" question.
+            return downgradeWarning;
+        }
+
+        // Both. Strip the question from each half, join the explanations, and ask once at the end.
+        // Leaving the repack half's question in place was the first attempt and produced two
+        // "Continue anyway?" lines in one dialog, which the test below caught.
+        var repackBody = StripTrailingQuestion(RepackWarningText);
+        var downgradeBody = StripTrailingQuestion(downgradeWarning ?? string.Empty);
+
+        return repackBody.TrimEnd() + "\n\n" + downgradeBody.TrimStart() + "\n\nContinue anyway?";
+    }
+
+    /// <summary>
+    /// Removes a trailing "Continue anyway?" from a warning body, if it has one.
+    /// </summary>
+    /// <remarks>
+    /// Both halves are written to stand alone as a complete dialog, so each carries its own closing
+    /// question. When they are combined, only one question should survive, and it belongs at the very
+    /// end so the user answers after reading everything rather than halfway through.
+    /// </remarks>
+    internal static string StripTrailingQuestion(string body)
+    {
+        const string question = "Continue anyway?";
+
+        if (body.EndsWith(question, StringComparison.Ordinal) == false)
+        {
+            return body;
+        }
+
+        // Trim the whitespace in front of the question as well, so the halves join cleanly whatever
+        // separated them. The two warnings were written at different times and use different
+        // separators, one "\n\n" and one ". ", so matching a fixed prefix here silently failed and
+        // left both questions in the combined message.
+        return body[..^question.Length].TrimEnd();
+    }
+
+    /// <summary>
     /// Convenience: classify and build the warning in one call.
     /// </summary>
     internal static string? GetDowngradeWarning(
@@ -186,4 +256,16 @@ public static class SwapVersionAdvisor
 
         return BuildWarning(advice, versions, incomingVersion);
     }
+
+    /// <summary>
+    /// The repack warning, which predates this class and previously lived inline in the caller.
+    /// </summary>
+    /// <remarks>
+    /// Moved here so that both warnings can be composed into one dialog, and so the wording is
+    /// covered by tests rather than only reachable through a click.
+    /// </remarks>
+    internal const string RepackWarningText =
+        "This game is flagged as a repack. Repacks often ship their own runtime or launcher, so a " +
+        "swapped DLL may be ignored, or may stop the repack's launcher from working. Swapping may " +
+        "also invalidate the repack's integrity check.\n\nContinue anyway?";
 }
