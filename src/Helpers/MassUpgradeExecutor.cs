@@ -42,6 +42,15 @@ public static class MassUpgradeExecutor
     /// <param name="resolveTarget">
     /// Looks up the release to write for a plan item. Injected so the executor can be tested without
     /// a real library, and so the plan's record choice cannot drift from the one actually written.
+    ///
+    /// Called on a background thread, so an implementation that touches anything the UI thread owns
+    /// must marshal first. Reading an <c>ObservableCollection</c> that another thread is mutating is
+    /// not a crash but will either throw "collection was modified" or return a torn, stale view, so a
+    /// resolver over DLLManager's collections has to snapshot on the UI thread and pass the snapshot in.
+    /// </param>
+    /// <param name="report">
+    /// Called after each item, on a background thread. Must not touch bound UI either, for the same
+    /// reason. Logging and counters are fine.
     /// </param>
     /// <param name="games">
     /// The games the plan was built from, looked up on the calling thread. Required rather than

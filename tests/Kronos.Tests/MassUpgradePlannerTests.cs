@@ -489,6 +489,79 @@ public class MassUpgradePlannerTests
         return File.ReadAllText(path);
     }
 
+    [Fact]
+    public void TheCachedAssetLoadMarshalsItsPropertyUpdates()
+    {
+        // A REAL BUG, found by sweeping for the thread-affinity pattern rather than by a failing test,
+        // because it needs a live WinUI Application to reproduce.
+        //
+        // Game.LoadGameAssetsFromCacheAsync awaits a database query with ConfigureAwait(false) and then
+        // calls UpdateCurrentDLLsFromGameAssets(), which sets CurrentDLSS and every Multiple*Found
+        // property. Those are [ObservableProperty] and x:Bind-bound in GameGridPage.xaml, so setting
+        // them from a thread pool thread throws COMException 0x8001010E as soon as an item container has
+        // been realised. Reached on startup for every game in every library.
+        //
+        // The identical call inside ProcessGame is already wrapped, which is what makes the missing one
+        // an oversight rather than a decision. This asserts the wrapper is present so it cannot be
+        // dropped again.
+        var source = StripComments(ReadGameSource());
+
+        var afterConfigureAwaitFalse = source.IndexOf(
+            "ToListAsync().ConfigureAwait(false)", StringComparison.Ordinal);
+        var marshalledUpdate = source.IndexOf(
+            "RunOnUIThread(() =>", afterConfigureAwaitFalse, StringComparison.Ordinal);
+        var updateCall = source.IndexOf(
+            "UpdateCurrentDLLsFromGameAssets();", afterConfigureAwaitFalse, StringComparison.Ordinal);
+
+        Assert.True(afterConfigureAwaitFalse > 0, "The ConfigureAwait(false) that moves off-thread should still be there.");
+        Assert.True(marshalledUpdate > 0, "UpdateCurrentDLLsFromGameAssets must be wrapped in RunOnUIThread after the ConfigureAwait(false).");
+        Assert.True(marshalledUpdate < updateCall, "The wrapper has to come before the call it protects.");
+    }
+
+    [Fact]
+    public void TheOtherCurrentAssetAssignmentSitesAreAlreadyMarshalledByTheirCallers()
+    {
+        // CurrentDLSS is assigned in five places, not one. An earlier version of this test asserted two
+        // and failed, which was the test being invented rather than the code being wrong. The four that
+        // are not the fixed one are:
+        //
+        //   UpdateCurrentAsset  (two sites)  reached via RunOnUIThread at line 1084
+        //   ParentUpdateFromGame (one site) reached via RunOnUIThread at GameManager.cs:317
+        //   UpdateCurrentDLLsFromGameAssets   the fixed one, marshalled inline now
+        //
+        // So the real invariant is not a count. It is that the method which does a bulk refresh from
+        // GameAssets, and is the one called straight after a ConfigureAwait(false), is the one that has
+        // to marshal itself, because the others have a marshalling caller already.
+        var source = StripComments(ReadGameSource());
+
+        var afterConfigureAwaitFalse = source.IndexOf(
+            "ToListAsync().ConfigureAwait(false)", StringComparison.Ordinal);
+        var body = source[afterConfigureAwaitFalse..];
+
+        // In the cached-load path specifically, the refresh must be marshalled, and the marshalling
+        // must not be deferred to something later in the file.
+        Assert.True(
+            body.IndexOf("RunOnUIThread", StringComparison.Ordinal) < body.IndexOf(
+                "UpdateCurrentDLLsFromGameAssets();", StringComparison.Ordinal),
+            "The refresh after the ConfigureAwait(false) must be inside RunOnUIThread, not merely followed by one somewhere later.");
+    }
+
+    static string ReadGameSource()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && Directory.Exists(Path.Combine(dir.FullName, "src")) == false)
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+
+        var path = Path.Combine(dir!.FullName, "src", "Data", "Game.cs");
+        Assert.True(File.Exists(path), $"Could not find {path}");
+
+        return File.ReadAllText(path);
+    }
+
     // ---- The summary the user reads before approving ----
 
     [Fact]

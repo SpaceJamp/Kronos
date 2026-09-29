@@ -1703,7 +1703,20 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             }
         }
 
-        UpdateCurrentDLLsFromGameAssets();
+        // Marshalled, because the await above ends in ConfigureAwait(false) so the continuation is on
+        // a thread pool thread, and this method sets CurrentDLSS and the Multiple*Found properties,
+        // which are all [ObservableProperty] and x:Bind-bound in GameGridPage.xaml at lines 105 and
+        // 193. Setting a bound property off the UI thread throws COMException 0x8001010E,
+        // RPC_E_WRONG_THREAD, as soon as an item container has been realised.
+        //
+        // The identical call inside ProcessGame, 1,100 lines above, is already wrapped in
+        // RunOnUIThread, and the per library ListGamesAsync paths carry explicit comments naming this
+        // exact hazard. This one was simply missed, and it is reached on startup for every game in
+        // every library.
+        App.CurrentApp.RunOnUIThread(() =>
+        {
+            UpdateCurrentDLLsFromGameAssets();
+        });
 
         // TODO: Add auto reload by storing last full reload time on game
 
