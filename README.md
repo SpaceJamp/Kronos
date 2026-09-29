@@ -61,11 +61,6 @@
 > here, and the publisher string in the installer, exist to make that confusion unlikely.
 
 > [!NOTE]
-> **No prebuilt binaries are published from this repository.** There is no releases page here, and
-> Kronos is not on winget. If you want a ready-to-run DLSS Swapper, use the official project linked
-> above. This repository is source only.
-
-> [!NOTE]
 > **This project was developed with AI assistance.** The original upstream code is not AI-generated,
 > but the changes listed below were written with the help of an AI coding assistant (Claude, via
 > OpenCode), under my direction. See [AI_ASSISTED.md](AI_ASSISTED.md) for exactly what was and was
