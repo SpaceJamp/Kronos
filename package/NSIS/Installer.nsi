@@ -23,6 +23,10 @@ Var UninstLog
 
 Var DEFAULT_INSTALL_PATH
 
+; "me" or "all", set by the install scope sections and read by ComponentsPagePre. Declared rather
+; than using ${SecInstallForAll}, which NSIS does not expand outside a section body.
+Var InstallScope
+
 Function .onInit
   ; MUI's directory page seeds $INSTDIR from the InstallDir directive, which is declared below as a
   ; per user path, so the page always starts from a location that is writable without elevation.
@@ -162,6 +166,15 @@ FunctionEnd
 ; unwritable, and tells them so in one sentence before anything is written.
 RequestExecutionLevel user
 
+; Bind MUI's directory page to $INSTDIR.
+;
+; Without MUI_DIRECTORYPAGE_VARIABLE the page's text box is not connected to $INSTDIR at all, so
+; $INSTDIR is never seeded from InstallDir and never updated from what the user types. That is why
+; it kept arriving empty, and why the old subfolder append turned that empty value into "\Kronos" and
+; "Kronos\Kronos". VERIFYONLEAVE makes .onVerifyInstDir run when the user leaves the page, rather
+; than at some other point, so the writability check reports before anything is written.
+!define MUI_DIRECTORYPAGE_VARIABLE $INSTDIR
+!define MUI_DIRECTORYPAGE_VERIFYONLEAVE
 
 ; App version information
 Name "Kronos"
@@ -190,10 +203,11 @@ VIAddVersionKey "LegalCopyright" "Kronos is based on DLSS Swapper by beeradmoore
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
-; No MUI_PAGE_CUSTOMFUNCTION_PRE here. That directive does not exist in Modern UI 2, so defining it
-; does nothing at all and the functions it appeared to attach to were never called. The path is
-; seeded by InstallDir, upgraded by .onInit, and validated by .onVerifyInstDir, all of which NSIS
-; itself invokes.
+; MUI_PAGE_CUSTOMFUNCTION_PRE on the components page is a real MUI2 hook, Pages.nsh calls it through
+; MUI_PAGE_FUNCTION_CUSTOM. It is declared here rather than globally because MUI !undefs it after
+; each page consumes it.
+!define MUI_PAGE_CUSTOMFUNCTION_PRE ComponentsPagePre
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
  
@@ -228,6 +242,8 @@ VIAddVersionKey "LegalCopyright" "Kronos is based on DLSS Swapper by beeradmoore
 !macroend
 
 
+
+
 Section -openlogfile
   CreateDirectory "$INSTDIR"
   IfFileExists "$INSTDIR\${UninstLog}" +3
@@ -235,8 +251,52 @@ Section -openlogfile
   Goto +4
     SetFileAttributes "$INSTDIR\${UninstLog}" NORMAL
     FileOpen $UninstLog "$INSTDIR\${UninstLog}" a
-    FileSeek $UninstLog 0 END
+  FileSeek $UninstLog 0 END
 SectionEnd
+
+; Install scope, chosen on the components page. The two selectable sections only decide where to
+; install and which registry hive to write; the installation itself happens once in the main
+; section, which has no name and so is not offered as a choice.
+;
+; Declared after -openlogfile because a Section cannot appear inside another Section, and before
+; ComponentsPagePre so that ${SecInstallForAll} exists by the time that function is compiled.
+Section "Install for me only (recommended)" InstallForMe
+  StrCpy $InstallScope "me"
+SectionEnd
+Section "Install for all users (Program Files)" InstallForAll
+  StrCpy $InstallScope "all"
+SectionEnd
+Section "" InstallFiles
+SectionEnd
+
+; Runs as the components page's pre function, so after the user has chosen a scope and before the
+; directory page is shown. This is the only place that can switch the target, because the directory
+; page has not run yet and InstallDir is what the directory page will then be seeded from.
+Function ComponentsPagePre
+  ; ${SecInstallForAll} is not usable here. NSIS only expands section variables inside section
+  ; bodies, so referencing it from a function leaves it literally ${SecInstallForAll} and the
+  ; comparison silently degrades to a test of an undefined name. A variable set by the sections
+  ; themselves is used instead, which is also easier to read.
+  ${If} $InstallScope == "all"
+    ; Machine wide. Program Files needs administrator rights, and this installer runs as a normal
+    ; user, so say so plainly instead of letting it fail hundreds of files in. Ask them to relaunch
+    ; the installer as administrator and pick this option again.
+    ClearErrors
+    FileOpen $1 "$PROGRAMFILES64\.__kronos_probe" w
+    ${If} ${Errors}
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Installing for all users needs administrator rights, and this installer is not running as administrator.$\r$\n$\r$\nNothing has been installed. Close this, right click the installer and choose 'Run as administrator', then choose 'Install for all users' again. Or pick 'Install for me only', which needs no administrator rights."
+      Abort
+    ${EndIf}
+    FileClose $1
+    Delete "$PROGRAMFILES64\.__kronos_probe"
+
+    StrCpy $DEFAULT_INSTALL_PATH "$PROGRAMFILES64\${APP_NAME}"
+    StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
+  ${Else}
+    StrCpy $DEFAULT_INSTALL_PATH "$LOCALAPPDATA\Programs\${APP_NAME}"
+    StrCpy $INSTDIR "$DEFAULT_INSTALL_PATH\"
+  ${EndIf}
+FunctionEnd
 
  
 ; start default section
