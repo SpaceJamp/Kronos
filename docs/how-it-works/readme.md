@@ -1,15 +1,20 @@
+---
+layout: default
+title: How it works
+---
+
 # How it works
-This document is intended as a living document to explain the inner workings of DLSS Swapper. The intention is to understand what happens where and when without having to trace the code path.
+This document is intended as a living document to explain the inner workings of Kronos. The intention is to understand what happens where and when without having to trace the code path.
 
 
 ## Data storage
-For the installed version of DLSS Swapper it will store config files and caches in `%LOCALAPPDATA%\DLSS Swapper\`. The portable variant uses the path `StoredData\` relative to the main `DLSS Swapper.exe`.
+For the installed version of Kronos it will store config files and caches in `%LOCALAPPDATA%\Kronos\`. The portable variant uses the path `StoredData\` relative to the main `Kronos.exe`.
 
 We will refer to both of these as `StoragePath` going forwards.
 
 
 ## Application launch
-The main thing `App.xaml.cs` does is setting up the SQLite database. This is stored at `StoragePath\dlss_swapper.db`. It was initially used as a game cache for improved app load times but as time went on other features were added such as managing favourites, notes, last used DLSS versions, etc. 
+The main thing `App.xaml.cs` does is setting up the SQLite database. This is stored at `StoragePath\kronos.db`. It was initially used as a game cache for improved app load times but as time went on other features were added such as managing favourites, notes, last used DLSS versions, etc. 
 
 This will eventually load the main part of the application, the `GameGridPage`.
 
