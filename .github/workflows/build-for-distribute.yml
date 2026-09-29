@@ -51,28 +51,23 @@ jobs:
         }
       working-directory: ${{ github.workspace }}\
     
-    - name: Update static BuildInfo details
-      shell: pwsh
-      working-directory: ${{ github.workspace }}
-      run: |
-        $buildInfoFile = "${{ github.workspace }}\src\BuildInfo.cs"
-        $gitTag = git describe --tags --exact-match
-        $buildTimestamp = (Get-Date -UFormat %s)
-        $gitCommit = (git rev-parse HEAD)
-        $gitBranch = (git branch --show-current)
-        $buildInfoContent = (Get-Content $buildInfoFile -Raw) 
-
-        $buildInfoContent = $buildInfoContent -replace "GitBranch { get; } = string.Empty;", "GitBranch { get; } = `"$gitBranch`";"
-        $buildInfoContent = $buildInfoContent -replace "GitCommit { get; } = string.Empty;", "GitCommit { get; } = `"$gitCommit`";"
-        $buildInfoContent = $buildInfoContent -replace "BuildTimestamp { get; }", "BuildTimestamp { get; } = $buildTimestamp;"
-
-        if ($gitTag)
-        {
-            $buildInfoContent = $buildInfoContent -replace "GitTag { get; } = string.Empty;", "GitTag { get; } = `"$gitTag`";"
-        }
-
-        Write-Output $buildInfoContent
-        Set-Content -Path $buildInfoFile -Value $buildInfoContent
+    # NOTE: the "Update static BuildInfo details" step used to live here, and rewriting
+    # BuildInfo.cs to read its values from injected metadata broke it.
+    #
+    # It regex-substituted the literal source text "BuildTimestamp { get; }" and friends. Three of
+    # its four patterns stopped matching the moment BuildInfo read from AssemblyMetadata instead of
+    # from auto properties. The fourth still matched, as a substring of a line that already had an
+    # initialiser, and produced:
+    #
+    #   public static DateTimeOffset? BuildTimestamp { get; } = 1759123456; = ParseTimestamp(...);
+    #
+    # which does not compile. The step had become a silent way to break the build.
+    #
+    # BuildInfo is now populated by the AddKronosBuildMetadata target in src/Kronos.csproj, which
+    # writes AssemblyMetadata attributes and is read back at startup. The SDK fills SourceRevisionId
+    # from the checkout on its own and the csproj stamps the timestamp, so neither needs doing here.
+    # The branch and tag are the only values that have to be passed in, because MSBuild cannot run
+    # git while evaluating properties, and both build scripts do that.
 
     - name: Setup .NET 10.0
       uses: actions/setup-dotnet@v4
