@@ -127,6 +127,22 @@ public sealed partial class GameGridPage : Page
         }
     }
 
+    /// <summary>
+    /// Fires when a mass update selection checkbox is ticked or unticked.
+    /// </summary>
+    /// <remarks>
+    /// Recomputes the selection count so the toolbar button enables and disables itself. Wired
+    /// explicitly rather than relying on a property changed handler, because the checkbox is inside a
+    /// DataTemplate over Game and the page model has no way to observe each one.
+    ///
+    /// RoutedEventHandler rather than a lambda, so the XAML compiler generates the signature for the
+    /// x:Bind and a rename cannot silently break the binding.
+    /// </remarks>
+    void GameSelectionCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.MassUpgrade?.RefreshSelection();
+    }
+
     internal void ReloadMainContentControl()
     {
         MainContentControl.Content = null;
