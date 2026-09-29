@@ -90,15 +90,32 @@
                                 </Border.Background>
                             </Border>
 
-                            <TextBlock Grid.Column="2" Text="{x:Bind Title, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <!-- Only shown when the user has flagged this install as a repack. See RepackDetector. -->
-                            <Border Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                    Padding="4,1" CornerRadius="3" Margin="0,0,0,-2"
-                                    Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                                    Visibility="{x:Bind IsRepack, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Flagged as a repack (scene release). Swapped DLLs may be ignored by the repack's own launcher.">
-                                <TextBlock Text="REPACK" FontSize="9" FontWeight="SemiBold" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
-                            </Border>
+                            <!--
+                            Title and repack tag are stacked rather than overlaid.
+
+                            They used to be two children of Grid.Column="2", with the tag at
+                            VerticalAlignment="Bottom" and the title at VerticalAlignment="Center". Both
+                            were positioned against the fixed 80px row, not against each other, so the tag
+                            sat well below a single-line title and detached from it, and overlapped the
+                            second line once the title wrapped. A negative bottom margin pushed it past the
+                            row edge as well.
+
+                            A StackPanel makes the tag follow the text it belongs to at whatever height the
+                            title happens to take, and keeps the pair centred as a unit. The positive
+                            top margin replaces the negative one, so the tag adds spacing instead of
+                            hanging outside the row.
+                            -->
+                            <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Title, Mode=OneWay}" TextWrapping="Wrap" />
+                                <!-- Only shown when the user has flagged this install as a repack. See RepackDetector. -->
+                                <Border HorizontalAlignment="Left"
+                                        Padding="4,1" CornerRadius="3" Margin="0,4,0,0"
+                                        Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                                        Visibility="{x:Bind IsRepack, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                                        ToolTipService.ToolTip="Flagged as a repack (scene release). Swapped DLLs may be ignored by the repack's own launcher.">
+                                    <TextBlock Text="REPACK" FontSize="9" FontWeight="SemiBold" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                </Border>
+                            </StackPanel>
                             <ProgressRing Grid.Column="3" VerticalAlignment="Center" Width="16" Height="16" Visibility="{x:Bind Processing, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}" />
                             <TextBlock Grid.Column="4" VerticalAlignment="Center">
                                 <Run Text="DLSS: " />
