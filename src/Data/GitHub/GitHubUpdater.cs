@@ -51,12 +51,17 @@ internal class GitHubUpdater
     /// In one place, because it was previously repeated in two string literals and a private or
     /// renamed repository 404s without saying so anywhere the user could see.
     ///
+    /// The path is SpaceJamp/kronos-dlss-swapper. It used to be SpaceJamp/unofficial-dlss-swapper, which
+    /// was left over from when this was a fork and was never changed when it stopped being one. GitHub
+    /// redirects the old path for git, so a push still succeeds and the stale name stays invisible until
+    /// something reads it without credentials, which is exactly what this code does.
+    ///
     /// Note that GitHub answers 404, not 403, for a repository that exists but is private and the
-    /// request is unauthenticated. A private repository cannot be read by this code at all, because
-    /// there is no token and adding one would mean shipping a credential to every install. Update
-    /// checking only works against a public repository or a custom feed URL.
+    /// request is unauthenticated. This repository is private, so this code cannot read it at all,
+    /// because there is no token and adding one would mean shipping a credential to every install.
+    /// Update checking only starts working once the repository is made public.
     /// </remarks>
-    internal const string DefaultRepository = "SpaceJamp/unofficial-dlss-swapper";
+    internal const string DefaultRepository = "SpaceJamp/kronos-dlss-swapper";
 
     /// <summary>
     /// The API root for a repository's releases.

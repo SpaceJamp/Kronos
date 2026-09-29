@@ -613,14 +613,19 @@ public partial class SettingsPageModel : ObservableObject
     [RelayCommand]
     async Task OpenVersionAsync()
     {
-        if (string.IsNullOrWhiteSpace(BuildInfo.GitTag))
-        {
-            await Launcher.LaunchUriAsync(new Uri("https://github.com/beeradmoore/dlss-swapper/releases"));
-        }
-        else
-        {
-            await Launcher.LaunchUriAsync(new Uri($"https://github.com/beeradmoore/dlss-swapper/releases/tag/{BuildInfo.GitTag}"));
-        }
+        // Built from this app's own tag, so it has to point at this app's own repository. It pointed at
+        // beeradmoore/dlss-swapper, which is upstream: BuildInfo.GitTag is a Kronos tag such as v1.48,
+        // and upstream has no such tag, so the link could only ever land on a 404.
+        //
+        // Note this 404s while this repository is private, because a private repository is not readable
+        // in a browser the viewer is not signed in to. It becomes correct the moment the repository is
+        // public, and it is left in place rather than hidden so it works without a code change then.
+        var repository = Data.GitHub.GitHubUpdater.DefaultRepository;
+        var url = string.IsNullOrWhiteSpace(BuildInfo.GitTag)
+            ? $"https://github.com/{repository}/releases"
+            : $"https://github.com/{repository}/releases/tag/{BuildInfo.GitTag}";
+
+        await Launcher.LaunchUriAsync(new Uri(url));
     }
 
     [RelayCommand]
