@@ -1,0 +1,42 @@
+Kronos
+======
+
+Kronos is a private, personal modification of DLSS Swapper
+(https://github.com/beeradmoore/dlss-swapper) by beeradmoore, which is
+licensed under the GNU General Public License v3.0. The full licence text is
+in LICENSE, alongside the original author's copyright notice.
+
+Kronos is not affiliated with, endorsed by, or associated with the original
+DLSS Swapper maintainer or with NVIDIA. If you want the official DLSS Swapper,
+including signed binaries, use github.com/beeradmoore/dlss-swapper.
+
+GPL notice
+----------
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see LICENSE.
+
+Changes from the original
+-------------------------
+
+This is a modified version of DLSS Swapper 1.2.6.1. The modifications include
+renaming the application, a 64-bit-only build, an installer rewritten in Inno
+Setup, and various bug fixes and additions listed under "What changed in Kronos"
+in README.md. The original copyright notices are preserved in LICENSE.
+
+AI assistance
+-------------
+
+The modifications in this build were written with the help of an AI coding
+assistant (Claude, via OpenCode) under the direction of the maintainer. The
+original upstream DLSS Swapper code is not AI-generated. See AI_ASSISTED.md in
+the source repository for exactly what was and was not involved.
