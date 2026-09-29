@@ -385,16 +385,40 @@ public partial class SettingsPageModel : ObservableObject
         {
             IsCheckingForUpdates = true;
             var githubUpdater = new Data.GitHub.GitHubUpdater();
-            var newUpdate = await githubUpdater.CheckForNewGitHubRelease(true);
+
+            // CheckForUpdateAsync, not CheckForNewGitHubRelease, because the older one returns null both
+            // when there is no update and when the request failed, and both used to be reported as "No
+            // new updates available". A dead or private release endpoint therefore looked exactly like
+            // being up to date, which is how a check pointed at a repository that 404s appeared to work
+            // while doing nothing.
+            var (result, newUpdate) = await githubUpdater.CheckForUpdateAsync(forceCheck: true);
 
             if (_weakPage.TryGetTarget(out SettingsPage? settingsPage) == false)
             {
                 return;
             }
 
-            if (newUpdate is not null)
+            if (result == Data.GitHub.UpdateCheckResult.UpdateAvailable && newUpdate is not null)
             {
                 await githubUpdater.DisplayNewUpdateDialog(newUpdate, settingsPage.XamlRoot);
+            }
+            else if (result == Data.GitHub.UpdateCheckResult.Failed)
+            {
+                // Say the check failed, and name the endpoint, rather than implying everything is
+                // current. GitHub answers 404 rather than 403 for a repository that exists but is
+                // private, so this is the message a private or renamed repository produces.
+                var dialog = new EasyContentDialog(settingsPage.XamlRoot)
+                {
+                    Title = ResourceHelper.GetString("General_Error"),
+                    CloseButtonText = ResourceHelper.GetString("General_Okay"),
+                    DefaultButton = ContentDialogButton.Close,
+                    Content = $"The update check could not reach GitHub, so it is unknown whether a newer " +
+                              $"version exists.\n\nThis usually means the release repository is private or has " +
+                              $"been renamed, since GitHub reports both as \"not found\".\n\n" +
+                              $"Repository: {Data.GitHub.GitHubUpdater.DefaultRepository}\n\n" +
+                              $"The error is in the log at {Logger.GetCurrentLogPath()}",
+                };
+                await dialog.ShowAsync();
             }
             else
             {
