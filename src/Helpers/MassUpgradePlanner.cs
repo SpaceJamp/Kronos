@@ -199,7 +199,10 @@ public static class MassUpgradePlanner
 
         // Group the game's files by type, so one pass covers every copy of that DLL. A game can have
         // several, one per graphics API or per install directory, and they are swapped together.
-        var installed = game.GameAssets
+        // A snapshot, not the live list. The plan is built on the UI thread but the executor mutates
+        // these same lists from a thread pool thread, and a List enumerator throws if the list changes
+        // while it is being walked.
+        var installed = game.GetGameAssetsSnapshot()
             .Where(x => IsUpgradable(x.AssetType))
             .GroupBy(x => x.AssetType);
 

@@ -18,7 +18,12 @@
     <Grid>
         <TextBlock Text="{x:Bind ViewModel.TranslationProperties.NoHistoryText, Mode=OneWay}" Visibility="{x:Bind ViewModel.HistoryRows, Converter={StaticResource CollectionVisibilityInverterConverter}}" />
         
-        <ctWinUI:DataGrid Visibility="{x:Bind ViewModel.HistoryRows, Converter={StaticResource CollectionVisibilityConverter}}" SelectionMode="Single" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All" VerticalAlignment="Stretch" ColumnWidth="*" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.HistoryRows, Mode=OneTime}">
+        <!--
+        Mode=OneWay, not OneTime. OneTime resolves the ItemsSource once, when the grid is created,
+        which is before the rows have been read from the database, so the history always appeared
+        empty. OneWay keeps a live binding, so rows arriving later are picked up.
+        -->
+        <ctWinUI:DataGrid Visibility="{x:Bind ViewModel.HistoryRows, Converter={StaticResource CollectionVisibilityConverter}}" SelectionMode="Single" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All" VerticalAlignment="Stretch" ColumnWidth="*" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.HistoryRows, Mode=OneWay}">
 
             <ctWinUI:DataGrid.Resources>
                 <Style TargetType="TextBlock">
