@@ -26,6 +26,26 @@ public partial class GameGridPageModel : ObservableObject
 {
     GameGridPage gameGridPage;
 
+    /// <summary>
+    /// Mass update selection and flow, kept separate from the filtering and view logic below.
+    /// </summary>
+    /// <remarks>
+    /// The games page already owns search, grouping, the grid and list toggle and per game actions.
+    /// Folding a three stage mass update into it made both harder to follow, and the XAML for it
+    /// would have been interleaved with the existing item templates.
+    /// </remarks>
+    public MassUpgradeViewModel MassUpgrade { get; }
+
+    /// <summary>
+    /// The XamlRoot dialogs are shown against, taken from the page.
+    /// </summary>
+    /// <remarks>
+    /// Exposed for MassUpgradeViewModel, which cannot reach the page directly. The page's own XamlRoot
+    /// is used rather than a window wide one so the dialogs are themed and positioned consistently
+    /// with every other dialog on this page.
+    /// </remarks>
+    public XamlRoot? XamlRoot => gameGridPage?.XamlRoot;
+
     [ObservableProperty]
     public partial Game? SelectedGame { get; set; } = null;
 
@@ -71,6 +91,7 @@ public partial class GameGridPageModel : ObservableObject
         });
 
         this.gameGridPage = gameGridPage;
+        MassUpgrade = new MassUpgradeViewModel(this);
         ApplyGameGroupFilter();
     }
 

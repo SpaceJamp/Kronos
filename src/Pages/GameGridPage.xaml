@@ -59,13 +59,25 @@
                                 <RowDefinition Height="80" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="40" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Grid.Row="0" BorderThickness="0" CornerRadius="4" Width="40" Height="60" FlowDirection="LeftToRight">
+                            <!--
+                            Selection for the mass update. Kept as an explicit checkbox rather than
+                            ListView selection, because SelectionMode is None on these views: they use
+                            ItemClick to open a game, and multi-select there would change what a plain
+                            click does. The tick is a separate, explicit act.
+                            -->
+                            <CheckBox Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
+                                      IsChecked="{x:Bind IsSelectedForMassUpdate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Click="GameSelectionCheckBox_Click"
+                                      ToolTipService.ToolTip="Select this game for a mass update" />
+
+                            <Border Grid.Row="0" Grid.Column="1" BorderThickness="0" CornerRadius="4" Width="40" Height="60" FlowDirection="LeftToRight">
                                 <Border.RenderTransform>
                                     <CompositeTransform ScaleX="1" />
                                 </Border.RenderTransform>
@@ -78,17 +90,17 @@
                                 </Border.Background>
                             </Border>
 
-                            <TextBlock Grid.Column="1" Text="{x:Bind Title, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="{x:Bind Title, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <!-- Only shown when the user has flagged this install as a repack. See RepackDetector. -->
-                            <Border Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            <Border Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                                     Padding="4,1" CornerRadius="3" Margin="0,0,0,-2"
                                     Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
                                     Visibility="{x:Bind IsRepack, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
                                     ToolTipService.ToolTip="Flagged as a repack (scene release). Swapped DLLs may be ignored by the repack's own launcher.">
                                 <TextBlock Text="REPACK" FontSize="9" FontWeight="SemiBold" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                             </Border>
-                            <ProgressRing Grid.Column="2" VerticalAlignment="Center" Width="16" Height="16" Visibility="{x:Bind Processing, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}" />
-                            <TextBlock Grid.Column="3" VerticalAlignment="Center">
+                            <ProgressRing Grid.Column="3" VerticalAlignment="Center" Width="16" Height="16" Visibility="{x:Bind Processing, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}" />
+                            <TextBlock Grid.Column="4" VerticalAlignment="Center">
                                 <Run Text="DLSS: " />
                                 <Run Text="{x:Bind CurrentDLSS.DisplayName, FallbackValue='N/A', Mode=OneWay}" />
                             </TextBlock>
@@ -141,6 +153,16 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Text="{x:Bind Title, Mode=OneWay}" Margin="20" TextWrapping="WrapWholeWords" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{ThemeResource ButtonForegroundColor}" />
+
+                            <!--
+                            Selection for the mass update, overlaid on the tile so it does not change the
+                            card's layout. Corner aligned so it stays clear of the cover art and the
+                            version text along the bottom.
+                            -->
+                            <CheckBox HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,6,0"
+                                      IsChecked="{x:Bind IsSelectedForMassUpdate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Click="GameSelectionCheckBox_Click"
+                                      ToolTipService.ToolTip="Select this game for a mass update" />
 
                             <!-- Weird, but allows image to strecth centered rather than left align -->
                             <Border BorderThickness="0" FlowDirection="LeftToRight">
@@ -249,6 +271,25 @@
                         <FontIcon Glyph="&#xE72C;" />
                     </AppBarButton.Content>
                 </AppBarButton>
+                <!--
+                Mass update. Enabled only when games are ticked, so the button's state explains itself
+                rather than being pressed and reporting that nothing is selected.
+                -->
+                <AppBarButton Label="Update all" Icon="Sync"
+                              Command="{x:Bind ViewModel.MassUpgrade.RunMassUpgradeCommand}"
+                              IsEnabled="{x:Bind ViewModel.MassUpgrade.HasSelection, Mode=OneWay}"
+                              ToolTipService.ToolTip="{x:Bind ViewModel.MassUpgrade.SelectionSummary, Mode=OneWay}">
+                    <AppBarButton.Content>
+                        <FontIcon Glyph="&#xE895;" />
+                    </AppBarButton.Content>
+                    <AppBarButton.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="Select all shown" Command="{x:Bind ViewModel.MassUpgrade.ToggleSelectAllCommand}" />
+                            <MenuFlyoutItem Text="Clear selection" Command="{x:Bind ViewModel.MassUpgrade.ClearSelectionCommand}" />
+                        </MenuFlyout>
+                    </AppBarButton.Flyout>
+                </AppBarButton>
+
                 <AppBarButton Icon="Filter" Label="{x:Bind ViewModel.TranslationProperties.FilterText, Mode=OneWay}" Command="{x:Bind ViewModel.FilterGamesButtonCommand}" IsEnabled="{x:Bind ViewModel.IsGameListLoading, Converter={StaticResource BoolNegationConverter}, Mode=OneWay}">
                     <AppBarButton.Content>
                         <FontIcon Glyph="&#xE71C;" />
