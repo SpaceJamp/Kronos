@@ -7,6 +7,22 @@ title: Kronos
 description: DLL manifest and download links for Kronos.
 repository: SpaceJamp/kronos-dlss-swapper
 
+# Build tooling is not site content.
+#
+# Jekyll copies everything it is not told to skip, so compose.yaml and Dockerfile.alpine were being
+# published alongside index.html and manifest.json. That serves the image recipe and the mount
+# layout to anyone visiting the site.
+#
+# README.md is excluded because Jekyll would otherwise publish it and there is no README in docs/.
+exclude:
+  - compose.yaml
+  - Dockerfile.alpine
+  - Dockerfile.*
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
 # No theme and no plugins.
 #
 # remote_theme: pages-themes/slate@v0.2.0 used to be configured here, along with

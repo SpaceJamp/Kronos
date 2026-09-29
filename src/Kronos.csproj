@@ -25,6 +25,29 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Prefer32Bit>false</Prefer32Bit>
+
+    <!--
+    Dependency auditing, and a lock file so a build resolves to the same package versions next month
+    as it does today.
+
+    NuGetAuditMode is "all" rather than the default "direct" because "direct" only looks at the
+    PackageReferences in this file, and an advisory usually arrives through a transitive dependency.
+    That is the whole class of problem that went unnoticed on the Ruby side, where all 30 alerts came
+    from docs/Gemfile.lock and none from anything named in a manifest.
+
+    Audits are warnings, not errors, and are deliberately left that way. Failing the build on any
+    advisory would let a transitive one inside a Microsoft package that cannot be fixed here break
+    every build, which is how a guard gets switched off. The full graph is currently clean, so today
+    this reports nothing; when it does report something it appears in the CI log next to the build.
+
+    RestorePackagesWithLockFile writes src/packages.lock.json, which must be committed. It is what
+    Dependabot reads for transitive coverage, and what pins the graph. If a PackageReference changes,
+    restore updates the lock and the new one has to be committed with it.
+    -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>

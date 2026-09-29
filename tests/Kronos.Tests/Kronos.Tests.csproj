@@ -13,6 +13,16 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- Deliberately no UseWinUI: these tests exercise plain logic, not XAML. -->
+
+    <!--
+    Same auditing and lock file as src/Kronos.csproj, and for the same reasons. The test project has
+    its own package graph, including xunit and the test host, which is separate from the app's and
+    would not be covered by auditing the app alone.
+    -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <ItemGroup>

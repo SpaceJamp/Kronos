@@ -2,8 +2,21 @@ FROM ruby:3.3.4-alpine
 
 RUN apk update && apk add --no-cache make build-base git
 
-COPY Gemfile .
+# The lock has to be copied alongside the Gemfile.
+#
+# With only the Gemfile, bundle install resolves from scratch on every image build. That means the
+# container ignores the committed resolution entirely: it can pick up a different version of jekyll
+# or its dependencies than everything else in the repo was verified against, and a newly published
+# version carrying an advisory would be installed without anybody deciding to take it.
+#
+# It also discarded the platform entries. The lock records x86_64-linux-musl, which is what makes the
+# musl builds of nokogiri, ffi, sass-embedded and google-protobuf available here at all.
+COPY Gemfile Gemfile.lock ./
 
+# Deliberately not --deployment or --frozen: this is a development image built from a bind mount,
+# and failing the build because the lock is one patch out of date helps nobody locally. CI gets
+# reproducibility from the lock being committed and from the app workflow, which is where
+# enforcement would belong.
 RUN gem update bundler
 RUN bundle install
 
