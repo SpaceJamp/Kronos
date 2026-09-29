@@ -46,7 +46,7 @@ Everything in the "What changed in Kronos" section of the README. Concretely:
   check that was missing so cancelling still imported, cleared busy flags on failure, serialised
   concurrent dialogs, removed an unobserved thread-pool work item, and removed an O(n^2) re-hash
 - `src/Pages/SettingsPageModel.cs` — cleared a busy flag on failure
-- `package/*.cmd`, `package/NSIS/Installer.nsi`, `.github/workflows/*`, `.gitignore`, `*.sln`,
+- `package/*.cmd`, `package/Installer.iss`, `.github/workflows/*`, `.gitignore`, `*.sln`,
   `*.csproj`, `README.md` — project hygiene, rename, and packaging fixes
 
 ## What the AI did not write

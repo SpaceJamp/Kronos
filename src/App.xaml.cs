@@ -281,9 +281,34 @@ public sealed partial class App : Application
             long installSize = 0;
             installSize += CalculateDirectorySize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kronos"));
 
-            using (var kronosRegistryKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Kronos", true))
+            // The uninstall entry lives in the hive the installer ran as. A per user install is
+            // registered under HKCU, a machine wide one under HKLM, so this used to find nothing at
+            // all for an all users install and quietly stop tracking the size.
+            var perUserKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(UninstallKeyPath, false);
+            var allUsersKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(UninstallKeyPath, false);
+
+            Microsoft.Win32.RegistryKey? readKey = null;
+            Microsoft.Win32.RegistryKey hive;
+            switch (SelectInstallRegistryHive(perUserKey is not null, allUsersKey is not null))
             {
-                var installLocation = kronosRegistryKey?.GetValue("InstallLocation") as string;
+                case Microsoft.Win32.RegistryHive.CurrentUser:
+                    readKey = perUserKey;
+                    hive = Microsoft.Win32.Registry.CurrentUser;
+                    break;
+                case Microsoft.Win32.RegistryHive.LocalMachine:
+                    readKey = allUsersKey;
+                    hive = Microsoft.Win32.Registry.LocalMachine;
+                    break;
+                default:
+                    perUserKey?.Dispose();
+                    allUsersKey?.Dispose();
+                    return;
+            }
+
+            using (readKey)
+            using (allUsersKey)
+            {
+                var installLocation = readKey?.GetValue("InstallLocation") as string;
                 if (string.IsNullOrEmpty(installLocation) == false && Directory.Exists(installLocation) == true)
                 {
                     installSize += CalculateDirectorySize(installLocation);
@@ -295,24 +320,77 @@ public sealed partial class App : Application
                 }
 
                 var installSizeKB = (int)(installSize / 1000);
+                var existingSize = readKey?.GetValue("EstimatedSize") as int?;
 
-                // Only write when it actually changed. This ran on every single launch and wrote
-                // unconditionally, so the value in Apps & features churned on every start and the
-                // registry saw a write for a number that almost never moved.
-                if (kronosRegistryKey is not null &&
-                    kronosRegistryKey.GetValue("EstimatedSize") is int existingSize &&
-                    existingSize == installSizeKB)
+                // HKLM is writable only by an elevated process, and this one deliberately runs
+                // unelevated (see the IsAdminUser check above). A machine wide install therefore
+                // keeps whatever the installer recorded, which is a close enough answer for a
+                // nicety, rather than throwing on every single launch.
+                var hiveIsWritable = hive == Microsoft.Win32.Registry.CurrentUser || IsAdminUser();
+                if (ShouldWriteInstallSize(existingSize, installSizeKB, hiveIsWritable) == false)
                 {
                     return;
                 }
 
-                kronosRegistryKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
+                using (var writeKey = hive.OpenSubKey(UninstallKeyPath, true))
+                {
+                    writeKey?.SetValue("EstimatedSize", installSizeKB, Microsoft.Win32.RegistryValueKind.DWord);
+                }
             }
         }
         catch (Exception err)
         {
             Logger.Error(err);
         }
+    }
+
+    /// <summary>
+    /// Path of the uninstall entry, written by the installer and read back here for the install
+    /// location and the size shown in Apps &amp; features.
+    /// </summary>
+    internal const string UninstallKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Kronos";
+
+    /// <summary>
+    /// Picks the hive that holds this install's uninstall entry, or null when there is none.
+    /// </summary>
+    /// <remarks>
+    /// Extracted from <see cref="CalculateInstallSize"/> so the choice can be tested. The decision
+    /// matters because the hive depends on the scope the installer ran at, and reading only HKCU
+    /// silently loses the install size for every machine wide install.
+    /// </remarks>
+    internal static Microsoft.Win32.RegistryHive? SelectInstallRegistryHive(bool perUserExists, bool allUsersExists)
+    {
+        // HKCU is preferred when both somehow exist, because it is the one an unelevated process can
+        // actually write back to.
+        if (perUserExists)
+        {
+            return Microsoft.Win32.RegistryHive.CurrentUser;
+        }
+
+        if (allUsersExists)
+        {
+            return Microsoft.Win32.RegistryHive.LocalMachine;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether the freshly measured size is worth writing back to the uninstall entry.
+    /// </summary>
+    /// <remarks>
+    /// Extracted so the rules can be tested: skip an unchanged value, and skip a hive this process
+    /// has no rights to write. Writing unconditionally is what made the value churn in Apps &amp;
+    /// features on every launch.
+    /// </remarks>
+    internal static bool ShouldWriteInstallSize(int? existingSizeKB, int newSizeKB, bool hiveIsWritable)
+    {
+        if (hiveIsWritable == false)
+        {
+            return false;
+        }
+
+        return existingSizeKB != newSizeKB;
     }
 #endif
 
