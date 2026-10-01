@@ -500,28 +500,24 @@ public partial class TranslationToolboxWindowModel : ObservableObject
                         // Make sure there is a value before we start caring about it.
                         if (string.IsNullOrWhiteSpace(resourceCandidate?.ValueAsString) == false)
                         {
-                            if (resourceCandidate.Qualifiers.Count == 0)
-                            {
-                                // this should never happen
-                            }
-                            else
-                            {
-                                // Special case to allow en-US translations to be loaded.
-                                if (selectedLanguage.Key == "en-US")
-                                {
-                                    translationRow.NewTranslation = resourceCandidate.ValueAsString;
-                                }
-                                else
-                                {
-                                    // This should always just be 1 item, not more than 1, maybe?
-                                    var qualifier = resourceCandidate.Qualifiers.First();
+                            // The qualifier says whether this candidate is the English source text or a
+                            // translation of it, so it decides whether the value is usable here.
+                            //
+                            // It is normally a single language qualifier, but an empty sequence is
+                            // possible. The previous code branched on Count == 0 and then did nothing
+                            // inside that branch, so the row was left blank even though the neutral
+                            // value was right there to show. The empty qualifier now reads as null and
+                            // is treated as usable, because a candidate with no qualifier holds the
+                            // neutral resource.
+                            //
+                            // FirstOrDefault rather than First so the shape of the input cannot throw,
+                            // and the rule itself lives in TranslationResourceHelper so it can be
+                            // tested without a ResourceMap.
+                            var qualifierValue = resourceCandidate.Qualifiers.FirstOrDefault()?.QualifierValue;
 
-                                    // If the qualifier has a value of en-US, then we don't want to use it.
-                                    if (qualifier.QualifierValue.Equals("EN-US", StringComparison.InvariantCultureIgnoreCase) == false)
-                                    {
-                                        translationRow.NewTranslation = resourceCandidate.ValueAsString;
-                                    }
-                                }
+                            if (TranslationResourceHelper.ShouldUseCandidateValue(selectedLanguage.Key, qualifierValue))
+                            {
+                                translationRow.NewTranslation = resourceCandidate.ValueAsString;
                             }
                         }
                     }
