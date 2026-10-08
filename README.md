@@ -25,8 +25,6 @@
 >
 > | `msinfo32` field (`Win`+`R` → `msinfo32`) | Value | Meaning |
 > |---|---|---|
-> | **System Type** | `x64-based PC` | 64-bit Windows. Kronos runs. |
-> | **System Type** | `x86-based PC` | 32-bit **Windows**. Check *Processor* next. |
 > | **Processor → Architecture** | `x64` or `ARM64` | 64-bit **CPU**. Supported. |
 > | **Processor → Architecture** | `x86` | 32-bit **CPU**. No version of Windows can fix this. |
 >
