@@ -52,7 +52,7 @@
     <PackageIcon>Assets\icon_256.png</PackageIcon>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-    <Version>1.49</Version>
+    <Version>1.50</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
@@ -118,6 +118,7 @@
   <!-- Exclude Linux-only files from Windows build -->
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <Compile Remove="Program.cs" />
+    <Compile Remove="Updater.cs" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
