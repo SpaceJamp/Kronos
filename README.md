@@ -19,9 +19,7 @@
 > [!WARNING]
 > **The Windows GUI requires a 64-bit processor and 64-bit Windows. There is no 32-bit build and never
 > will be.** A 32-bit CPU cannot execute the `x86_64` instructions in the app, the .NET runtime and the
-> bundled SQLite — it is a hardware limit, not a setting. A 32-bit *Windows* cannot load a 64-bit
-> program at all, though installing 64-bit Windows fixes that case. Windows will not offer you a
-> meaningful error, it just says the app cannot run on your PC, so check the two fields below first.
+> bundled SQLite — it is a hardware limit, not a setting.
 >
 > | `msinfo32` field (`Win`+`R` → `msinfo32`) | Value | Meaning |
 > |---|---|---|
