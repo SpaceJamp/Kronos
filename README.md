@@ -17,9 +17,9 @@
 > disclosed in [AI_ASSISTED.md](AI_ASSISTED.md).
 
 > [!WARNING]
-> **The Windows GUI requires a 64-bit processor and 64-bit Windows. There is no 32-bit build and never
+> **The Windows GUI requires a 64-bit processor. There is no 32-bit build and never
 > will be.** A 32-bit CPU cannot execute the `x86_64` instructions in the app, the .NET runtime and the
-> bundled SQLite — it is a hardware limit, not a setting.
+> bundled SQLite — it is a hardware limit.
 >
 > | `msinfo32` field (`Win`+`R` → `msinfo32`) | Value | Meaning |
 > |---|---|---|
