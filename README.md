@@ -167,8 +167,8 @@ Per-file detail is in the commit history.
 ### Windows GUI
 
 ```powershell
-dotnet build ".\Kronos.sln" -c Debug
-dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -c Debug
+dotnet build ".\Kronos.sln" -c Release
+dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -c Release
 ```
 
 All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) build with zero
