@@ -770,6 +770,7 @@ internal class DLLManager
     /// <param name="game"></param>
     /// <returns></returns>
     ///
+#if WINDOWS
     public bool IsInKnownGameAsset(GameAsset gameAsset, Game game)
     {
         // NOTE: DLL type
@@ -821,6 +822,54 @@ internal class DLLManager
 
         return false;
     }
+#else
+    // Linux version: simplified check without Game object
+    public bool IsInKnownGameAsset(GameAsset gameAsset, GameLibrary library = GameLibrary.ManuallyAdded, string? titleBase64 = null)
+    {
+        var info = DLLAssetTypes.Find(gameAsset.AssetType);
+        if (info is null)
+        {
+            return false;
+        }
+
+        foreach (var record in info.Records(this))
+        {
+            if (string.Equals(gameAsset.Hash, record.MD5Hash, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        HashedKnownDLL? hashedKnownDLL = null;
+        _knownDLLsReadWriterLock.EnterReadLock();
+        try
+        {
+            if (_knownDLLHashIndex.TryGetValue(info.AssetType, out var byHash) == true)
+            {
+                byHash.TryGetValue(gameAsset.Hash, out hashedKnownDLL);
+            }
+        }
+        finally
+        {
+            _knownDLLsReadWriterLock.ExitReadLock();
+        }
+
+        if (hashedKnownDLL is null)
+        {
+            return false;
+        }
+
+        if (hashedKnownDLL.Sources.TryGetValue(library.ToString(), out var gameHashes) == true)
+        {
+            if (!string.IsNullOrEmpty(titleBase64) && gameHashes.Contains(titleBase64))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+#endif
 
 
     /// <summary>

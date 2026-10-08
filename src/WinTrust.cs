@@ -1,96 +1,29 @@
 using System;
 using System.Runtime.InteropServices;
 
-
-
 namespace Kronos;
 
-// Full implementaiton take from here, https://docs.microsoft.com/en-us/windows/win32/seccrypto/example-c-program--verifying-the-signature-of-a-pe-file
-// Help also from the comments in here, https://www.pinvoke.net/default.aspx/wintrust.winverifytrust
+// Full implementation taken from here: https://docs.microsoft.com/en-us/windows/win32/seccrypto/example-c-program--verifying-the-signature-of-a-pe-file
+// Help also from the comments in here: https://www.pinvoke.net/default.aspx/wintrust.winverifytrust
 
+#if WINDOWS
 internal static class WinTrust
 {
-    //internal static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-
     // GUID of the action to perform
     internal const string WINTRUST_ACTION_GENERIC_VERIFY_V2 = "00AAC56B-CD44-11d0-8CC2-00C04FC295EE";
 
     internal enum WinVerifyTrustResult : uint
     {
-        //    TRUST_E_NOSIGNATURE (when WTD_SAFER_FLAG is set in dwProvFlags)
-        //      The subject isn't signed, has an invalid signature or unable
-        //      to find the signer certificate. All signature verification
-        //      errors will map to this error. Basically all errors except for
-        //      publisher or timestamp certificate verification.
-        //
-        //      Call GetLastError() to get the underlying reason for not having
-        //      a valid signature.
-        //
-        //      The following LastErrors indicate that the file doesn't have a
-        //      signature: TRUST_E_NOSIGNATURE, TRUST_E_SUBJECT_FORM_UNKNOWN or
-        //      TRUST_E_PROVIDER_UNKNOWN.
-        //
-        //      UI will never be displayed for this case.
         TRUST_E_NOSIGNATURE = 0x800B0100,
-
-        // The form specified for the subject is not one supported or known by the specified trust provider.
         TRUST_E_SUBJECT_FORM_UNKNOWN = 0x800B0003,
-
-        // Unknown trust provider.
         TRUST_E_PROVIDER_UNKNOWN = 0x800B0001,
-
-        //    TRUST_E_EXPLICIT_DISTRUST
-        //      Returned if the hash representing the subject is trusted as
-        //      AUTHZLEVELID_DISALLOWED or the publisher is in the "Disallowed"
-        //      store. Also returned if the publisher certificate is revoked.
-        //
-        //      UI will never be displayed for this case.
         TRUST_E_EXPLICIT_DISTRUST = 0x800B0111,
-
-        //    ERROR_SUCCESS
-        //      No UI unless noted below.
-        //
-        //      Returned for the following:
-        //       - Hash representing the subject is trusted as
-        //         AUTHZLEVELID_FULLYTRUSTED
-        //       - The publisher certificate exists in the
-        //         "TrustedPublisher" store and there weren't any verification errors.
-        //       - UI was enabled and the user clicked "Yes" when asked
-        //         to install and run the signed subject.
-        //       - UI was disabled. No publisher or timestamp chain error.
         ERROR_SUCCESS = 0x0,
-
-        //    TRUST_E_SUBJECT_NOT_TRUSTED
-        //      UI was enabled and the the user clicked "No" when asked to install
-        //      and run the signed subject.
         TRUST_E_SUBJECT_NOT_TRUSTED = 0x800B0004,
-
-        //    CRYPT_E_SECURITY_SETTINGS
-        //      The subject hash or publisher wasn't explicitly trusted and
-        //      user trust wasn't allowed in the safer authenticode flags.
-        //      No UI will be displayed for this case.
-        //
-        //      The subject is signed and its signature successfully
-        //      verified.
-        //
-        //    Any publisher or timestamp chain error. If WTD_SAFER_FLAG wasn't set in
-        //    dwProvFlags, any signed code verification error.
-        //
         CRYPT_E_SECURITY_SETTINGS = 0x80092026,
-
-        // An error occurred while reading or writing to a file.
         CRYPT_E_FILE_ERROR = 0x80092003,
     }
 
-    // SetLastError must be true: the TRUST_E_NOSIGNATURE handling below calls
-    // Marshal.GetLastWin32Error() to tell "no signature at all" apart from "signature present but
-    // the subject form is unknown". With SetLastError false that call returns a stale value, so the
-    // branch was effectively a coin flip and the wrong message was logged.
-    //
-    // pWVTData is passed by reference rather than by value. WinVerifyTrust writes the opaque
-    // verification state into hWVTStateData, and that handle has to be handed back on the closing
-    // call. Passing the struct by value let the marshaller copy it, so the handle was written into
-    // the copy and thrown away, and the SIP state was never released.
     [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
     internal static extern WinVerifyTrustResult WinVerifyTrust(
         [In] IntPtr hwnd,
@@ -98,16 +31,13 @@ internal static class WinTrust
         ref WinTrustData pWVTData
     );
 
-
-
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct WinTrustFileInfo
     {
-        public UInt32 cbStruct { get; private set; }                // = sizeof(WINTRUST_FILE_INFO)
-        public IntPtr pcwszFilePath { get; private set; }           // required, file name to be verified
-        public IntPtr hFile { get; private set; }                     // optional, open handle to FilePath
-        public IntPtr pgKnownSubject { get; private set; }  // optional, subject type if it is known
+        public UInt32 cbStruct { get; private set; }
+        public IntPtr pcwszFilePath { get; private set; }
+        public IntPtr hFile { get; private set; }
+        public IntPtr pgKnownSubject { get; private set; }
 
         public WinTrustFileInfo(string filePath)
         {
@@ -174,10 +104,10 @@ internal static class WinTrust
         HashOnlyFlag = 0x00000200,
         UseDefaultOsverCheck = 0x00000400,
         LifetimeSigningFlag = 0x00000800,
-        CacheOnlyUrlRetrieval = 0x00001000, // affects CRL retrieval and AIA retrieval
+        CacheOnlyUrlRetrieval = 0x00001000,
         DisableMD2andMD4 = 0x00002000,
-        MarkOfTheWeb = 0x00004000, // Mark-Of-The-Web
-        CodeIntegrityDriverMode = 0x00008000,// Code Integrity driver mode
+        MarkOfTheWeb = 0x00004000,
+        CodeIntegrityDriverMode = 0x00008000,
     }
 
     internal enum WinTrustDataUIContext : uint
@@ -186,25 +116,22 @@ internal static class WinTrust
         Install = 1
     }
 
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct WinTrustData
     {
-        public UInt32 cbStruct { get; set; }                                        // = sizeof(WINTRUST_DATA)
-        public IntPtr pPolicyCallbackData { get; set; }                             // optional: used to pass data between the app and policy
-        public IntPtr pSIPClientData { get; set; }                                  // optional: used to pass data between the app and SIP.
-        public WinTrustDataUIChoice dwUIChoice { get; set; }                        // required: UI choice.
-        public WinTrustDataRevocationChecks fdwRevocationChecks { get; set; }       // required: certificate revocation check options
-        public WinTrustDataChoice dwUnionChoice { get; set; }                       // required: which structure is being passed in?
-        public IntPtr pFile { get; set; }                                           // individual file
-        // but what about pCatalog, pBlob, pSgnr, pCert?
-        public WinTrustDataStateAction dwStateAction { get; set; }                  // optional (Catalog File Processing)
-        public IntPtr hWVTStateData { get; set; }                                   // optional (Catalog File Processing)
-        public string? pwszURLReference { get; set; }                               // optional: (future) used to determine zone.
+        public UInt32 cbStruct { get; set; }
+        public IntPtr pPolicyCallbackData { get; set; }
+        public IntPtr pSIPClientData { get; set; }
+        public WinTrustDataUIChoice dwUIChoice { get; set; }
+        public WinTrustDataRevocationChecks fdwRevocationChecks { get; set; }
+        public WinTrustDataChoice dwUnionChoice { get; set; }
+        public IntPtr pFile { get; set; }
+        public WinTrustDataStateAction dwStateAction { get; set; }
+        public IntPtr hWVTStateData { get; set; }
+        public string? pwszURLReference { get; set; }
         public WinTrustDataProvFlags dwProvFlags { get; set; }
         public WinTrustDataUIContext dwUIContext { get; set; }
 
-        // constructor for silent WinTrustDataChoice.File check
         public WinTrustData(WinTrustFileInfo fileInfo)
         {
             cbStruct = (UInt32)Marshal.SizeOf<WinTrustData>();
@@ -220,7 +147,6 @@ internal static class WinTrust
             dwProvFlags = WinTrustDataProvFlags.RevocationCheckChainExcludeRoot;
             dwUIContext = WinTrustDataUIContext.Execute;
 
-            // On Win7SP1+, don't allow MD2 or MD4 signatures
             if ((Environment.OSVersion.Version.Major > 6) ||
                 ((Environment.OSVersion.Version.Major == 6) && (Environment.OSVersion.Version.Minor > 1)) ||
                 ((Environment.OSVersion.Version.Major == 6) && (Environment.OSVersion.Version.Minor == 1) && !string.IsNullOrEmpty(Environment.OSVersion.ServicePack)))
@@ -243,175 +169,80 @@ internal static class WinTrust
         }
     }
 
-
     public static bool VerifyEmbeddedSignature(string fileName)
     {
         WinVerifyTrustResult lStatus;
         uint dwLastError;
 
-        // Initialised to default so the finally block can always dispose them: both Dispose
-        // implementations no-op when their pointer is IntPtr.Zero, so this is safe even if the
-        // constructor or WinVerifyTrust threw before anything was allocated.
         WinTrustFileInfo FileData = default;
         WinTrustData WinTrustData = default;
 
         var validSignature = false;
         try
         {
-            // Initialize the WINTRUST_FILE_INFO structure.
             FileData = new WinTrustFileInfo(fileName);
-
-            /*
-            WVTPolicyGUID specifies the policy to apply on the file
-            WINTRUST_ACTION_GENERIC_VERIFY_V2 policy checks:
-
-            1) The certificate used to sign the file chains up to a root 
-            certificate located in the trusted root certificate store. This 
-            implies that the identity of the publisher has been verified by 
-            a certification authority.
-
-            2) In cases where user interface is displayed (which this example
-            does not do), WinVerifyTrust will check for whether the  
-            end entity certificate is stored in the trusted publisher store,  
-            implying that the user trusts content from this publisher.
-
-            3) The end entity certificate has sufficient permission to sign 
-            code, as indicated by the presence of a code signing EKU or no 
-            EKU.
-            */
 
             var WVTPolicyGUID = new Guid(WINTRUST_ACTION_GENERIC_VERIFY_V2);
 
-            // Initialize the WinVerifyTrust input data structure.
-
-
-            // Default all fields to 0.
-            ///memset(&WinTrustData, 0, sizeof(WinTrustData));
             WinTrustData = new WinTrustData(FileData)
             {
                 cbStruct = (UInt32)Marshal.SizeOf<WinTrustData>(),
-
-                // Use default code signing EKU.
                 pPolicyCallbackData = IntPtr.Zero,
-
-                // No data to pass to SIP.
                 pSIPClientData = IntPtr.Zero,
-
-                // Disable WVT UI.
                 dwUIChoice = WinTrustDataUIChoice.None,
-
-                // No revocation checking.
                 fdwRevocationChecks = WinTrustDataRevocationChecks.None,
-
-                // Verify an embedded signature on a file.
                 dwUnionChoice = WinTrustDataChoice.File,
-
-                // Verify action.
                 dwStateAction = WinTrustDataStateAction.Verify,
-
-                // Verification sets this value.
                 hWVTStateData = IntPtr.Zero,
-
-                // Not used.
                 pwszURLReference = null,
-
-                // This is not applicable if there is no UI because it changes 
-                // the UI to accommodate running applications instead of 
-                // installing applications.
                 dwUIContext = 0,
-
-                // Set pFile.
-                //pFile = &fileData; // done in the constructor
             };
 
-
-
-            // WinVerifyTrust verifies signatures as specified by the GUID
-            // and Wintrust_Data.
             lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
-
 
             switch (lStatus)
             {
                 case WinVerifyTrustResult.ERROR_SUCCESS:
-                    /*
-                    Signed file:
-                        - Hash that represents the subject is trusted.
-
-                        - Trusted publisher without any verification errors.
-
-                        - UI was disabled in dwUIChoice. No publisher or 
-                            time stamp chain errors.
-
-                        - UI was enabled in dwUIChoice and the user clicked 
-                            "Yes" when asked to install and run the signed 
-                            subject.
-                    */
                     validSignature = true;
                     Logger.Info($"The file \"{fileName}\" is signed and the signature was verified.");
                     break;
 
                 case WinVerifyTrustResult.TRUST_E_NOSIGNATURE:
-                    // The file was not signed or had a signature 
-                    // that was not valid.
-
-                    // Get the reason for no signature.
                     dwLastError = (uint)Marshal.GetLastWin32Error();
                     if ((uint)WinVerifyTrustResult.TRUST_E_NOSIGNATURE == dwLastError ||
                         (uint)WinVerifyTrustResult.TRUST_E_SUBJECT_FORM_UNKNOWN == dwLastError ||
                         (uint)WinVerifyTrustResult.TRUST_E_PROVIDER_UNKNOWN == dwLastError)
                     {
-                        // The file was not signed.
                         Logger.Warning($"The file \"{fileName}\" is not signed.");
                     }
                     else
                     {
-                        // The signature was not valid or there was an error 
-                        // opening the file.
                         Logger.Error($"An unknown error occurred trying to verify the signature of the \"{fileName}\" file.");
                     }
-
                     break;
 
                 case WinVerifyTrustResult.TRUST_E_EXPLICIT_DISTRUST:
-                    // The hash that represents the subject or the publisher 
-                    // is not allowed by the admin or user.
                     Logger.Warning("The signature is present, but specifically disallowed.");
                     break;
 
                 case WinVerifyTrustResult.TRUST_E_SUBJECT_NOT_TRUSTED:
-                    // The user clicked "No" when asked to install and run.
                     Logger.Error("The signature is present, but not trusted.");
                     break;
 
                 case WinVerifyTrustResult.CRYPT_E_SECURITY_SETTINGS:
-                    /*
-                    The hash that represents the subject or the publisher 
-                    was not explicitly trusted by the admin and the 
-                    admin policy has disabled user trust. No signature, 
-                    publisher or time stamp errors.
-                    */
                     Logger.Error("CRYPT_E_SECURITY_SETTINGS - The hash representing the subject or the publisher wasn't explicitly trusted by the admin and admin policy has disabled user trust. No signature, publisher or timestamp errors.");
                     break;
 
                 case WinVerifyTrustResult.CRYPT_E_FILE_ERROR:
-                    //An error occurred while reading or writing to a file.
                     Logger.Error("CRYPT_E_FILE_ERROR - An error occurred while reading or writing to a file.");
                     break;
 
                 default:
-                    // The UI was disabled in dwUIChoice or the admin policy 
-                    // has disabled user trust. lStatus contains the 
-                    // publisher or time stamp chain error.
                     Logger.Error($"Error is: 0x{lStatus}.");
                     break;
             }
 
-            // Any hWVTStateData must be released by a call with close. Because WinTrustData is now
-            // passed by reference, the handle the verify call populated is still here and can be
-            // handed back to release it.
             WinTrustData.dwStateAction = WinTrustDataStateAction.Close;
-
             lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
         }
         catch (Exception err)
@@ -420,51 +251,23 @@ internal static class WinTrust
         }
         finally
         {
-            // These allocate unmanaged memory (a CoTaskMem string for the path, and a CoTaskMem
-            // block holding the WINTRUST_FILE_INFO struct) and were never freed, so every signature
-            // check leaked. This runs on every dll swap and every dll import, so it accumulated
-            // over a session.
             FileData.Dispose();
             WinTrustData.Dispose();
         }
 
         return validSignature;
     }
-
-
-    /*
-    internal static bool VerifyEmbeddedSignature_Original(string fileName)
-    {
-        WinTrustFileInfo winTrustFileInfo = null;
-        WinTrustData winTrustData = null;
-
-        try
-        {
-            winTrustFileInfo = new WinTrust.WinTrustFileInfo(fileName);
-            winTrustData = new WinTrustData(winTrustFileInfo);
-            var guidAction = new Guid(WinTrust.WINTRUST_ACTION_GENERIC_VERIFY_V2);
-            var result = WinTrust.WinVerifyTrust(WinTrust.INVALID_HANDLE_VALUE, guidAction, winTrustData);
-            return result == WinVerifyTrustResult.Success;
-        }
-        catch (Exception err)
-        {
-            Logger.Error(err);
-            return false;
-        }
-        finally
-        {
-            if (winTrustFileInfo is not null)
-            {
-                winTrustFileInfo.Dispose();
-                winTrustFileInfo = null;
-            }
-
-            if (winTrustData is not null)
-            {
-                winTrustData.Dispose();
-                winTrustData = null;
-            }
-        }
-    }
-    */
 }
+#else
+// Stub implementation for non-Windows platforms (Linux)
+// On Linux, Authenticode signatures are not applicable. 
+// We return true to allow DLLs, but log a warning.
+internal static class WinTrust
+{
+    public static bool VerifyEmbeddedSignature(string filePath)
+    {
+        Kronos.Logger.Warning($"Signature verification not supported on this platform. Skipping check for: {filePath}");
+        return true; // Allow on non-Windows
+    }
+}
+#endif

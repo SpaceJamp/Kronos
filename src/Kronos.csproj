@@ -2,14 +2,14 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <AssemblyName>Kronos</AssemblyName>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.26100.0</TargetFrameworks>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <!--
       RootNamespace matches AssemblyName. They are kept in step deliberately: the embedded resource
       names are derived from the root namespace, and AcknowledgementsPageModel and DLLManager both
       look resources up by name, so letting the two drift silently breaks the static manifest
       (the app then refuses to start) and empties the acknowledgements page.
-
+  
       The storage folder in Storage.cs is "Kronos" rather than the original "DLSS Swapper" for the
       same reason: this is a separate program and should not read or write another product's data.
     -->
@@ -23,7 +23,7 @@
     -->
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
     <Prefer32Bit>false</Prefer32Bit>
 
     <!--
@@ -48,10 +48,6 @@
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Configurations>Debug;Release;Debug_Portable;Release_Portable</Configurations>
     <PackageIcon>Assets\icon_256.png</PackageIcon>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
@@ -111,6 +107,90 @@
     <InternalsVisibleTo Include="Kronos.Tests" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
+    <OutputType>WinExe</OutputType>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Exclude Linux-only files from Windows build -->
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <OutputType>Exe</OutputType>
+    <UseWinUI>false</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <StartupObject>Kronos.Program</StartupObject>
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+  </PropertyGroup>
+
+  <!-- Explicitly include only cross-platform files for Linux -->
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <Compile Include="Storage.cs" />
+    <Compile Include="Database.cs" />
+    <Compile Include="WinTrust.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="ProxySettings.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="BuildInfo.cs" />
+    <Compile Include="Data\Game.cs" />
+    <Compile Include="Data\GameAsset.cs" />
+    <Compile Include="Data\GameAssetType.cs" />
+    <Compile Include="Data\GameGroup.cs" />
+    <Compile Include="Data\GameHistory.cs" />
+    <Compile Include="Data\DLLAssetTypeInfo.cs" />
+    <Compile Include="Data\DLLManager.cs" />
+    <Compile Include="Data\DLLRecord.cs" />
+    <Compile Include="Data\DLLImportResult.cs" />
+    <Compile Include="Data\KnownDLLs.cs" />
+    <Compile Include="Data\HashedKnownDLL.cs" />
+    <Compile Include="Data\Manifest.cs" />
+    <Compile Include="Data\GameLibrarySettings.cs" />
+    <Compile Include="Data\LocalRecord.cs" />
+    <Compile Include="Data\UnknownGameAsset.cs" />
+    <Compile Include="Data\ComboBoxOption.cs" />
+    <Compile Include="Data\GameLibrarySelector.cs" />
+    <Compile Include="Data\NVIDIA\NGXModel.cs" />
+    <Compile Include="Data\NVIDIA\NGXModelRow.cs" />
+    <Compile Include="Data\NVIDIA\ListBucketResult.cs" />
+    <Compile Include="Data\NVIDIA\ListBucketResultContents.cs" />
+    <Compile Include="Data\DLSS\PresetOption.cs" />
+    <Compile Include="Data\Steam\SteamStateFlag.cs" />
+    <Compile Include="Data\Steam\SteamCoverUrlResolver.cs" />
+    <Compile Include="Data\Steam\Manifest\LibraryFoldersVDF.cs" />
+    <Compile Include="Data\Steam\SteamAPI\*.cs" />
+    <Compile Include="Data\Steam\Manifest\AppManifestACF.cs" />
+    <Compile Include="Helpers\PathHelpers.cs" />
+    <Compile Include="Helpers\DllBackupStack.cs" />
+    <Compile Include="Helpers\MassUpgradePlanner.cs" />
+    <Compile Include="Helpers\RepackDetector.cs" />
+    <Compile Include="Helpers\FileDownloader.cs" />
+    <Compile Include="Helpers\CommonHelpers.cs" />
+    <Compile Include="Helpers\FileSystemHelper.cs" />
+    <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
+    <Compile Include="Helpers\FSR31\FxxConsts.cs" />
+    <Compile Include="Extensions\FileVersionInfoExtensions.cs" />
+    <Compile Include="Extensions\VersionExtensions.cs" />
+    <Compile Include="Extensions\FileStreamExtensions.cs" />
+    <Compile Include="Interfaces\IGameLibrary.cs" />
+    <Compile Include="Interfaces\LocalizedViewModelBase.cs" />
+    <Compile Include="JsonConverters\HexStringToUintConverter.cs" />
+    <Compile Include="Language\TranslationRow.cs" />
+    <Compile Include="Messages\GameLibrariesStateChangedMessage.cs" />
+    <Compile Include="Messages\GameLibrariesOrderChangedMessage.cs" />
+    <Compile Include="Attributes\TranslationPropertyAttribute.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
+    <Compile Include="Data\EAApp\GameSearchResult.cs" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Release' OR '$(Configuration)'=='Release_Portable'">
     <Optimize>True</Optimize>
   </PropertyGroup>
@@ -123,7 +203,7 @@
     <DefineConstants>$(DefineConstants);RELEASE;PORTABLE</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
       <Content Remove="Assets\dlss_presets.json" />
       <Content Remove="Assets\dlss_d_presets.json" />
       <Content Remove="Assets\dlss_g_presets.json" />
@@ -131,7 +211,7 @@
       <Content Remove="Assets\static_manifest.json" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <None Remove="Assets\BadgeLogo.scale-100.png" />
     <None Remove="Assets\BadgeLogo.scale-125.png" />
     <None Remove="Assets\BadgeLogo.scale-150.png" />
@@ -208,7 +288,7 @@
     <None Remove="UserControls\ProxySettingsControl.xaml" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <EmbeddedResource Include="Acknowledgements\**\notes.md" />
     <EmbeddedResource Include="Acknowledgements\**\license.txt" />
     <EmbeddedResource Include="Assets\static_manifest.json">
@@ -216,9 +296,15 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <EmbeddedResource Include="Assets\static_manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
 
 
-    <ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
         <Content Update="Assets\BadgeLogo.scale-100.png">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -395,7 +481,7 @@
         </Content>
     </ItemGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
         <None Update="Assets\dlss_presets.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
@@ -467,7 +553,7 @@
     <InternalsVisibleTo Include="Kronos.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />
     <PackageReference Include="AsyncAwaitBestPractices.MVVM" Version="10.0.0" />
     <PackageReference Include="ByteSize" Version="2.1.2" />
@@ -505,6 +591,25 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />
+    <PackageReference Include="ByteSize" Version="2.1.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="sqlite-net-e" Version="1.11.0" />
+    <PackageReference Include="System.Management" Version="10.0.9" />
+    <PackageReference Include="ValveKeyValue" Version="0.70.0.499" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8" />
+  </ItemGroup>
+
   <!--
   Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
   Tools extension to be activated for this project even if the Windows App SDK Nuget
@@ -530,12 +635,12 @@
   -->
 
   <!-- Copy all "Resources.resw" files in the "Translations" folder to the output folder. -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <Content Include="Translations\**\*.resw">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
-  <Import Project="CopyPriFile.targets" />
+  <Import Project="CopyPriFile.targets" Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'" />
 
 </Project>

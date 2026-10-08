@@ -13,18 +13,42 @@ namespace Kronos;
 static class Storage
 {
     static string? _storagePath;
-#if   PORTABLE && DEBUG
+#if PORTABLE && DEBUG
     //public static string StoragePath => _storagePath ??= Path.Combine(AppContext.BaseDirectory, "StoredData", "DEBUG", Guid.NewGuid().ToString());
     public static string StoragePath => _storagePath ??= Path.Combine(AppContext.BaseDirectory, "StoredData", "DEBUG");
 #elif PORTABLE && !DEBUG
     public static string StoragePath => _storagePath ??= Path.Combine(AppContext.BaseDirectory, "StoredData");
 #elif !PORTABLE && DEBUG
-    //public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Kronos", "DEBUG", Guid.NewGuid().ToString());
-    public static string StoragePath => _storagePath ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Kronos", "DEBUG");
+    public static string StoragePath => _storagePath ??= Path.Combine(GetAppDataPath(), "Kronos", "DEBUG");
 #elif !PORTABLE && !DEBUG
-    public static string StoragePath => _storagePath  ??= Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "Kronos");
+    public static string StoragePath => _storagePath  ??= Path.Combine(GetAppDataPath(), "Kronos");
 #endif
 
+
+    static string GetAppDataPath()
+    {
+        // Cross-platform app data path
+        // On Windows: %LOCALAPPDATA%
+        // On Linux: ~/.local/share (or $XDG_DATA_HOME)
+        // On macOS: ~/Library/Application Support
+        if (OperatingSystem.IsWindows())
+        {
+            return Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%");
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            if (!string.IsNullOrEmpty(xdgDataHome))
+                return xdgDataHome;
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support");
+        }
+        // Fallback
+        return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    }
 
     static Storage()
     {
