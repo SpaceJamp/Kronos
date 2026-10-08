@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Kronos.ViewModels"
+             xmlns:conv="using:Kronos.Converters"
+             x:Class="Kronos.Views.LibraryView"
+             x:DataType="vm:LibraryViewModel">
+
+  <UserControl.Resources>
+    <conv:StatusToColorConverter x:Key="StatusToColor" />
+    <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+  </UserControl.Resources>
+
+  <DockPanel>
+    <!-- Search/Filter Bar -->
+    <Border DockPanel.Dock="Top" Padding="8" Background="{DynamicResource ControlFillColorDefaultBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBox Width="300" Watermark="Search games..."
+                 Text="{Binding SearchText, Mode=TwoWay}" />
+        <CheckBox Content="Show Hidden" IsChecked="{Binding ShowHidden, Mode=TwoWay}" />
+        <TextBlock Text="{Binding VisibleGameCount, StringFormat='{0} games'}"
+                   VerticalAlignment="Center" Margin="8,0" />
+      </StackPanel>
+    </Border>
+
+    <!-- Game List -->
+    <DataGrid ItemsSource="{Binding Games}"
+              SelectedItem="{Binding SelectedGame, Mode=TwoWay}"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="True"
+              CanUserResizeColumns="True"
+              IsReadOnly="True"
+              GridLinesVisibility="Horizontal"
+              RowHeight="40">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Header="Game" Width="*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Border Width="32" Height="32" CornerRadius="4" ClipToBounds="True">
+                  <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                </Border>
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="Medium" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="DLSS" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ContentControl Content="{Binding Dlss}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="DLSS-G" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ContentControl Content="{Binding DlssG}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="FSR 3.1" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ContentControl Content="{Binding Fsr31Dx12}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="XeSS" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ContentControl Content="{Binding Xess}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Actions" Width="180">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Content="📁" ToolTip.Tip="Open Folder"
+                        Command="{Binding OpenGameFolderCommand}" CommandParameter="{Binding .}" />
+                <Button Content="❌" ToolTip.Tip="Remove"
+                        Command="{Binding RemoveGameCommand}" CommandParameter="{Binding .}" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

@@ -119,6 +119,7 @@
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <Compile Remove="Program.cs" />
     <Compile Remove="Updater.cs" />
+    <Compile Remove="Kronos.Avalonia\**" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
@@ -131,20 +132,20 @@
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
-  <!-- Explicitly include only cross-platform files for Linux -->
+  <!-- Explicitly include ONLY cross-platform core files for Linux CLI -->
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <!-- Core infrastructure -->
     <Compile Include="Storage.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="WinTrust.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Settings.cs" />
-    <Compile Include="ProxySettings.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="BuildInfo.cs" />
-    <Compile Include="Data\Game.cs" />
+    <Compile Include="ProxySettings.cs" />
+
+    <!-- Core data models (no UI dependencies) -->
     <Compile Include="Data\GameAsset.cs" />
     <Compile Include="Data\GameAssetType.cs" />
-    <Compile Include="Data\GameGroup.cs" />
     <Compile Include="Data\GameHistory.cs" />
     <Compile Include="Data\DLLAssetTypeInfo.cs" />
     <Compile Include="Data\DLLManager.cs" />
@@ -168,27 +169,44 @@
     <Compile Include="Data\Steam\Manifest\LibraryFoldersVDF.cs" />
     <Compile Include="Data\Steam\SteamAPI\*.cs" />
     <Compile Include="Data\Steam\Manifest\AppManifestACF.cs" />
+
+    <!-- Helpers (cross-platform only) -->
     <Compile Include="Helpers\PathHelpers.cs" />
     <Compile Include="Helpers\DllBackupStack.cs" />
     <Compile Include="Helpers\MassUpgradePlanner.cs" />
     <Compile Include="Helpers\RepackDetector.cs" />
     <Compile Include="Helpers\FileDownloader.cs" />
     <Compile Include="Helpers\CommonHelpers.cs" />
-    <Compile Include="Helpers\FileSystemHelper.cs" />
     <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
     <Compile Include="Helpers\FSR31\FxxConsts.cs" />
+
+    <!-- Extensions -->
     <Compile Include="Extensions\FileVersionInfoExtensions.cs" />
     <Compile Include="Extensions\VersionExtensions.cs" />
     <Compile Include="Extensions\FileStreamExtensions.cs" />
+
+    <!-- Interfaces -->
     <Compile Include="Interfaces\IGameLibrary.cs" />
     <Compile Include="Interfaces\LocalizedViewModelBase.cs" />
+
+    <!-- JSON Converters -->
     <Compile Include="JsonConverters\HexStringToUintConverter.cs" />
+
+    <!-- Language -->
     <Compile Include="Language\TranslationRow.cs" />
+
+    <!-- Messages -->
     <Compile Include="Messages\GameLibrariesStateChangedMessage.cs" />
     <Compile Include="Messages\GameLibrariesOrderChangedMessage.cs" />
+
+    <!-- Attributes -->
     <Compile Include="Attributes\TranslationPropertyAttribute.cs" />
+
+    <!-- Manually added games (cross-platform) -->
     <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
     <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
+
+    <!-- EA App (cross-platform data models) -->
     <Compile Include="Data\EAApp\GameSearchResult.cs" />
   </ItemGroup>
 

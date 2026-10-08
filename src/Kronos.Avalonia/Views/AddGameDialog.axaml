@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Kronos.ViewModels"
+        x:Class="Kronos.Views.AddGameDialog"
+        x:DataType="vm:AddGameDialogViewModel"
+        Title="Add Game"
+        Width="500"
+        Height="250"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="24" Spacing="16">
+    <TextBlock Text="Add Game Manually" FontSize="20" FontWeight="Bold" />
+
+    <StackPanel Spacing="8">
+      <TextBlock Text="Game Title" FontWeight="Medium" />
+      <TextBox Text="{Binding GameTitle, Mode=TwoWay}" Watermark="e.g., Cyberpunk 2077" />
+    </StackPanel>
+
+    <StackPanel Spacing="8">
+      <TextBlock Text="Install Path" FontWeight="Medium" />
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox Grid.Column="0" Text="{Binding InstallPath, Mode=TwoWay}" Watermark="/path/to/game" />
+        <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowsePathCommand}" />
+      </Grid>
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+      <Button Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
+      <Button Content="Add Game" IsDefault="True" Classes="Accent" Command="{Binding AddCommand}" />
+    </StackPanel>
+  </StackPanel>
+</Window>
