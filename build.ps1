@@ -1,32 +1,54 @@
 #!/usr/bin/env pwsh
 <# 
 .SYNOPSIS
-    Kronos Linux Build Script (PowerShell)
-    Builds the Kronos CLI for Linux from Windows using cross-compilation
+    Kronos Build Script (PowerShell)
+    Builds Kronos for the current platform or cross-compiles for Linux
 
 .DESCRIPTION
-    This script builds the Linux version of Kronos on Windows using .NET's cross-platform publishing.
+    This script builds Kronos for the current platform (Windows GUI or Linux CLI) 
+    or cross-compiles Linux from Windows.
     Requires .NET 10 SDK installed.
 
 .EXAMPLE
-    .\build.ps1
-    .\build.ps1 -Configuration Debug
-    .\build.ps1 -Runtime linux-arm64
+    .\build.ps1                           # Build for current platform
+    .\build.ps1 -Configuration Debug      # Debug build
+    .\build.ps1 -Target Linux             # Cross-compile Linux from Windows
+    .\build.ps1 -Target Windows           # Build Windows (native)
+    .\build.ps1 -Target All               # Build both Linux CLI and Windows GUI
+    .\build.ps1 -Configuration Release -Target Linux -Runtime linux-x64
 #>
 
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     
+    [ValidateSet('Windows', 'Linux', 'All')]
+    [string]$Target = '',
+    
     [ValidateSet('linux-x64')]
     [string]$Runtime = 'linux-x64',
+    
+    [string]$LicenseKey = '',
     
     [switch]$NoRestore
 )
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "=== Kronos Linux Build Script (PowerShell) ===" -ForegroundColor Green
+# Auto-detect target if not specified
+if (-not $Target) {
+    if ([RuntimeInformation]::IsOSPlatform('Windows')) {
+        $Target = 'Windows'
+    } elseif ([RuntimeInformation]::IsOSPlatform('Linux')) {
+        $Target = 'Linux'
+    } else {
+        Write-Host "Error: Could not auto-detect platform. Specify -Target explicitly." -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "=== Kronos Build Script (PowerShell) ===" -ForegroundColor Green
+Write-Host "Target: $Target | Configuration: $Configuration | Runtime: $Runtime" -ForegroundColor Cyan
 Write-Host ""
 
 # Check for .NET SDK
@@ -39,22 +61,87 @@ $dotnetVersion = dotnet --version
 Write-Host "Found .NET SDK: $dotnetVersion" -ForegroundColor Green
 
 $srcDir = Join-Path $PSScriptRoot "src"
-$outputDir = Join-Path $PSScriptRoot "Output" $Runtime
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
-Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-if (-not $NoRestore) {
-    dotnet restore "$srcDir\Kronos.csproj" -f net10.0
+# Set license key env var if provided
+if ($LicenseKey) {
+    $env:IMAGESHARP_LICENSE_KEY = $LicenseKey
+    Write-Host "Using SixLabors ImageSharp license key" -ForegroundColor Green
 }
 
-Write-Host "Building for Linux ($Configuration)..." -ForegroundColor Yellow
-dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration --no-restore
+function Build-Linux {
+    param($Configuration, $Runtime, $NoRestore, $srcDir, $outputDir)
+    
+    Write-Host "=== Building Linux CLI ===" -ForegroundColor Green
+    
+    if (-not $NoRestore) {
+        Write-Host "Restoring dependencies..." -ForegroundColor Yellow
+        dotnet restore "$srcDir\Kronos.csproj" -f net10.0
+    }
+    
+    Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration --no-restore
+    
+    Write-Host "Publishing Linux CLI for $Runtime..." -ForegroundColor Yellow
+    $outputDir = Join-Path $PSScriptRoot "Output" "linux-$Runtime-$timestamp"
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained -o $outputDir --no-build
+    
+    Write-Host "Linux CLI published to: $outputDir" -ForegroundColor Green
+    return $outputDir
+}
 
-Write-Host "Publishing for $Runtime..." -ForegroundColor Yellow
-dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained -o $outputDir --no-build
+function Build-Windows {
+    param($Configuration, $NoRestore, $srcDir, $outputDir)
+    
+    Write-Host "=== Building Windows GUI ===" -ForegroundColor Green
+    
+    if (-not $NoRestore) {
+        Write-Host "Restoring dependencies..." -ForegroundColor Yellow
+        dotnet restore "$srcDir\Kronos.csproj"
+    }
+    
+    Write-Host "Building Windows GUI ($Configuration)..." -ForegroundColor Yellow
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration --no-restore
+    
+    Write-Host "Publishing Windows Portable..." -ForegroundColor Yellow
+    $outputDir = Join-Path $PSScriptRoot "Output" "win-x64-portable-$timestamp"
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --self-contained -p:PublishSingleFile=true -o $outputDir --no-build
+    
+    Write-Host "Windows Portable published to: $outputDir" -ForegroundColor Green
+    return $outputDir
+}
 
+$srcDir = Join-Path $PSScriptRoot "src"
+$outputs = @()
+
+switch ($Target) {
+    'Linux' {
+        $outputs += Build-Linux -Configuration $Configuration -Runtime $Runtime -NoRestore $NoRestore -srcDir $srcDir
+    }
+    'Windows' {
+        if (-not [RuntimeInformation]::IsOSPlatform('Windows')) {
+            Write-Host "Error: Windows build must run on Windows" -ForegroundColor Red
+            exit 1
+        }
+        $outputs += Build-Windows -Configuration $Configuration -NoRestore $NoRestore -srcDir $srcDir
+    }
+    'All' {
+        if (-not [RuntimeInformation]::IsOSPlatform('Windows')) {
+            Write-Host "Error: 'All' target requires Windows (for Windows build)" -ForegroundColor Red
+            exit 1
+        }
+        $outputs += Build-Linux -Configuration $Configuration -Runtime $Runtime -NoRestore $NoRestore -srcDir $srcDir
+        $outputs += Build-Windows -Configuration $Configuration -NoRestore $NoRestore -srcDir $srcDir
+    }
+}
+
+Write-Host "" 
 Write-Host "=== Build Complete ===" -ForegroundColor Green
-Write-Host "Output: $outputDir" -ForegroundColor Green
+foreach ($output in $outputs) {
+    Write-Host "Output: $output" -ForegroundColor Green
+}
 Write-Host ""
-Write-Host "To run on Linux: ./Kronos --help" -ForegroundColor Yellow
+Write-Host "To run Linux CLI: ./Kronos --help" -ForegroundColor Yellow
+Write-Host "To run Windows: Double-click Kronos.exe" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Note: Copy the entire output folder to a Linux machine to run." -ForegroundColor Yellow
+Write-Host "Note: Copy the entire output folder to target machine to run." -ForegroundColor Yellow

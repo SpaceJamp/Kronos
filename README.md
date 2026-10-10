@@ -274,3 +274,10 @@ relicensed. Per GPL-3.0 §5(a) the modifications are stated in
 [What changed](#what-changed). See [NOTICE](NOTICE) for copyright ownership details.
 `DLSS`, `FSR`, `FidelityFX` and `XeSS` are trademarks of their
 respective owners; this project is not affiliated with NVIDIA.
+
+### Third-Party Licenses
+
+**SixLabors.ImageSharp 3.2.0+** — Used under [SixLabors Community License](https://sixlabors.com/pricing#community).
+This library processes game cover art (download, resize, convert, cache). The community license
+is granted for non-commercial open-source projects. The license key is provided at build time
+via the `IMAGESHARP_LICENSE_KEY` environment variable (not committed to source).

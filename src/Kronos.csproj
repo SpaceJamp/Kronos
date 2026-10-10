@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>Kronos</AssemblyName>
     <TargetFrameworks>net10.0;net10.0-windows10.0.26100.0</TargetFrameworks>
+    <SixLaborsLicenseKey>$([System.Environment]::GetEnvironmentVariable('IMAGESHARP_LICENSE_KEY'))</SixLaborsLicenseKey>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <!--
       RootNamespace matches AssemblyName. They are kept in step deliberately: the embedded resource
@@ -210,6 +211,7 @@
 
   <PropertyGroup Condition="'$(Configuration)'=='Release_Portable'">
     <DefineConstants>$(DefineConstants);RELEASE;PORTABLE</DefineConstants>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
@@ -586,7 +588,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260529003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.2.0" />
     <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
@@ -609,7 +611,7 @@
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.2.0" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
