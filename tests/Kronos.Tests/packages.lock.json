@@ -371,8 +371,8 @@
       },
       "SixLabors.ImageSharp": {
         "type": "Transitive",
-        "resolved": "3.1.12",
-        "contentHash": "iAg6zifihXEFS/t7fiHhZBGAdCp3FavsF4i2ZIDp0JfeYeDVzvmlbY1CNhhIKimaIzrzSi5M/NBFcWvZT2rB/A=="
+        "resolved": "3.1.5",
+        "contentHash": "lNtlq7dSI/QEbYey+A0xn48z5w4XHSffF8222cC4F4YwTXfEImuiBavQcWjr49LThT/pRmtWJRcqA/PlL+eJ6g=="
       },
       "SourceGear.sqlite3": {
         "type": "Transitive",
@@ -516,7 +516,7 @@
           "Serilog": "[4.3.1, )",
           "Serilog.Sinks.Debug": "[3.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
-          "SixLabors.ImageSharp": "[3.1.12, )",
+          "SixLabors.ImageSharp": "[3.1.5, )",
           "SourceGear.sqlite3": "[3.50.4.5, )",
           "System.Drawing.Common": "[10.0.9, )",
           "System.Management": "[10.0.9, )",
