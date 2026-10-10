@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Abstractions;
+using Avalonia.Controls;
 
 namespace Kronos.ViewModels;
 

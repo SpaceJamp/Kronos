@@ -4,14 +4,14 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Abstractions;
+using Kronos.Platform;
 using Kronos.Views;
 
 namespace Kronos.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
-    private ISettings _settings = Platform.Settings;
+    private readonly ISettingsService _settings = Platform.Settings;
 
     [ObservableProperty]
     private string _downloadPath = string.Empty;
@@ -41,13 +41,13 @@ public partial class SettingsViewModel : ObservableObject
 
     private void LoadSettings()
     {
-        _settings.Load();
-        DownloadPath = _settings.DownloadPath;
-        AllowUntrusted = _settings.AllowUntrusted;
-        CheckSignatures = _settings.CheckSignatures;
-        AutoCheckUpdates = _settings.AutoCheckUpdates;
-        MaxConcurrentDownloads = _settings.MaxConcurrentDownloads;
-        foreach (var path in _settings.IgnoredPaths)
+        var settings = _settings.GetSettings();
+        DownloadPath = settings.DownloadPath;
+        AllowUntrusted = settings.AllowUntrusted;
+        CheckSignatures = settings.CheckSignatures;
+        AutoCheckUpdates = settings.AutoCheckUpdates;
+        MaxConcurrentDownloads = settings.MaxConcurrentDownloads;
+        foreach (var path in settings.IgnoredPaths)
         {
             IgnoredPaths.Add(path);
         }
@@ -89,14 +89,17 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveAsync()
     {
-        _settings.DownloadPath = DownloadPath;
-        _settings.AllowUntrusted = AllowUntrusted;
-        _settings.CheckSignatures = CheckSignatures;
-        _settings.AutoCheckUpdates = AutoCheckUpdates;
-        _settings.MaxConcurrentDownloads = MaxConcurrentDownloads;
-        _settings.IgnoredPaths = IgnoredPaths.ToList();
+        var settings = new SettingsModel
+        {
+            DownloadPath = DownloadPath,
+            AllowUntrusted = AllowUntrusted,
+            CheckSignatures = CheckSignatures,
+            AutoCheckUpdates = AutoCheckUpdates,
+            MaxConcurrentDownloads = MaxConcurrentDownloads,
+            IgnoredPaths = IgnoredPaths.ToList()
+        };
 
-        await _settings.SaveAsync();
+        await _settings.SaveSettingsAsync(settings);
         await Platform.Dialogs.ShowInformationAsync("Settings Saved", "Settings have been saved successfully.");
     }
 
@@ -108,7 +111,7 @@ public partial class SettingsViewModel : ObservableObject
             "Reset all settings to defaults?");
         if (!confirmed) return;
 
-        var defaults = Platform.Settings;
+        var defaults = _settings.GetDefaultSettings();
         DownloadPath = defaults.DownloadPath;
         AllowUntrusted = defaults.AllowUntrusted;
         CheckSignatures = defaults.CheckSignatures;

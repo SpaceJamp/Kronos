@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Abstractions;
+using Kronos.Platform;
 
 namespace Kronos.ViewModels;
 
@@ -71,7 +71,7 @@ public partial class GameItemViewModel : ObservableObject
 
     public async Task RefreshAsync()
     {
-        var game = await Kronos.Abstractions.Platform.GameLibrary.GetGameAsync(GameId);
+        var game = await Platform.GameLibrary.GetGameAsync(GameId);
         if (game != null)
         {
             UpdateDllViews(game);
@@ -136,7 +136,7 @@ public partial class GameDllViewModel : ObservableObject
         {
             // Note: This would need the parent game's GameId
             // For now, we'll just show a message
-            await Kronos.Abstractions.Platform.Dialogs.ShowInformationAsync("Swap", $"Swap {TypeDisplayName} not fully implemented in cross-platform layer yet");
+            await Platform.Dialogs.ShowInformationAsync("Swap", $"Swap {TypeDisplayName} not fully implemented in cross-platform layer yet");
         }
         finally
         {
@@ -147,7 +147,7 @@ public partial class GameDllViewModel : ObservableObject
     [RelayCommand]
     private async Task ResetAsync()
     {
-        var confirmed = await Kronos.Abstractions.Platform.Dialogs.ShowConfirmationAsync(
+        var confirmed = await Platform.Dialogs.ShowConfirmationAsync(
             "Reset DLL",
             $"Reset {TypeDisplayName} to original version?");
         if (!confirmed) return;
@@ -155,7 +155,7 @@ public partial class GameDllViewModel : ObservableObject
         IsUpdating = true;
         try
         {
-            await Kronos.Abstractions.Platform.Dialogs.ShowInformationAsync("Reset", $"Reset {TypeDisplayName} not fully implemented in cross-platform layer yet");
+            await Platform.Dialogs.ShowInformationAsync("Reset", $"Reset {TypeDisplayName} not fully implemented in cross-platform layer yet");
         }
         finally
         {

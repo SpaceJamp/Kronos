@@ -4,7 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Abstractions;
+using Kronos.Models;
+using Kronos.Platform;
 
 namespace Kronos.ViewModels;
 

@@ -2,6 +2,7 @@
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -22,7 +23,7 @@ public static class Program
         // Initialize logger for console
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
-            .WriteTo.Console()
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .CreateLogger();
 
         var rootCommand = new RootCommand("Kronos - DLSS/FSR/XeSS DLL Swapper for Linux");
@@ -89,10 +90,10 @@ public static class Program
             // Would need to modify CheckForUpdateAsync to support force
         }
 
-        Log.Information("Update available: v{Version} ({Size:N0} bytes)", updateInfo.Version, updateInfo.FileSize);
+        Log.Information("Update available: v{Version} ({Size:N0} bytes)", updateInfo!.Version, updateInfo!.FileSize);
         if (!string.IsNullOrEmpty(updateInfo.ReleaseNotes))
         {
-            Log.Information("Release notes:\n{Notes}", updateInfo.ReleaseNotes.Trim());
+            Log.Information("Release notes:\n{Notes}", updateInfo.ReleaseNotes!.Trim());
         }
 
         if (checkOnly)

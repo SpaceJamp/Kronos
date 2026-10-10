@@ -10,6 +10,7 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationIcon>Assets/icon.ico</ApplicationIcon>
     <Version>1.50</Version>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,13 +40,35 @@
     <ProjectReference Include="..\Kronos.csproj" />
   </ItemGroup>
 
-  <!-- Include Storage.cs from core for cross-platform paths -->
+  <!-- Include all source files explicitly since EnableDefaultCompileItems=false -->
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <Compile Include="App.axaml.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Models\Models.cs" />
+    <Compile Include="Converters\Converters.cs" />
+    <Compile Include="Services\Interfaces.cs" />
+    <Compile Include="Services\Implementations.cs" />
+    <Compile Include="ViewModels\UpdatesViewModel.cs" />
+    <Compile Include="ViewModels\SettingsViewModel.cs" />
+    <Compile Include="ViewModels\MainWindowViewModel.cs" />
+    <Compile Include="ViewModels\LibraryViewModel.cs" />
+    <Compile Include="ViewModels\GameItemViewModel.cs" />
+    <Compile Include="ViewModels\ChangelogViewModel.cs" />
+    <Compile Include="ViewModels\AddGameDialogViewModel.cs" />
+    <Compile Include="Views\MainWindow.axaml.cs" />
+    <Compile Include="Views\LibraryView.axaml.cs" />
+    <Compile Include="Views\SettingsView.axaml.cs" />
+    <Compile Include="Views\SettingsWindow.axaml.cs" />
+    <Compile Include="Views\ChangelogWindow.axaml.cs" />
+    <Compile Include="Views\UpdatesView.axaml.cs" />
+    <Compile Include="Views\AddGameDialog.axaml.cs" />
+    <Compile Include="Platform\Abstractions.cs" />
+    <Compile Include="Platform\Implementations.cs" />
     <Compile Include="..\Storage.cs" />
+    <Compile Include="..\Platforms\Linux\*.cs" />
   </ItemGroup>
 
-  <!-- Include Linux platform implementations for Avalonia GUI -->
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <Compile Include="..\Platforms\Linux\*.cs" />
+  <ItemGroup>
+    <ProjectReference Include="..\Kronos.csproj" />
   </ItemGroup>
 </Project>

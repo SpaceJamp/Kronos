@@ -22,8 +22,6 @@ namespace Kronos;
 internal static class Updater
 {
     private const string GitHubApiUrl = "https://api.github.com/repos/SpaceJamp/Kronos/releases/latest";
-    private const string RepoOwner = "SpaceJamp";
-    private const string RepoName = "Kronos";
     private static readonly HttpClient HttpClient = new()
     {
         Timeout = TimeSpan.FromMinutes(5),
@@ -73,7 +71,7 @@ internal static class Updater
                 ReleaseNotes = release.Body ?? string.Empty,
                 DownloadUrl = asset.BrowserDownloadUrl,
                 AssetName = asset.Name,
-                Sha256 = asset.Sha256,
+                Sha256 = asset.Sha256 ?? string.Empty,
                 FileSize = asset.Size
             };
         }
@@ -306,10 +304,13 @@ internal static class Updater
                 // Copy new binary
                 File.Copy(newBinary, currentExe, true);
                 
-                // Make executable
-                File.SetUnixFileMode(currentExe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                // Make executable (Linux only)
+                if (OperatingSystem.IsLinux())
+                {
+                    File.SetUnixFileMode(currentExe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
                                                    UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
                                                    UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+                }
 
                 // Remove backup on success
                 File.Delete(backupPath);

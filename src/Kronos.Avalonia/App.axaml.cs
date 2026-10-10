@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using Kronos.Platform;
 using Kronos.ViewModels;
 using Kronos.Views;
 using Serilog;
@@ -29,6 +30,14 @@ public partial class App : Application
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7)
             .CreateLogger();
+
+        // Setup platform services
+        var dialogs = new AvaloniaDialogService();
+        var settings = new AvaloniaSettingsService();
+        var gameLibrary = new AvaloniaGameLibraryService();
+        var updates = new AvaloniaUpdateService();
+
+        Platform.Initialize(dialogs, settings, gameLibrary, updates);
 
         // Setup DI
         var services = new ServiceCollection();
