@@ -652,6 +652,6 @@
     </Content>
   </ItemGroup>
 
-  <Import Project="CopyPriFile.targets" Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'" />
+  <Import Project="CopyPriFile.targets" Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0' And '$(PublishSingleFile)'!='true'" />
 
 </Project>
