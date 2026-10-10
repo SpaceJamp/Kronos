@@ -43,7 +43,7 @@
  
 **Windows GUI** (WinUI 3): Primary interface with full game library detection (Steam, GOG, Epic, etc.), visual DLL management, and one-click swapping.
  
-**Linux GUI** (Avalonia): *Work in progress* — core cross-platform libraries work, but GUI has compilation errors. Runs on X11/Wayland when fixed. Game detection will be manual (no Windows registry access).
+**Linux GUI** (Avalonia): *Work in progress* — core cross-platform libraries work, but GUI has compilation errors. Runs on **Wayland only** when fixed (no X11 support). Game detection will be manual (no Windows registry access).
  
 **Linux CLI**: Working — core cross-platform libraries compile and run. Implements `update`, `version`, and `self-update` commands. Full DLL management commands (list, swap, reset, import) need cross-platform file list completed.
 
