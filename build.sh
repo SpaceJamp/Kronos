@@ -160,7 +160,11 @@ build_linux() {
     echo -e "${GREEN}=== Building Linux CLI ===${NC}"
     
     echo -e "${YELLOW}Restoring dependencies...${NC}"
-    dotnet restore "$src_dir/Kronos.csproj" -f net10.0
+    # No framework filter here. `dotnet restore` has no --framework option at all, and its -f is
+    # --force - so "-f net10.0" parsed as "--force net10.0", and net10.0 was then passed on as a
+    # second project: "MSB1008: Only one project can be specified." Restore handles every target
+    # framework in the project by itself, which is what we want anyway.
+    dotnet restore "$src_dir/Kronos.csproj"
     
     echo -e "${YELLOW}Building Linux CLI ($config)...${NC}"
     dotnet build "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --no-restore

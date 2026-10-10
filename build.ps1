@@ -84,7 +84,11 @@ function Build-Linux {
     
     if (-not $NoRestore) {
         Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-        dotnet restore "$srcDir\Kronos.csproj" -f net10.0
+        # No framework filter here. `dotnet restore` has no --framework option at all, and its -f is
+        # --force - so "-f net10.0" parsed as "--force net10.0", and net10.0 was then passed on as a
+        # second project: "MSB1008: Only one project can be specified." Restore handles every target
+        # framework in the project by itself, which is what we want anyway.
+        dotnet restore "$srcDir\Kronos.csproj"
     }
     
     Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
