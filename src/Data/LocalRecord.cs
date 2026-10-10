@@ -1,10 +1,7 @@
 using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
-
-#if WINDOWS
 using Kronos.Helpers;
-#endif
 
 namespace Kronos.Data;
 
@@ -18,10 +15,16 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
     [ObservableProperty]
     public partial bool IsImported { get; set; } = false;
 
-#if WINDOWS
+    /// <summary>
+    /// The downloader tracking this record's fetch, so the UI can show progress.
+    /// </summary>
+    /// <remarks>
+    /// Cross-platform because the download itself has to be: the Linux CLI fetches DLLs too, and
+    /// it reads this to drive the transfer. Nothing binds to it there, so the progress properties
+    /// simply go unread - which is a different thing from the object not existing.
+    /// </remarks>
     [ObservableProperty]
     public partial FileDownloader? FileDownloader { get; set; } = null;
-#endif
 
     [ObservableProperty]
     public partial bool HasDownloadError { get; set; } = false;
@@ -118,9 +121,7 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
 
         ExpectedPath = localRecord.ExpectedPath;
         IsDownloaded = localRecord.IsDownloaded;
-#if WINDOWS
         FileDownloader = localRecord.FileDownloader;
-#endif
         HasDownloadError = localRecord.HasDownloadError;
         DownloadErrorMessage = localRecord.DownloadErrorMessage;
         IsImported = localRecord.IsImported;

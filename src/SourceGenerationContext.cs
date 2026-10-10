@@ -22,6 +22,13 @@ namespace Kronos;
 [JsonSerializable(typeof(Data.HashedKnownDLL))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(SteamAPIResponse<GetItemsResponse>))]
+// The Steam store request body, used by SteamCoverUrlResolver on both targets.
+[JsonSerializable(typeof(GetItemsInput))]
+// The DLL manifest and its records. Both targets download the same manifest and both need to
+// deserialize it, so these cannot live under the Windows-only block below - without them the
+// Linux target cannot read a manifest at all.
+[JsonSerializable(typeof(Data.Manifest))]
+[JsonSerializable(typeof(Data.DLLRecord))]
 // Linux-only types (GitHub API DTOs for updater)
 #if LINUX
 [JsonSerializable(typeof(GitHubRelease))]
@@ -31,8 +38,6 @@ namespace Kronos;
 #if WINDOWS
 [JsonSerializable(typeof(Data.GitHub.GitHubRelease))]
 [JsonSerializable(typeof(Data.GitHub.GitHubReleaseAsset))]
-[JsonSerializable(typeof(Data.Manifest))]
-[JsonSerializable(typeof(Data.DLLRecord))]
 [JsonSerializable(typeof(Data.DLSS.PresetOption))]
 [JsonSerializable(typeof(List<PresetOption>))]
 [JsonSerializable(typeof(Data.EpicGamesStore.CacheItem[]))]

@@ -138,7 +138,11 @@
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
-  <!-- Explicitly include ONLY cross-platform core files for Linux CLI -->
+  <!-- Cross-platform core files for the Linux target.
+       The game model, DLL management and library discovery all live here rather than behind
+       #if WINDOWS, so the Linux CLI can actually list and swap DLLs instead of only
+       self-updating. Game discovery still differs: the Windows libraries read the registry,
+       which is why they stay excluded below. -->
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
     <!-- Core infrastructure -->
     <Compile Include="Storage.cs" />
@@ -150,6 +154,26 @@
     <Compile Include="ProxySettings.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SourceGenerationContext.cs" />
+
+    <!-- Game model and DLL management -->
+    <Compile Include="Data\GameAsset.cs" />
+    <Compile Include="Data\Game.cs" />
+    <Compile Include="Data\GameHistory.cs" />
+    <Compile Include="Data\GameManager.cs" />
+    <Compile Include="Data\DLLManager.cs" />
+    <Compile Include="Data\DLLRecord.cs" />
+    <Compile Include="Data\Manifest.cs" />
+    <Compile Include="Data\UnknownGameAsset.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
+
+    <!--
+      Only the game *models* from these libraries, not the libraries themselves. GameManager
+      pattern-matches on XboxGame/BattleNetGame when launching a title; the discovery code that
+      reads WindowsApps and product.db is registry and Windows-path bound, so it stays excluded.
+    -->
+    <Compile Include="Data\Xbox\XboxGame.cs" />
+    <Compile Include="Data\BattleNet\BattleNetGame.cs" />
     <Compile Include="Updater.cs" />
 
     <!-- Core data models (no UI dependencies) -->
@@ -169,12 +193,19 @@
     
 
     <!-- Helpers (cross-platform only) -->
+    <Compile Include="UiDispatcher.cs" />
+    <Compile Include="Http.cs" />
     <Compile Include="Helpers\PathHelpers.cs" />
+    <Compile Include="Helpers\LanguageManager.cs" />
     <Compile Include="Helpers\DllBackupStack.cs" />
     <Compile Include="Helpers\RepackDetector.cs" />
     <Compile Include="Helpers\CommonHelpers.cs" />
+    <Compile Include="Helpers\FileDownloader.cs" />
+    <Compile Include="Helpers\ResourceHelper.cs" />
     <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
     <Compile Include="Helpers\FSR31\FxxConsts.cs" />
+    <Compile Include="Data\DLLAssetTypeInfo.cs" />
+    <Compile Include="Data\Steam\SteamCoverUrlResolver.cs" />
 
     <!-- Extensions -->
     <Compile Include="Extensions\FileVersionInfoExtensions.cs" />
@@ -189,6 +220,15 @@
 
     <!-- Language -->
     <Compile Include="Language\TranslationRow.cs" />
+
+    <!--
+      Translations for the Linux target. On Windows these .resw files are compiled by the XAML
+      compiler into a PRI that ResourceHelper reads through WinUI's ResourceManager; there is no PRI
+      here, so ResourceHelper parses the XML directly. It has to be copied to the output directory
+      rather than embedded, because it looks for it at Translations/<language>/Resources.resw next
+      to the executable.
+    -->
+    <Content Include="Translations\**\*.resw" CopyToOutputDirectory="PreserveNewest" />
 
     <!-- Messages -->
     <Compile Include="Messages\GameLibrariesStateChangedMessage.cs" />

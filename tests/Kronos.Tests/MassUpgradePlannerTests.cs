@@ -509,14 +509,27 @@ public class MassUpgradePlannerTests
         var afterConfigureAwaitFalse = source.IndexOf(
             "ToListAsync().ConfigureAwait(false)", StringComparison.Ordinal);
         var marshalledUpdate = source.IndexOf(
-            "RunOnUIThread(() =>", afterConfigureAwaitFalse, StringComparison.Ordinal);
+            MarshallingCall, afterConfigureAwaitFalse, StringComparison.Ordinal);
         var updateCall = source.IndexOf(
             "UpdateCurrentDLLsFromGameAssets();", afterConfigureAwaitFalse, StringComparison.Ordinal);
 
         Assert.True(afterConfigureAwaitFalse > 0, "The ConfigureAwait(false) that moves off-thread should still be there.");
-        Assert.True(marshalledUpdate > 0, "UpdateCurrentDLLsFromGameAssets must be wrapped in RunOnUIThread after the ConfigureAwait(false).");
+        Assert.True(marshalledUpdate > 0, $"UpdateCurrentDLLsFromGameAssets must be wrapped in {MarshallingCall} after the ConfigureAwait(false).");
         Assert.True(marshalledUpdate < updateCall, "The wrapper has to come before the call it protects.");
     }
+
+    /// <summary>
+    /// The call that marshals a bound-property update onto the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// This was literally <c>App.CurrentApp.RunOnUIThread</c>. It is now <c>UiDispatcher.Invoke</c>,
+    /// which forwards to exactly that on Windows and runs inline on Linux - a direct call through
+    /// App.CurrentApp meant the game model had a compile-time dependency on a WinUI Application,
+    /// and the whole file had to be kept out of the Linux build. The tests below check for this
+    /// constant rather than the old literal so the assertion follows the rename instead of having
+    /// to be rewritten back.
+    /// </remarks>
+    const string MarshallingCall = "UiDispatcher.Invoke(";
 
     [Fact]
     public void TheOtherCurrentAssetAssignmentSitesAreAlreadyMarshalledByTheirCallers()
@@ -541,9 +554,9 @@ public class MassUpgradePlannerTests
         // In the cached-load path specifically, the refresh must be marshalled, and the marshalling
         // must not be deferred to something later in the file.
         Assert.True(
-            body.IndexOf("RunOnUIThread", StringComparison.Ordinal) < body.IndexOf(
+            body.IndexOf(MarshallingCall, StringComparison.Ordinal) < body.IndexOf(
                 "UpdateCurrentDLLsFromGameAssets();", StringComparison.Ordinal),
-            "The refresh after the ConfigureAwait(false) must be inside RunOnUIThread, not merely followed by one somewhere later.");
+            $"The refresh after the ConfigureAwait(false) must be inside {MarshallingCall}, not merely followed by one somewhere later.");
     }
 
     static string ReadGameSource()

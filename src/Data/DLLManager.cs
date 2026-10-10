@@ -269,7 +269,7 @@ internal class DLLManager
 
         #if WINDOWS
             var oldLoadingMessage = App.CurrentApp.MainWindow.ViewModel.LoadingMessage;
-            App.CurrentApp.RunOnUIThread(() =>
+            UiDispatcher.Invoke(() =>
             {
                 App.CurrentApp.MainWindow.ViewModel.LoadingMessage = ResourceHelper.GetString("DllManager_MigratingDlls");
             });
@@ -282,7 +282,7 @@ internal class DLLManager
             }
 
 #if WINDOWS
-            App.CurrentApp.RunOnUIThread(() =>
+            UiDispatcher.Invoke(() =>
             {
                 App.CurrentApp.MainWindow.ViewModel.LoadingMessage = oldLoadingMessage;
             });
@@ -315,7 +315,7 @@ internal class DLLManager
             await SaveImportedManifestJsonAsync().ConfigureAwait(false);
         }
 
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             // NOTE: DLL type
             // Merge each of the manifests into the master DLL record list
@@ -540,7 +540,7 @@ internal class DLLManager
 
                         File.Move(importedDllRecord.LocalRecord.ExpectedPath, manifestDllRecord.LocalRecord.ExpectedPath);
 
-                        App.CurrentApp.RunOnUIThread(() =>
+                        UiDispatcher.Invoke(() =>
                         {
                             manifestDllRecord.LocalRecord.IsDownloaded = true;
                         });
@@ -603,7 +603,7 @@ internal class DLLManager
         dllRecord.CancelDownload();
 
         // Null out the existing record so we can tell if loading failed.
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             dllRecord.LocalRecord = null;
         });
@@ -615,7 +615,7 @@ internal class DLLManager
         }
 
         var localRecord = LocalRecord.FromExpectedPath(expectedPath, isImported);
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             dllRecord.LocalRecord = localRecord;
         });
@@ -764,13 +764,22 @@ internal class DLLManager
     }
 
     /// <summary>
-    /// Checks to see if the current GameAsset DLL is known to already existing DLL record known GameAsset for a game in a particular library
+    /// <summary>
+    /// Whether this asset's DLL hash is one Kronos already knows about - either a DLL record it can
+    /// download, or an entry in the manifest's per-game hash list.
     /// </summary>
-    /// <param name="gameAsset"></param>
-    /// <param name="game"></param>
-    /// <returns></returns>
+    /// <param name="gameAsset">The asset found in a game's install directory.</param>
+    /// <param name="game">The game the asset belongs to.</param>
+    /// <remarks>
+    /// One implementation for both platforms. It previously existed twice behind #if WINDOWS with
+    /// different signatures - (GameAsset, Game) and (GameAsset, GameLibrary, string?) - and the
+    /// bodies were otherwise identical. Because the signatures differed, the only two call sites
+    /// could not be compiled for Linux at all, so a game scan there failed on an argument mismatch
+    /// rather than on anything to do with DLLs.
     ///
-#if WINDOWS
+    /// Taking the Game directly is what lets the manifest lookup use the game's own library and
+    /// title without every caller having to remember to pass both.
+    /// </remarks>
     public bool IsInKnownGameAsset(GameAsset gameAsset, Game game)
     {
         // NOTE: DLL type
@@ -822,54 +831,6 @@ internal class DLLManager
 
         return false;
     }
-#else
-    // Linux version: simplified check without Game object
-    public bool IsInKnownGameAsset(GameAsset gameAsset, GameLibrary library = GameLibrary.ManuallyAdded, string? titleBase64 = null)
-    {
-        var info = DLLAssetTypes.Find(gameAsset.AssetType);
-        if (info is null)
-        {
-            return false;
-        }
-
-        foreach (var record in info.Records(this))
-        {
-            if (string.Equals(gameAsset.Hash, record.MD5Hash, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        HashedKnownDLL? hashedKnownDLL = null;
-        _knownDLLsReadWriterLock.EnterReadLock();
-        try
-        {
-            if (_knownDLLHashIndex.TryGetValue(info.AssetType, out var byHash) == true)
-            {
-                byHash.TryGetValue(gameAsset.Hash, out hashedKnownDLL);
-            }
-        }
-        finally
-        {
-            _knownDLLsReadWriterLock.ExitReadLock();
-        }
-
-        if (hashedKnownDLL is null)
-        {
-            return false;
-        }
-
-        if (hashedKnownDLL.Sources.TryGetValue(library.ToString(), out var gameHashes) == true)
-        {
-            if (!string.IsNullOrEmpty(titleBase64) && gameHashes.Contains(titleBase64))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-#endif
 
 
     /// <summary>
@@ -956,7 +917,7 @@ internal class DLLManager
             File.Copy(filePath, expectedPath, true);
             var newLocalRecord = LocalRecord.FromExpectedPath(expectedPath, !importingAsDownloadedDll);
 
-            App.CurrentApp.RunOnUIThread(() =>
+            UiDispatcher.Invoke(() =>
             {
                 dllRecord.LocalRecord = null;
                 dllRecord.LocalRecord = newLocalRecord;
@@ -976,7 +937,7 @@ internal class DLLManager
                 {
                     insertIndex = ~insertIndex;
                 }
-                App.CurrentApp.RunOnUIThread(() =>
+                UiDispatcher.Invoke(() =>
                 {
                     recordList.Insert(insertIndex, dllRecord);
                 });
@@ -1020,7 +981,7 @@ internal class DLLManager
         // middle, and a call from there would throw 0x8001010E the first time an item container
         // happened to be realised. Being defensive here is one line and removes a whole class of
         // future crash from a function that is otherwise easy to call from anywhere.
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             var recordList = info.Records(this);
             recordList.Remove(dllRecord);

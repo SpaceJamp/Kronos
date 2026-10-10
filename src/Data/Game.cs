@@ -12,12 +12,16 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+// ImageSharp is cross-platform and the cover resizing below needs it on both targets, so these
+// two are not inside the Windows guard. They were, which meant unguardng the resize methods left
+// them without ResizeOptions/KnownResamplers/Mutate/SaveAsPng in scope on Linux.
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+
 #if WINDOWS
 using Kronos.UserControls;
 using Microsoft.UI.Xaml.Controls;
 using NvAPIWrapper.DRS;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 #endif
 
 namespace Kronos.Data;
@@ -402,7 +406,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return;
         }
 
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             NeedsProcessing = false;
         });
@@ -417,7 +421,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return;
         }
 
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             Processing = true;
             HasSwappableItems = false;
@@ -657,7 +661,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // The scan completed successfully, so it is now safe to replace the known records.
                 ReplaceGameAssets(newGameAssets);
 
-                App.CurrentApp.RunOnUIThread(() =>
+                UiDispatcher.Invoke(() =>
                 {
                     UpdateCurrentDLLsFromGameAssets();
                 });
@@ -710,7 +714,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // Now update all the data on the UI thread.
                 try
                 {
-                    await App.CurrentApp.RunOnUIThreadAsync(async () =>
+                    await UiDispatcher.InvokeAsync(async () =>
                     {
                         HasSwappableItems = newHasSwappableItems;
 
@@ -728,7 +732,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 {
                     // Processing has to be reset unconditionally. If it is left true the game
                     // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
-                    App.CurrentApp.RunOnUIThread(() =>
+                    UiDispatcher.Invoke(() =>
                     {
                         Processing = false;
                     });
@@ -794,7 +798,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             if (File.Exists(ExpectedCustomCoverImage))
             {
                 // If a custom cover exists use it.
-                App.CurrentApp.RunOnUIThread(() =>
+                UiDispatcher.Invoke(() =>
                 {
                     CoverImage = ExpectedCustomCoverImage;
                 });
@@ -802,7 +806,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             else if (File.Exists(ExpectedCoverImage))
             {
                 // If a standard cover exists use it.
-                App.CurrentApp.RunOnUIThread(() =>
+                UiDispatcher.Invoke(() =>
                 {
                     CoverImage = ExpectedCoverImage;
                 });
@@ -877,7 +881,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 catch (UnauthorizedAccessException err)
                 {
                     Logger.Error(err);
-                    if (App.CurrentApp.IsAdminUser() is false)
+                    if (UiDispatcher.IsAdministrator is false)
                     {
                         return (false, "Unable to reset to default. Running Kronos as administrator may fix this.", true);
                     }
@@ -1143,7 +1147,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             catch (UnauthorizedAccessException err)
             {
                 Logger.Error(err);
-                if (App.CurrentApp.IsAdminUser() is false)
+                if (UiDispatcher.IsAdministrator is false)
                 {
                     return (false, "Unable to swap dll as we are unable to write to the target directory. Running Kronos as administrator may fix this.", true);
 
@@ -1193,7 +1197,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             catch (UnauthorizedAccessException err)
             {
                 Logger.Error(err);
-                if (App.CurrentApp.IsAdminUser() is false)
+                if (UiDispatcher.IsAdministrator is false)
                 {
                     return (false, "Unable to swap dll as we are unable to write to the target directory. Running Kronos as administrator may fix this.", true);
                 }
@@ -1241,7 +1245,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
     void UpdateCurrentAsset(GameAsset newGameAsset, GameAssetType gameAssetType)
     {
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             // NOTE: DLL type
             if (gameAssetType == GameAssetType.DLSS)
@@ -1332,7 +1336,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     */
 
 
-    #if WINDOWS
+    // Cover resizing and custom-cover writing are plain ImageSharp work with no Windows types in
+    // them, so this is cross-platform. The guard that used to be here excluded it on Linux, which
+    // broke every subclass that calls ResizeCoverAsync when building its own cover art.
     protected async Task ResizeCoverAsync(Stream imageStream)
     {
         // TODO:
@@ -1357,7 +1363,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 //image.SaveAsJpeg(ExpectedCoverImage);
             }
 
-            App.CurrentApp.RunOnUIThread(() =>
+            UiDispatcher.Invoke(() =>
             {
                 CoverImage = null;
                 CoverImage = ExpectedCoverImage;
@@ -1402,7 +1408,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 //image.SaveAsJpeg(ExpectedCustomCoverImage);
             }
 
-            App.CurrentApp.RunOnUIThread(() =>
+            UiDispatcher.Invoke(() =>
             {
                 CoverImage = ExpectedCustomCoverImage;
             });
@@ -1412,7 +1418,6 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             Logger.Error(err);
         }
     }
-#endif
 
     protected async Task<bool> DownloadCoverAsync(string url)
     {
@@ -1578,6 +1583,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
     }
 
+    // Both of these drive WinUI: a ContentDialog and a WinRT file picker rooted at the main window's
+    // HWND. There is no equivalent on Linux, and there is nothing for the CLI to prompt with, so
+    // they are Windows-only. The underlying operations are not - AddCustomCover above takes a path
+    // or stream and is cross-platform - so a Linux UI can still call those directly.
+#if WINDOWS
     public async Task PromptToRemoveCustomCover()
     {
         var dialog = new EasyContentDialog(App.CurrentApp.MainWindow.Content.XamlRoot)
@@ -1636,6 +1646,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             Logger.Error(err);
         }
     }
+#endif
 
     /// <summary>
     /// Two games are the same game when they have the same <see cref="ID"/>.
@@ -1881,7 +1892,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // RunOnUIThread, and the per library ListGamesAsync paths carry explicit comments naming this
         // exact hazard. This one was simply missed, and it is reached on startup for every game in
         // every library.
-        App.CurrentApp.RunOnUIThread(() =>
+        UiDispatcher.Invoke(() =>
         {
             UpdateCurrentDLLsFromGameAssets();
         });

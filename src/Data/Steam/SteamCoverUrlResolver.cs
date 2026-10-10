@@ -39,7 +39,7 @@ internal static class SteamCoverUrlResolver
             var jsonPayload = JsonSerializer.Serialize(getItemsInput, SourceGenerationContext.Default.GetItemsInput);
             var payloadUrlEncoded = HttpUtility.UrlEncode(jsonPayload);
 
-            using (var steamApiResponse = await App.CurrentApp.HttpClient.GetAsync($"https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json={payloadUrlEncoded}", System.Net.Http.HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
+            using (var steamApiResponse = await Http.Client.GetAsync($"https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json={payloadUrlEncoded}", System.Net.Http.HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
             {
                 if (steamApiResponse.IsSuccessStatusCode == false)
                 {

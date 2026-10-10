@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-#if WINDOWS
 namespace Kronos.Data;
 
 /// <summary>
@@ -123,4 +122,3 @@ internal static class DLLAssetTypes
         => Find(assetType) ?? throw new ArgumentOutOfRangeException(
             nameof(assetType), assetType, $"Unknown or unswappable AssetType.");
 }
-#endif

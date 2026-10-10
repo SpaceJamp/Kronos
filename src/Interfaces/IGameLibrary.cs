@@ -1,6 +1,6 @@
 using Kronos.Data;
-#if WINDOWS
 using Kronos.Data.ManuallyAdded;
+#if WINDOWS
 using Kronos.Data.Steam;
 using Kronos.Data.GOG;
 using Kronos.Data.EpicGamesStore;
@@ -35,9 +35,20 @@ public interface IGameLibrary
     string Name { get; }
     Type GameType { get; }
 
-#if WINDOWS
+    /// <summary>
+    /// Discovers the installed games this store knows about and returns them.
+    /// </summary>
+    /// <remarks>
+    /// Cross-platform rather than Windows-only: enumeration is the one part of a store integration
+    /// that can be written against any platform's on-disk layout, and keeping it on the interface
+    /// is what lets the Linux CLI drive a library at all.
+    /// </remarks>
     Task<List<Game>> ListGamesAsync(bool forceNeedsProcessing);
+
+    /// <summary>Rehydrates this library's games from the database, without scanning.</summary>
     Task LoadGamesFromCacheAsync();
+
+#if WINDOWS
     bool IsInstalled();
 
     static IGameLibrary GetGameLibrary(GameLibrary gameLibrary)
@@ -53,6 +64,28 @@ public interface IGameLibrary
             GameLibrary.EAApp => EAAppLibrary.Instance,
             GameLibrary.ManuallyAdded => ManuallyAddedLibrary.Instance,
             _ => throw new Exception($"Could not load game library {gameLibrary}."),
+        };
+    }
+#else
+    /// <summary>
+    /// The library implementation for a store on this platform, or null if that store is not
+    /// discoverable here.
+    /// </summary>
+    /// <remarks>
+    /// Only ManuallyAdded has an implementation on Linux. Every other store is discovered through
+    /// the Windows registry, which has no equivalent, so those return null rather than throwing -
+    /// callers enumerate enabled libraries in a loop, and an exception here would abandon the
+    /// libraries that do work instead of skipping the ones that cannot.
+    ///
+    /// Porting a store means adding its library here and writing the discovery against that
+    /// platform's layout (Steam's libraryfolders.vdf, for instance) rather than a registry key.
+    /// </remarks>
+    static IGameLibrary? GetGameLibrary(GameLibrary gameLibrary)
+    {
+        return gameLibrary switch
+        {
+            GameLibrary.ManuallyAdded => ManuallyAddedLibrary.Instance,
+            _ => null,
         };
     }
 #endif

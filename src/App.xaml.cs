@@ -31,7 +31,12 @@ public sealed partial class App : Application
 
     public static App CurrentApp => (App)Application.Current;
 
-    public HttpClient HttpClient { get; private set; }
+    /// <summary>
+    /// The shared HTTP client. Delegates to <see cref="Http.Client"/> so callers outside the UI
+    /// layer - the file downloader, the cover URL resolver - do not have to reach through
+    /// <c>App.CurrentApp</c> to get it, which is what previously stopped them compiling for Linux.
+    /// </summary>
+    public HttpClient HttpClient => Http.Client;
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -40,8 +45,6 @@ public sealed partial class App : Application
     public App()
     {
         Logger.Init();
-
-        HttpClient = GenerateNewHttpClient();
 
         var language = Settings.Instance.Language;
 
@@ -80,70 +83,7 @@ public sealed partial class App : Application
     }
 
     internal void RegenerateHttpClient()
-    {
-        HttpClient = GenerateNewHttpClient();
-    }
-
-
-    HttpClient GenerateNewHttpClient()
-    {
-        // Setup HttpClient.
-        var version = GetVersion();
-        var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-
-        var httpClientHandler = new HttpClientHandler()
-        {
-            AutomaticDecompression = DecompressionMethods.All,
-            UseCookies = true,
-            CookieContainer = new CookieContainer(),
-            AllowAutoRedirect = true,
-        };
-
-        Settings.ProxySettings.LoadIfNeeded();
-
-        if (string.IsNullOrWhiteSpace(Settings.ProxySettings.Server) == false)
-        {
-            try
-            {
-                var server = Settings.ProxySettings.Server;
-                if (server.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                    server.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    var proxy = new WebProxy
-                    {
-                        BypassProxyOnLocal = false,
-                        UseDefaultCredentials = false,
-                        Address = new Uri(server),
-                    };
-
-                    if (string.IsNullOrWhiteSpace(Settings.ProxySettings.Username) == false && string.IsNullOrWhiteSpace(Settings.ProxySettings.Password) == false)
-                    {
-                        proxy.Credentials = new NetworkCredential(Settings.ProxySettings.Username, Settings.ProxySettings.Password);
-                    }
-
-                    httpClientHandler.UseProxy = true;
-                    httpClientHandler.Proxy = proxy;
-                }
-                else
-                {
-                    Logger.Error($"Tried to set proxy with server address \"{server}\"");
-                }               
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Unable to set proxy for HttpClient");
-                Logger.Error(ex);
-            }
-        }
-
-        var newHttpClient = new HttpClient(httpClientHandler);
-        newHttpClient.DefaultRequestHeaders.Add("User-Agent", $"dlss-swapper/{versionString}");
-        newHttpClient.Timeout = TimeSpan.FromMinutes(30);
-        newHttpClient.DefaultRequestVersion = new Version(2, 0);
-        newHttpClient.DefaultRequestHeaders.ConnectionClose = true;
-        return newHttpClient;
-    }
-
+        => Http.Regenerate();
 
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {

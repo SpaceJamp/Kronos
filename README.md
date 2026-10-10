@@ -38,33 +38,40 @@
 | Platform | Target framework | Status |
 |---|---|---|
 | **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection and DLL swapping. |
-| **Linux x64** | `net10.0` | ⚠️ **Updater only.** See [Linux](#linux) — the CLI cannot swap DLLs yet. |
+| **Linux x64** | `net10.0` | 🟡 **Core builds.** Game model, DLL management and the database compile and run, but the CLI has no DLL commands yet. |
 | **Linux x64 GUI** | — | ❌ **Does not build.** The Avalonia project depends on types not present in the Linux target. |
 | **macOS** | — | ❌ Not supported (no DLSS/FSR/XeSS on macOS). |
 
 Everything below describes the **Windows** build unless stated otherwise. That is the only platform
-where Kronos does the thing its name describes.
+where Kronos does the thing its name describes end to end.
 
 ### Honest status of Linux support
 
-This was added with the best of intentions and is currently **incomplete**. A later change in this
-fork removed the core game-management files (`Game.cs`, `GameManager.cs`, `DLLManager.cs` and every
-game library implementation) from the Linux compile list in `src/Kronos.csproj`, while leaving their
-`#else` cross-platform branches in place. Those branches have therefore never been compiled, and the
-Avalonia GUI cannot build against them.
+The Linux port is **partly done**. An earlier change in this fork removed the core game-management
+files from the Linux compile list in `src/Kronos.csproj`, leaving their cross-platform branches
+uncompiled. Those files are now back in, and the Linux target builds again — see
+[What changed](#what-changed) for what it took.
 
-What this means in practice:
+What works on Linux today:
 
-- The Linux CLI builds and runs, and implements `update`, `version` and `self-update`. **It cannot
-  list, swap, reset or import DLLs** — there is no database access, no manifest download and no game
-  detection in the Linux target at all.
-- The Avalonia GUI does not compile.
-- Game detection needs the Windows registry, so Linux support would need a different discovery
-  approach regardless (Steam/GOG/Epic directory layouts rather than registry keys).
+- The game model (`Game`, `GameAsset`, `GameHistory`), `DLLManager`, `DLLRecord`, `DLLAssetTypes` and
+  the SQLite database all compile and are reachable.
+- Manifest download and deserialisation, including the localised display names — the `.resw` files
+  are parsed directly instead of through WinUI's `ResourceManager`.
+- Manually-added games, since that library is just a folder on disk.
 
-If you want Linux DLL swapping, the work is: restore the core files to the `net10.0` compile list,
-fix the compile errors that surfaces in their `#else` branches, then build game discovery on top of
-filesystem paths instead of registry keys.
+What does not:
+
+- **The CLI still only has `update`, `version` and `self-update`.** The building blocks for `list`,
+  `swap` and `reset` are compiled and reachable, but nothing wires them to command-line arguments
+  yet. That is the next piece of work.
+- **No automatic game detection.** Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all
+  discovered through the Windows registry. There is no registry on Linux, so each needs discovery
+  written against that platform's on-disk layout instead — Steam's `libraryfolders.vdf` and
+  `appmanifest_*.acf`, for instance, which is plain file parsing rather than a registry key.
+  `IGameLibrary.GetGameLibrary` currently returns `null` for those stores on Linux and the load loop
+  skips them, so adding one is a self-contained change.
+- **The Avalonia GUI does not compile.**
 
 > **Ownership notice:** The Linux work is owned and maintained by this repository's maintainer. It is
 > not affiliated with, endorsed by, or supported by the upstream DLSS Swapper project. Bugs and feature
@@ -139,7 +146,7 @@ configurations keep all data inside the build output, so neither touches a real 
 ### Linux
 
 ```bash
-# CLI only — updater, see the status note above
+# CLI — updater only, see the status note above
 ./build.sh
 # → Output/linux-x64-<timestamp>/Kronos
 
@@ -148,6 +155,20 @@ configurations keep all data inside the build output, so neither touches a real 
 ```
 
 Requires the .NET 10 SDK. Output is self-contained — no .NET runtime needed on the target machine.
+
+#### Linux commands
+
+```bash
+./Kronos version                          # Show version information
+./Kronos update --check                   # Check for updates, do not apply
+./Kronos update                           # Apply an available update
+./Kronos update --force                   # Reinstall the current release even if already on it
+./Kronos self-update --path ./update.tar.gz   # Internal: apply a downloaded update
+```
+
+`list`, `swap`, `reset` and `import` are **not implemented yet**. The code they would call is
+compiled and reachable in the Linux build; what is missing is the argument parsing and output
+formatting on top of it.
 
 ### Build script options
 
@@ -272,6 +293,45 @@ cleared on failure instead of leaving buttons permanently disabled.
 chains. There is an xUnit suite in [`tests/`](tests/) — 366 tests covering backup decisions, swap
 versioning, equality contracts, path helpers and more. There is no CI, so run it yourself before
 pushing: `dotnet test ".\Kronos.sln" -c Release`.
+
+### Linux core restored to the build
+
+The Linux target had stopped compiling the game model. A change made during the original port
+removed `Game.cs`, `GameManager.cs`, `DLLManager.cs`, `DLLRecord.cs`, `Manifest.cs`, `GameHistory.cs`,
+`GameAsset.cs` and the manually-added library from the `net10.0` compile list, without touching their
+cross-platform branches — so those branches had never been compiled, and the Linux CLI was an
+updater that shared nothing with the Windows app. Those files are back in the list. Getting them to
+compile surfaced three pieces of coupling that were worth removing regardless of platform:
+
+- **`App.CurrentApp.RunOnUIThread` was called from the game model.** Marshalling bound-property
+  updates is a genuine concern of the UI layer, so calling into a WinUI `Application` from
+  `Game.cs` put the whole file out of reach of the Linux build. It now goes through
+  `UiDispatcher.Invoke`, which forwards to the WinUI dispatcher on Windows and runs inline on Linux.
+  The Windows behaviour is unchanged.
+- **The shared `HttpClient` lived on `App`.** It was reachable only as `App.CurrentApp.HttpClient`,
+  so the file downloader and the Steam cover URL resolver — both of which the Linux target needs —
+  could not compile there. It moved to a standalone `Http` holder that `App` now delegates to.
+  Nothing about it was Windows-specific.
+- **`ResourceHelper` was built entirely on WinUI's `ResourceManager`.** On Linux it now parses the
+  `.resw` XML directly, which is the same data WinUI would have compiled into a PRI, so the CLI is
+  genuinely localised rather than printing resource keys. A missing string falls back to
+  en-US and then to the key, because a missing label is not a reason to abort whatever wanted it.
+
+Three things were also needlessly Windows-only and are now shared:
+
+- `DLLAssetTypes`, a pure data table, was behind `#if WINDOWS` despite having no Windows types.
+- `IsInKnownGameAsset` existed twice behind `#if WINDOWS` with **different signatures** —
+  `(GameAsset, Game)` and `(GameAsset, GameLibrary, string?)` — and otherwise identical bodies. The
+  signature mismatch meant its only two call sites could not compile for Linux at all. There is now
+  one implementation taking the `Game`.
+- `Game.ResizeCoverAsync` and `AddCustomCover` are plain ImageSharp work, and were excluded on Linux
+  even though the ImageSharp package is licensed for both.
+
+The genuinely Windows-only parts stayed Windows-only: `IsInstalled`, the registry-backed store
+libraries, and the `PromptTo*` methods that drive a `ContentDialog` and a WinRT file picker.
+
+**The Avalonia GUI still does not build**, and the Linux CLI still has no DLL commands. See
+[Platform support](#platform-support).
 
 ### Dependencies
 

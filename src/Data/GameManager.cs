@@ -17,9 +17,6 @@ using CommunityToolkit.WinUI.Collections;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
-#else
-using Avalonia.Collections;
-using System.ComponentModel;
 #endif
 
 namespace Kronos.Data;
@@ -34,14 +31,13 @@ internal partial class GameManager : ObservableObject
     List<Game> _synchronisedAllGames = new List<Game>();
     ObservableCollection<Game> _allGames { get; } = new ObservableCollection<Game>();
 
-#if WINDOWS
-    public CollectionViewSource GroupedGameCollectionViewSource { get; init; }
-    public CollectionViewSource UngroupedGameCollectionViewSource { get; init; }
-#else
-    // Linux uses Avalonia's CollectionView
-    public ICollectionView GroupedGameView { get; private set; }
-    public ICollectionView UngroupedGameView { get; private set; }
-#endif
+// The collection views below exist only to drive the WinUI Games page. Every caller is a Windows
+    // page model (GameGridPageModel, MassUpgradeViewModel), and nothing outside the UI layer
+    // consumes them. They were mirrored onto the Linux target against Avalonia's ICollectionView,
+    // which put a UI framework dependency into the core assembly purely so a collection of games
+    // could be enumerated - and the Linux CLI has no use for a filtered, sorted, grouped,
+    // observable view. It wants a list. QueryGames covers that without dragging a UI toolkit in,
+    // and it leaves the Avalonia GUI free to own whatever views it needs.
 
     [ObservableProperty]
     public partial bool UnknownAssetsFound { get; set; } = false;
@@ -54,22 +50,18 @@ internal partial class GameManager : ObservableObject
     object gameLock = new object();
     object unknownGameAsseetLock = new object();
 
+#if WINDOWS
     GameGroup allGamesGroup;
     GameGroup favouriteGamesGroup;
 
-#if WINDOWS
+    public CollectionViewSource GroupedGameCollectionViewSource { get; init; }
+    public CollectionViewSource UngroupedGameCollectionViewSource { get; init; }
+
     public AdvancedCollectionView AllGamesView { get; init; }
     public AdvancedCollectionView FavouriteGamesView { get; init; }
-#else
-    public ICollectionView AllGamesView { get; private set; }
-    public ICollectionView FavouriteGamesView { get; private set; }
-#endif
 
     Dictionary<GameLibrary, GameGroup> libraryGameGroups = new Dictionary<GameLibrary, GameGroup>();
-#if WINDOWS
     Dictionary<GameLibrary, AdvancedCollectionView> libraryGamesView = new Dictionary<GameLibrary, AdvancedCollectionView>();
-#else
-    Dictionary<GameLibrary, ICollectionView> libraryGamesView = new Dictionary<GameLibrary, ICollectionView>();
 #endif
 
     Predicate<object> GetPredicateForAllGames(bool hideNonDLSSGames, string? filterText = null)
@@ -217,32 +209,58 @@ internal partial class GameManager : ObservableObject
             }
         });
 #else
-        // Linux: Use Avalonia's CollectionView
-        FavouriteGamesView = new CollectionView(_allGames);
-        FavouriteGamesView.Filter = GetPredicateForFavouriteGames(Settings.Instance.HideNonDLSSGames);
-        FavouriteGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
-
-        AllGamesView = new CollectionView(_allGames);
-        AllGamesView.Filter = GetPredicateForAllGames(Settings.Instance.HideNonDLSSGames);
-        AllGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
-
-        GroupedGameView = new CollectionView(_allGames);
-        UngroupedGameView = new CollectionView(_allGames);
-
-        allGamesGroup = new GameGroup("All Games", null, null);
-        favouriteGamesGroup = new GameGroup("Favourites", null, null);
-
-        foreach (var library in Enum.GetValues<GameLibrary>())
-        {
-            var view = new CollectionView(_allGames);
-            view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
-            view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
-            libraryGamesView[library] = view;
-
-            var group = new GameGroup(library.ToString(), library, null);
-            libraryGameGroups[library] = group;
-        }
+        // Linux has no UI, so there are no collection views to build here. QueryGames applies the
+        // same filters on demand instead.
 #endif
+    }
+
+    /// <summary>
+    /// The tracked games, filtered and sorted. The cross-platform equivalent of
+    /// <see cref="GetGameCollection"/>, which returns a WinUI collection view and is therefore
+    /// Windows-only.
+    /// </summary>
+    /// <param name="hideNonDLSSGames">Hide games with nothing swappable.</param>
+    /// <param name="favouritesOnly">Only return games marked as favourites.</param>
+    /// <param name="filterText">Case-insensitive substring match on the title. Null or empty matches all.</param>
+    /// <param name="library">Restrict to one game library, or null for all of them.</param>
+    public List<Game> QueryGames(
+        bool hideNonDLSSGames = false,
+        bool favouritesOnly = false,
+        string? filterText = null,
+        GameLibrary? library = null)
+    {
+        lock (gameLock)
+        {
+            IEnumerable<Game> query = _synchronisedAllGames;
+
+            if (ShowHiddenGames == false)
+            {
+                query = query.Where(game => game.IsHidden != true);
+            }
+
+            if (library is not null)
+            {
+                var wanted = library.Value;
+                query = query.Where(game => game.GameLibrary == wanted);
+            }
+
+            if (favouritesOnly)
+            {
+                query = query.Where(game => game.IsFavourite);
+            }
+
+            if (hideNonDLSSGames)
+            {
+                query = query.Where(game => game.HasSwappableItems);
+            }
+
+            if (string.IsNullOrEmpty(filterText) == false)
+            {
+                query = query.Where(game => game.Title.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.OrderBy(game => game.Title, StringComparer.OrdinalIgnoreCase).ToList();
+        }
     }
 
     public async Task LoadGamesFromCacheAsync()
@@ -253,6 +271,15 @@ internal partial class GameManager : ObservableObject
         foreach (var gameLibraryEnum in GameManager.Instance.GetGameLibraries(true))
         {
             var gameLibrary = IGameLibrary.GetGameLibrary(gameLibraryEnum);
+
+            // Null on Linux for every store that has no discovery implementation there. Skip it
+            // rather than dereferencing: the remaining libraries still have games to contribute.
+            if (gameLibrary is null)
+            {
+                Logger.Info($"No implementation of {gameLibraryEnum} on this platform. Skipping it.");
+                continue;
+            }
+
             if (gameLibrary.IsEnabled)
             {
                 await gameLibrary.LoadGamesFromCacheAsync().ConfigureAwait(false);
@@ -273,6 +300,13 @@ internal partial class GameManager : ObservableObject
         foreach (var gameLibraryEnum in GameManager.Instance.GetGameLibraries(true))
         {
             var gameLibrary = IGameLibrary.GetGameLibrary(gameLibraryEnum);
+
+            // See LoadGamesFromCacheAsync: null means the store has no discovery here yet.
+            if (gameLibrary is null)
+            {
+                continue;
+            }
+
             if (gameLibrary.IsEnabled)
             {
                 tasks.Add(gameLibrary.ListGamesAsync(forceNeedsProcessing));
@@ -308,9 +342,13 @@ internal partial class GameManager : ObservableObject
         }
     }
 
+    /// <summary>
+    /// The WinUI collection view backing the Games page. Windows-only: it exists to be data-bound
+    /// to a XAML <c>ItemsSource</c>. The Linux CLI uses <see cref="QueryGames"/> instead.
+    /// </summary>
+#if WINDOWS
     public ICollectionView GetGameCollection(string? filterText = null)
     {
-#if WINDOWS
         // Refresh all filters.
         using (FavouriteGamesView.DeferRefresh())
         {
@@ -339,26 +377,8 @@ internal partial class GameManager : ObservableObject
         {
             return UngroupedGameCollectionViewSource.View;
         }
-#else
-        // Linux: Avalonia's CollectionView doesn't have DeferRefresh, just set filter directly
-        FavouriteGamesView.Filter = GetPredicateForFavouriteGames(Settings.Instance.HideNonDLSSGames, filterText);
-        AllGamesView.Filter = GetPredicateForAllGames(Settings.Instance.HideNonDLSSGames, filterText);
-
-        if (Settings.Instance.GroupGameLibrariesTogether)
-        {
-            foreach (var keyValuePair in libraryGamesView)
-            {
-                keyValuePair.Value.Filter = GetPredicateForLibraryGames(keyValuePair.Key, Settings.Instance.HideNonDLSSGames, filterText);
-            }
-
-            return GroupedGameView;
-        }
-        else
-        {
-            return UngroupedGameView;
-        }
-#endif
     }
+#endif
 
     public List<Game> GetSynchronisedGamesListCopy()
     {
