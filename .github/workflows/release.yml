@@ -1,175 +1,85 @@
-name: Release Kronos
+name: Release
 
 on:
   push:
     tags:
-      - v1.*
-      - v2.*
-  workflow_dispatch:
+      - 'v*'
 
 permissions:
   contents: write
 
+env:
+  DOTNET_VERSION: '10.0.x'
+  SOLUTION: 'src/Kronos.sln'
+  PROJECT: 'src/Kronos.csproj'
+
 jobs:
   build-windows:
-    name: Build Windows (x64)
-    runs-on: windows-2025
+    name: Build Windows Portable
+    runs-on: windows-latest
     outputs:
-      version: ${{ steps.extract-version.outputs.version }}
+      artifact_path: ${{ steps.upload.outputs.artifact-path }}
+      sha256: ${{ steps.sha256.outputs.hash }}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup .NET 10
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Display .NET Info
-        run: dotnet --info
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION }}"
 
-      - name: Restore dependencies (locked mode)
-        run: dotnet restore src/Kronos.csproj --locked-mode
-        working-directory: ${{ github.workspace }}
-
-      - name: Run tests
-        run: dotnet test tests/Kronos.Tests/Kronos.Tests.csproj --configuration Release --nologo
-        working-directory: ${{ github.workspace }}
-
-      - name: Extract version from csproj
-        id: extract-version
-        shell: pwsh
-        run: |
-          $ver = Select-String '<Version>(.+?)</Version>' "${{ github.workspace }}\src\Kronos.csproj" | % { $_.Matches[0].Groups[1].Value }
-          echo "version=$ver" >> $env:GITHUB_OUTPUT
-        working-directory: ${{ github.workspace }}
-
-      - name: Build Windows portable
-        run: dotnet publish src/Kronos.csproj -f net10.0-windows10.0.26100.0 -c Release -r win-x64 --self-contained -o publish/win-x64
-        working-directory: ${{ github.workspace }}
+      - name: Build Windows Portable
+        run: dotnet publish "${{ env.PROJECT }}" -c Release_Portable -f net10.0-windows10.0.26100.0 -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true -o ./publish/win-x64
 
       - name: Create portable zip
-        shell: pwsh
         run: |
-          $version = "${{ steps.extract-version.outputs.version }}"
-          $zipName = "Kronos-v${version}-portable.zip"
-          Compress-Archive -Path "publish/win-x64/*" -DestinationPath "$zipName" -Force
-          echo "ARTIFACT=$zipName" >> $env:GITHUB_OUTPUT
-        id: package-win
-        working-directory: ${{ github.workspace }}
+          cd ./publish/win-x64
+          7z a -tzip -mx=9 ../../Kronos-${{ github.ref_name }}-portable.zip .
 
-      - name: Generate SHA256 (Windows)
-        shell: pwsh
+      - name: Calculate SHA256
+        id: sha256
         run: |
-          $zipName = "${{ steps.package-win.outputs.ARTIFACT }}"
-          $hash = (Get-FileHash -Path $zipName -Algorithm SHA256).Hash
-          echo "$hash  $zipName" > "${zipName}.sha256"
-          echo "SHA256=$hash" >> $env:GITHUB_OUTPUT
-        id: hash-win
-        working-directory: ${{ github.workspace }}
+          $hash = (Get-FileHash ./Kronos-${{ github.ref_name }}-portable.zip -Algorithm SHA256).Hash.ToLower()
+          echo "hash=$hash" >> $env:GITHUB_OUTPUT
 
-      - name: Upload Windows artifact
+      - name: Upload artifact
+        id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kronos-${{ steps.extract-version.outputs.version }}-win-x64
-          path: |
-            ${{ github.workspace }}/Kronos-*-portable.zip
-            ${{ github.workspace }}/Kronos-*-portable.zip.sha256
-          if-no-files-found: error
+          name: kronos-${{ github.ref_name }}-portable
+          path: ./Kronos-${{ github.ref_name }}-portable.zip
+          retention-days: 30
 
-  build-linux:
-    name: Build Linux (${{ matrix.arch }})
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        arch: [x64, arm64]
-    outputs:
-      artifact-${{ matrix.arch }}: ${{ steps.package-linux.outputs.ARTIFACT }}
-      sha256-${{ matrix.arch }}: ${{ steps.hash-linux.outputs.SHA256 }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Display .NET Info
-        run: dotnet --info
-
-      - name: Restore dependencies (locked mode)
-        run: dotnet restore src/Kronos.csproj --locked-mode
-        working-directory: ${{ github.workspace }}
-
-      - name: Extract version from csproj
-        id: extract-version
-        run: |
-          ver=$(grep -oP '(?<=<Version>)[^<]+' src/Kronos.csproj)
-          echo "version=$ver" >> $GITHUB_OUTPUT
-        working-directory: ${{ github.workspace }}
-
-      - name: Build Linux ${{ matrix.arch }}
-        run: |
-          dotnet publish src/Kronos.csproj -f net10.0 -c Release -r linux-${{ matrix.arch }} --self-contained -o publish/linux-${{ matrix.arch }}
-        working-directory: ${{ github.workspace }}
-
-      - name: Create tar.gz
-        id: package-linux
-        run: |
-          version="${{ steps.extract-version.outputs.version }}"
-          artifact="kronos-v${version}-linux-${{ matrix.arch }}.tar.gz"
-          tar -czf "$artifact" -C publish/linux-${{ matrix.arch }} .
-          echo "ARTIFACT=$artifact" >> $GITHUB_OUTPUT
-        working-directory: ${{ github.workspace }}
-
-      - name: Generate SHA256 (Linux)
-        id: hash-linux
-        run: |
-          artifact="${{ steps.package-linux.outputs.ARTIFACT }}"
-          hash=$(sha256sum "$artifact" | cut -d' ' -f1)
-          echo "$hash  $artifact" > "${artifact}.sha256"
-          echo "SHA256=$hash" >> $GITHUB_OUTPUT
-        working-directory: ${{ github.workspace }}
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kronos-${{ steps.extract-version.outputs.version }}-linux-${{ matrix.arch }}
-          path: |
-            ${{ github.workspace }}/kronos-*-linux-${{ matrix.arch }}.tar.gz
-            ${{ github.workspace }}/kronos-*-linux-${{ matrix.arch }}.tar.gz.sha256
-          if-no-files-found: error
-
-  create-release:
+  release:
     name: Create GitHub Release
-    needs: [build-windows, build-linux]
-    runs-on: ubuntu-24.04
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build-windows
+    runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          merge-multiple: true
+          name: kronos-${{ github.ref_name }}-portable
+          path: ./
 
-      - name: List artifacts
-        run: ls -la artifacts/
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Kronos ${{ github.ref_name }}
+          files: Kronos-${{ github.ref_name }}-portable.zip
           generate_release_notes: true
-          files: |
-            artifacts/Kronos-*.zip
-            artifacts/Kronos-*.zip.sha256
-            artifacts/kronos-*.tar.gz
-            artifacts/kronos-*.tar.gz.sha256
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SHA256
+        run: |
+          echo "${{ needs.build-windows.outputs.sha256 }}  Kronos-${{ github.ref_name }}-portable.zip" > Kronos-${{ github.ref_name }}-portable.zip.sha256
+          gh release upload ${{ github.ref_name }} Kronos-${{ github.ref_name }}-portable.zip.sha256 --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
