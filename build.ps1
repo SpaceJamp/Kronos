@@ -18,7 +18,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     
-    [ValidateSet('linux-x64', 'linux-arm64', 'linux-arm')]
+    [ValidateSet('linux-x64')]
     [string]$Runtime = 'linux-x64',
     
     [switch]$NoRestore
