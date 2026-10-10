@@ -48,6 +48,8 @@
  
 **Linux CLI**: Working — core cross-platform libraries compile and run. Implements `update`, `version`, and `self-update` commands. Full DLL management commands (list, swap, reset, import) need cross-platform file list completed.
 
+> **Ownership notice:** The Linux build (CLI and GUI) is **fully owned and maintained by this fork's maintainer**. It is not affiliated with, endorsed by, or supported by the upstream DLSS Swapper project. Bugs, issues, and feature requests for the Linux build should be filed in this repository, not upstream.
+
 ## Requirements
 
 ### Windows GUI
@@ -66,6 +68,8 @@
 | **To build** | .NET 10 SDK |
 | **Runtime** | Self-contained (no system .NET required) |
 | **Status** | CLI ✅ Builds and runs · GUI 🚧 Compilation errors |
+
+> **⚠️ Ownership:** The Linux build is **fully owned by this fork's maintainer**. It is not part of the upstream DLSS Swapper project. Do not report Linux issues upstream — file them here.
 
 ## Getting it
 
