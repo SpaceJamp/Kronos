@@ -175,14 +175,21 @@ with a clear error from the ImageSharp MSBuild target. See
 
 ### Releasing
 
-There is **no release automation.** Tagging a commit publishes nothing. To cut a release, build the
-portable output and upload the artifact yourself.
+There is **no CI and no release automation.** Tagging a commit publishes nothing. To cut a release,
+build the portable output and upload the artifact yourself.
 
 > [!NOTE]
-> `.github/workflows/build-for-distribute.yml` is inherited from upstream and still calls
-> `package\*.cmd` scripts that were deleted when the installer was removed, so it fails. It is left
-> in place only as history and should be deleted or rewritten. There is consequently **no working CI**,
-> which is why the tests are worth running locally before you push.
+> The workflow inherited from upstream was removed. It called `package\*.cmd` scripts that were
+> deleted along with the installer, so every one of its steps failed and the checks were permanently
+> red — which is worse than no checks, because a red badge trains people to ignore it. In its place,
+> **run the tests locally before you push:**
+>
+> ```powershell
+> dotnet test ".\Kronos.sln" -c Release
+> ```
+>
+> If you want automation back, a `build.yml` that restores, builds and runs the tests on both target
+> frameworks is about twenty lines — the hard parts already work.
 
 ## What changed
 
@@ -263,7 +270,8 @@ cleared on failure instead of leaving buttons permanently disabled.
 **Maintainability.** Per-DLL-type logic is driven from one table
 ([`src/Data/DLLAssetTypeInfo.cs`](src/Data/DLLAssetTypeInfo.cs)) instead of nine parallel if/else
 chains. There is an xUnit suite in [`tests/`](tests/) — 366 tests covering backup decisions, swap
-versioning, equality contracts, path helpers and more.
+versioning, equality contracts, path helpers and more. There is no CI, so run it yourself before
+pushing: `dotnet test ".\Kronos.sln" -c Release`.
 
 ### Dependencies
 
