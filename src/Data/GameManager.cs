@@ -164,16 +164,13 @@ internal partial class GameManager : ObservableObject
         UngroupedGameView = new CollectionView(_allGames);
 #endif
 
-        allGamesGroup = new GameGroup("All Games");
-        favouriteGamesGroup = new GameGroup("Favourites");
+        allGamesGroup = new GameGroup("All Games", null, AllGamesView);
+        favouriteGamesGroup = new GameGroup("Favourites", null, FavouriteGamesView);
 
         foreach (var library in Enum.GetValues<GameLibrary>())
         {
-            var group = new GameGroup(library.ToString());
-            libraryGameGroups[library] = group;
-
 #if WINDOWS
-            var view = new AdvancedCollectionView(group.Games, true);
+            var view = new AdvancedCollectionView(new ObservableCollection<Game>(), true);
             view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
             view.ObserveFilterProperty(nameof(ShowHiddenGames));
             view.ObserveFilterProperty(nameof(Game.HasSwappableItems));
@@ -181,11 +178,14 @@ internal partial class GameManager : ObservableObject
             view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
             libraryGamesView[library] = view;
 #else
-            var view = new CollectionView(group.Games);
+            var view = new CollectionView(new ObservableCollection<Game>());
             view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
             view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
             libraryGamesView[library] = view;
 #endif
+
+            var group = new GameGroup(library.ToString(), library, view);
+            libraryGameGroups[library] = group;
         }
     }
 
