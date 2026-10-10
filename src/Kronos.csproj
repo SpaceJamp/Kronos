@@ -148,6 +148,8 @@
 
     <!-- Core data models (no UI dependencies) -->
     <Compile Include="Data\GameAssetType.cs" />
+    <Compile Include="Data\GameAsset.cs" />
+    <Compile Include="Data\Game.cs" />
     <Compile Include="Data\DLLImportResult.cs" />
     <Compile Include="Data\KnownDLLs.cs" />
     <Compile Include="Data\HashedKnownDLL.cs" />
@@ -160,6 +162,13 @@
     <Compile Include="Data\Steam\SteamAPI\*.cs" />
     <Compile Include="Data\Steam\Manifest\AppManifestACF.cs" />
     <Compile Include="Data\GitHub\GitHubTypes.cs" />
+    <Compile Include="Data\DLLManager.cs" />
+    <Compile Include="Data\DLLRecord.cs" />
+    <Compile Include="Data\Manifest.cs" />
+    <Compile Include="Data\GameHistory.cs" />
+    <Compile Include="Data\GameManager.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
+    <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
 
     <!-- Helpers (cross-platform only) -->
     <Compile Include="Helpers\PathHelpers.cs" />

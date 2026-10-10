@@ -7,14 +7,20 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using CommunityToolkit.WinUI.Collections;
 using Kronos.Data.BattleNet;
 using Kronos.Data.Xbox;
 using Kronos.Interfaces;
 using Kronos.Messages;
+
+#if WINDOWS
+using CommunityToolkit.WinUI.Collections;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
+#else
+using Avalonia.Collections;
+using System.ComponentModel;
+#endif
 
 namespace Kronos.Data;
 
@@ -28,8 +34,14 @@ internal partial class GameManager : ObservableObject
     List<Game> _synchronisedAllGames = new List<Game>();
     ObservableCollection<Game> _allGames { get; } = new ObservableCollection<Game>();
 
+#if WINDOWS
     public CollectionViewSource GroupedGameCollectionViewSource { get; init; }
     public CollectionViewSource UngroupedGameCollectionViewSource { get; init; }
+#else
+    // Linux uses Avalonia's CollectionView
+    public ICollectionView GroupedGameView { get; private set; }
+    public ICollectionView UngroupedGameView { get; private set; }
+#endif
 
     [ObservableProperty]
     public partial bool UnknownAssetsFound { get; set; } = false;
@@ -45,11 +57,20 @@ internal partial class GameManager : ObservableObject
     GameGroup allGamesGroup;
     GameGroup favouriteGamesGroup;
 
+#if WINDOWS
     public AdvancedCollectionView AllGamesView { get; init; }
     public AdvancedCollectionView FavouriteGamesView { get; init; }
+#else
+    public ICollectionView AllGamesView { get; private set; }
+    public ICollectionView FavouriteGamesView { get; private set; }
+#endif
 
     Dictionary<GameLibrary, GameGroup> libraryGameGroups = new Dictionary<GameLibrary, GameGroup>();
+#if WINDOWS
     Dictionary<GameLibrary, AdvancedCollectionView> libraryGamesView = new Dictionary<GameLibrary, AdvancedCollectionView>();
+#else
+    Dictionary<GameLibrary, ICollectionView> libraryGamesView = new Dictionary<GameLibrary, ICollectionView>();
+#endif
 
 
     Predicate<object> GetPredicateForAllGames(bool hideNonDLSSGames, string? filterText = null)
@@ -103,6 +124,7 @@ internal partial class GameManager : ObservableObject
 
     private GameManager()
     {
+#if WINDOWS
         FavouriteGamesView = new AdvancedCollectionView(_allGames, true);
         FavouriteGamesView.Filter = GetPredicateForFavouriteGames(Settings.Instance.HideNonDLSSGames);
         FavouriteGamesView.ObserveFilterProperty(nameof(ShowHiddenGames));
@@ -118,82 +140,53 @@ internal partial class GameManager : ObservableObject
         AllGamesView.ObserveFilterProperty(nameof(Game.IsHidden));
         AllGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
 
-
-        allGamesGroup = new GameGroup(string.Empty, null, AllGamesView);
-        favouriteGamesGroup = new GameGroup("Favourites", null, FavouriteGamesView);
-
-        var groupedList = new ObservableCollection<GameGroup>()
+        GroupedGameCollectionViewSource = new CollectionViewSource
         {
-            favouriteGamesGroup,
+            Source = _allGames,
+            IsSourceGrouped = true,
+            ItemsPath = new PropertyPath("Games")
         };
-
-        var ungroupedList = new List<GameGroup>()
+        UngroupedGameCollectionViewSource = new CollectionViewSource
         {
-            favouriteGamesGroup,
-            allGamesGroup,
+            Source = _allGames
         };
+#else
+        // Linux: Use Avalonia's CollectionView
+        FavouriteGamesView = new CollectionView(_allGames);
+        FavouriteGamesView.Filter = GetPredicateForFavouriteGames(Settings.Instance.HideNonDLSSGames);
+        FavouriteGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
 
+        AllGamesView = new CollectionView(_allGames);
+        AllGamesView.Filter = GetPredicateForAllGames(Settings.Instance.HideNonDLSSGames);
+        AllGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
 
-        foreach (var gameLibraryEnum in GetGameLibraries(false))
+        GroupedGameView = new CollectionView(_allGames);
+        UngroupedGameView = new CollectionView(_allGames);
+#endif
+
+        allGamesGroup = new GameGroup("All Games");
+        favouriteGamesGroup = new GameGroup("Favourites");
+
+        foreach (var library in Enum.GetValues<GameLibrary>())
         {
-            var gameLibrary = IGameLibrary.GetGameLibrary(gameLibraryEnum);
+            var group = new GameGroup(library.ToString());
+            libraryGameGroups[library] = group;
 
-            var gameView = new AdvancedCollectionView(_allGames, true);
-            gameView.Filter = GetPredicateForLibraryGames(gameLibraryEnum, Settings.Instance.HideNonDLSSGames);
-            gameView.ObserveFilterProperty(nameof(Game.HasSwappableItems));
-            gameView.ObserveFilterProperty(nameof(ShowHiddenGames));
-            gameView.ObserveFilterProperty(nameof(Game.IsHidden));
-            gameView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
-
-            libraryGamesView[gameLibraryEnum] = gameView;
-
-            var gameGroup = new GameGroup(gameLibrary.Name, gameLibrary.GameLibrary, gameView);
-            groupedList.Add(gameGroup);
-            libraryGameGroups[gameLibraryEnum] = gameGroup;
+#if WINDOWS
+            var view = new AdvancedCollectionView(group.Games, true);
+            view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
+            view.ObserveFilterProperty(nameof(ShowHiddenGames));
+            view.ObserveFilterProperty(nameof(Game.HasSwappableItems));
+            view.ObserveFilterProperty(nameof(Game.IsHidden));
+            view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
+            libraryGamesView[library] = view;
+#else
+            var view = new CollectionView(group.Games);
+            view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
+            view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
+            libraryGamesView[library] = view;
+#endif
         }
-
-
-        GroupedGameCollectionViewSource = new CollectionViewSource()
-        {
-            IsSourceGrouped = true,
-            Source = groupedList,
-            ItemsPath = new PropertyPath("Games"),
-        };
-
-
-        UngroupedGameCollectionViewSource = new CollectionViewSource()
-        {
-            IsSourceGrouped = true,
-            Source = ungroupedList,
-            ItemsPath = new PropertyPath("Games"),
-        };
-
-
-        WeakReferenceMessenger.Default.Register<GameLibrariesOrderChangedMessage>(this, (sender, message) =>
-        {
-            var groupedGameLibraryList = groupedList.ToList();
-
-            groupedList.Clear();
-
-            // Add favourites
-            groupedList.Add(groupedGameLibraryList[0]);
-            groupedGameLibraryList.RemoveAt(0);
-
-
-            // Add each of the items in the order that is from settings.
-            foreach (var gameLibrarySetting in Settings.Instance.GameLibrarySettings)
-            {
-                var groupedItem = groupedGameLibraryList.Single(x => x.GameLibrary == gameLibrarySetting.GameLibrary);
-                groupedList.Add(groupedItem);
-                groupedGameLibraryList.Remove(groupedItem);
-            }
-
-            if (groupedGameLibraryList.Count > 0)
-            {
-                Logger.Error($"Somehow extra grouped items were left over. {string.Join(", ", groupedGameLibraryList)}");
-            }
-        });
-
     }
 
     public async Task LoadGamesFromCacheAsync()
@@ -261,6 +254,7 @@ internal partial class GameManager : ObservableObject
 
     public ICollectionView GetGameCollection(string? filterText = null)
     {
+#if WINDOWS
         // Refresh all filters.
         using (FavouriteGamesView.DeferRefresh())
         {
@@ -289,6 +283,25 @@ internal partial class GameManager : ObservableObject
         {
             return UngroupedGameCollectionViewSource.View;
         }
+#else
+        // Linux: Avalonia's CollectionView doesn't have DeferRefresh, just set filter directly
+        FavouriteGamesView.Filter = GetPredicateForFavouriteGames(Settings.Instance.HideNonDLSSGames, filterText);
+        AllGamesView.Filter = GetPredicateForAllGames(Settings.Instance.HideNonDLSSGames, filterText);
+
+        if (Settings.Instance.GroupGameLibrariesTogether)
+        {
+            foreach (var keyValuePair in libraryGamesView)
+            {
+                keyValuePair.Value.Filter = GetPredicateForLibraryGames(keyValuePair.Key, Settings.Instance.HideNonDLSSGames, filterText);
+            }
+
+            return GroupedGameView;
+        }
+        else
+        {
+            return UngroupedGameView;
+        }
+#endif
     }
 
     public List<Game> GetSynchronisedGamesListCopy()
@@ -301,7 +314,6 @@ internal partial class GameManager : ObservableObject
     }
 
 
-
     public Game AddGame(Game game, bool scrollIntoView = false)
     {
         lock (gameLock)
@@ -312,10 +324,15 @@ internal partial class GameManager : ObservableObject
                 // We could do away with this, but in theory this if is never hit
                 var oldGame = _synchronisedAllGames.First(x => x.Equals(game));
 
+#if WINDOWS
                 App.CurrentApp.RunOnUIThread(() =>
                 {
                     oldGame.UpdateFromGame(game);
                 });
+#else
+                // Linux: Direct update since we're on the same thread
+                oldGame.UpdateFromGame(game);
+#endif
 
                 Debug.WriteLine($"Reusing old game: {game.Title}");
                 return oldGame;
@@ -326,6 +343,7 @@ internal partial class GameManager : ObservableObject
 
                 _synchronisedAllGames.Add(game);
 
+#if WINDOWS
                 App.CurrentApp.RunOnUIThread(() =>
                 {
                     _allGames.Add(game);
@@ -335,6 +353,10 @@ internal partial class GameManager : ObservableObject
                         App.CurrentApp.MainWindow.GameGridPage?.ScrollToGame(game);
                     }
                 });
+#else
+                // Linux: Direct update
+                _allGames.Add(game);
+#endif
 
                 return game;
             }
@@ -347,10 +369,14 @@ internal partial class GameManager : ObservableObject
         {
             _synchronisedAllGames.Remove(game);
 
+#if WINDOWS
             App.CurrentApp.RunOnUIThread(() =>
             {
                 _allGames.Remove(game);
             });
+#else
+            _allGames.Remove(game);
+#endif
         }
     }
 
@@ -361,10 +387,14 @@ internal partial class GameManager : ObservableObject
             // TODO: Cancel loading of games here
             _synchronisedAllGames.Clear();
 
+#if WINDOWS
             App.CurrentApp.RunOnUIThread(() =>
             {
                 _allGames.Clear();
             });
+#else
+            _allGames.Clear();
+#endif
         }
     }
 
@@ -382,9 +412,9 @@ internal partial class GameManager : ObservableObject
                     }
                 }
             }
-        }
 
-        return null;
+            return null;
+        }
     }
 
     public List<TGame> GetGames<TGame>() where TGame : Game
@@ -426,10 +456,14 @@ internal partial class GameManager : ObservableObject
         {
             if (UnknownAssetsFound == false)
             {
+#if WINDOWS
                 App.CurrentApp.RunOnUIThread(() =>
                 {
                     UnknownAssetsFound = true;
                 });
+#else
+                UnknownAssetsFound = true;
+#endif
             }
 
             foreach (var gameAsset in gameAssets)
@@ -471,8 +505,8 @@ internal partial class GameManager : ObservableObject
         }
 
         return gameLibrariesToReturn;
-
     }
+
 
     public bool CanLaunchGame(Game game)
     {
@@ -514,6 +548,7 @@ internal partial class GameManager : ObservableObject
             return;
         }
 
+#if WINDOWS
         if (game.GameLibrary == GameLibrary.Steam)
         {
             await Launcher.LaunchUriAsync(new Uri($"steam://rungameid/{game.PlatformId}"));
@@ -542,5 +577,35 @@ internal partial class GameManager : ObservableObject
                 Process.Start(new ProcessStartInfo(BattleNetLibrary.Instance.ClientPath,  $"--exec=\"launch {battleNetGame.LauncherId}\"") { UseShellExecute = true });
             }
         }
+#else
+        // Linux: Use xdg-open or steam protocol
+        if (game.GameLibrary == GameLibrary.Steam)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "xdg-open",
+                    Arguments = $"steam://rungameid/{game.PlatformId}",
+                    UseShellExecute = true
+                }
+            };
+            process.Start();
+        }
+        else if (game.GameLibrary == GameLibrary.EpicGamesStore)
+        {
+            // Epic doesn't have a Linux protocol handler by default
+            Logger.Warning("Epic Games Store launch not implemented on Linux");
+        }
+        else if (game.GameLibrary == GameLibrary.EAApp)
+        {
+            // EA App doesn't run on Linux
+            Logger.Warning("EA App launch not implemented on Linux");
+        }
+        else
+        {
+            Logger.Warning($"Cannot launch game {game.Title} from {game.GameLibrary} on Linux");
+        }
+#endif
     }
 }
