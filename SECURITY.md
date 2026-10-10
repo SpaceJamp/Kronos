@@ -76,13 +76,3 @@ included, and the resolved package graph is committed as `packages.lock.json` so
 the versions it was verified against. The Jekyll site no longer uses the `github-pages` meta-gem,
 whose pins held `rubyzip` below a published path-traversal fix; that tree is free of known
 advisories as of this writing.
-
-## Supported versions
-
-Only the newest release is supported. Older builds are not patched, and because updates are
-delivered as whole installers there is no backport path — upgrade rather than staying behind.
-
-| Version | Supported |
-| --- | --- |
-| 1.49 and later | Yes |
-| 1.48 and earlier | No |
