@@ -152,39 +152,108 @@ fi
 SRC_DIR="$(dirname "$0")/src"
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 
-# Restores, then checks that the assets file actually appeared.
+# ---------------------------------------------------------------------------
+# Restore
 #
-# The check is not redundant. `dotnet restore` failing and `dotnet build --no-restore` reporting
-# "NETSDK1004: Assets file project.assets.json not found" are one failure reported twice, and the
-# second naming names the symptom rather than the cause. Checking here means the message the user
-# reads is the one that says what actually went wrong.
+# Several passes rather than one, because no single command works everywhere and
+# a failure here is opaque: `dotnet restore` can fail without writing the assets
+# file, and the `--no-restore` build that follows then reports "NETSDK1004: Assets
+# file project.assets.json not found", which names the symptom and not the cause.
+#
+#   Pass 1  every target framework - preferred. The only pass that leaves the
+#           committed lock file untouched, so it keeps builds reproducible.
+#   Pass 2  net10.0 only - never evaluates the Windows target framework, which
+#           is the most likely reason pass 1 fails on Linux.
+#   Pass 3  net10.0 only plus the runtime identifier - adds the RID-specific
+#           assets that the build needs when it is given -r.
+#
+# Passes 2 and 3 restore one framework, which rewrites the committed
+# src/packages.lock.json to contain only that framework - 553 lines of it, as
+# measured. So the lock file is copied aside first and put back afterwards, with
+# a trap for the interrupted case. Quietly deleting the Windows target's
+# dependency graph from a committed file would be worse than any restore failure.
+# ---------------------------------------------------------------------------
+LOCK_FILE_BACKUP=""
+
+save_lock_file() {
+    local lock_file="$SRC_DIR/packages.lock.json"
+    LOCK_FILE_BACKUP=""
+
+    if [ -f "$lock_file" ]; then
+        LOCK_FILE_BACKUP="$(mktemp)"
+        cp "$lock_file" "$LOCK_FILE_BACKUP" || LOCK_FILE_BACKUP=""
+    fi
+}
+
+put_lock_file_back() {
+    local lock_file="$SRC_DIR/packages.lock.json"
+
+    if [ -n "$LOCK_FILE_BACKUP" ] && [ -f "$LOCK_FILE_BACKUP" ]; then
+        cp "$LOCK_FILE_BACKUP" "$lock_file"
+        rm -f "$LOCK_FILE_BACKUP"
+        LOCK_FILE_BACKUP=""
+    fi
+}
+
+# No restore path may leave the committed lock file modified, however it ends.
+trap put_lock_file_back EXIT
+
+RESTORE_PASS=""
+
 restore_dependencies() {
     local src_dir=$1
-
-    # No framework filter here, and that is deliberate rather than incidental. `dotnet restore` has no
-    # --framework option at all, and its -f is --force, so "-f net10.0" parsed as "--force net10.0"
-    # and net10.0 was passed on as a second project: "MSB1008: Only one project can be specified."
-    #
-    # Restoring a single framework was also tried, to avoid evaluating the Windows target framework
-    # on Linux, and all four forms of it break something worse:
-    #
-    #   -p:TargetFramework=net10.0              deletes the Windows target's 553 lines from the
-    #                                           committed src/packages.lock.json
-    #   -p:RestorePackagesWithLockFile=false   NU1005 - a lock file exists and may not be ignored
-    #   -p:RestoreLockFilePath=<scratch>       still rewrites the committed lock file
-    #   --locked-mode                          NU1004 - lock file frameworks differ from the project's
-    #
-    # So restore covers every target framework in the project, which also keeps a build reproducible.
-    dotnet restore "$src_dir/Kronos.csproj"
-
+    local runtime=$2
     local assets="$src_dir/obj/project.assets.json"
-    if [ ! -f "$assets" ]; then
-        echo ""
-        echo -e "${RED}Restore reported no error but did not write $assets.${NC}"
-        echo -e "${RED}The output above is the real failure. Building with --no-restore would${NC}"
-        echo -e "${RED}instead have reported NETSDK1004, which only names the symptom.${NC}"
-        exit 1
-    fi
+
+    local labels=(
+        "every target framework"
+        "net10.0 only"
+        "net10.0 only, runtime $runtime"
+    )
+    local total=${#labels[@]}
+    local pass status
+
+    for pass in 0 1 2; do
+        echo -e "${BLUE}Restore pass $((pass + 1)) of $total: ${labels[$pass]}${NC}"
+
+        # An assets file left over from an earlier run would make a restore that
+        # genuinely failed look like one that succeeded, so it goes first.
+        rm -f "$assets"
+
+        # Only passes 2 and 3 rewrite the lock file.
+        if [ "$pass" -gt 0 ]; then
+            save_lock_file
+        fi
+
+        # `|| status=$?` rather than a bare call: under `set -e` a failing command
+        # here would abort the script before the next pass could be tried, which is
+        # the opposite of what this function is for.
+        status=0
+        case "$pass" in
+            0) dotnet restore "$src_dir/Kronos.csproj" || status=$? ;;
+            1) dotnet restore "$src_dir/Kronos.csproj" -p:TargetFramework=net10.0 || status=$? ;;
+            2) dotnet restore "$src_dir/Kronos.csproj" -p:TargetFramework=net10.0 -r "$runtime" || status=$? ;;
+        esac
+
+        put_lock_file_back
+
+        if [ "$status" -eq 0 ] && [ -f "$assets" ]; then
+            RESTORE_PASS="${labels[$pass]}"
+            echo -e "${GREEN}Restore succeeded on pass $((pass + 1)): $RESTORE_PASS.${NC}"
+            return 0
+        fi
+
+        if [ "$pass" -lt $((total - 1)) ]; then
+            echo -e "${YELLOW}That did not produce the assets file. Trying the next approach.${NC}"
+            echo ""
+        fi
+    done
+
+    echo ""
+    echo -e "${RED}Restore produced no assets file on any of the $total passes.${NC}"
+    echo -e "${RED}The errors above are the real ones. Building with --no-restore would only have${NC}"
+    echo -e "${RED}reported NETSDK1004, which names the symptom and hides the cause.${NC}"
+    return 1
 }
 
 # Set by the build functions below. These used to be called in a command substitution,
@@ -201,7 +270,7 @@ build_linux() {
     echo -e "${GREEN}=== Building Linux CLI ===${NC}"
 
     echo -e "${YELLOW}Restoring dependencies...${NC}"
-    restore_dependencies "$src_dir"
+    restore_dependencies "$src_dir" "$runtime"
 
     echo -e "${YELLOW}Building Linux CLI ($config)...${NC}"
     dotnet build "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --no-restore
@@ -211,7 +280,12 @@ build_linux() {
     # No --no-build here: publish has to re-evaluate for the RID anyway (runtime pack, self-contained
     # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
     # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
-    dotnet publish "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --self-contained -o "$output_dir"
+    #
+    # --no-restore, though. Without it publish runs its own restore, which would evaluate the Windows
+    # target framework again on Linux - the thing the passes above exist to avoid - and would rewrite
+    # the committed lock file behind the protection in restore_dependencies. The restore above already
+    # covered this framework and this RID, which is exactly what the build step then consumed.
+    dotnet publish "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --self-contained --no-restore -o "$output_dir"
 
     echo -e "${GREEN}Linux CLI published to: $output_dir${NC}"
     BUILD_OUTPUT="$output_dir"
@@ -224,14 +298,16 @@ build_windows() {
     echo -e "${GREEN}=== Building Windows GUI ===${NC}"
 
     echo -e "${YELLOW}Restoring dependencies...${NC}"
-    restore_dependencies "$src_dir"
+    restore_dependencies "$src_dir" "win-x64"
 
     echo -e "${YELLOW}Building Windows GUI ($config)...${NC}"
     dotnet build "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --no-restore
 
     echo -e "${YELLOW}Publishing Windows Portable...${NC}"
     local output_dir="$(dirname "$0")/Output/win-x64-portable-$(date +"%Y%m%d-%H%M%S")"
-    dotnet publish "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --self-contained -p:PublishSingleFile=true -o "$output_dir"
+    # --no-restore for the same reason as the Linux publish: it would otherwise restore again and
+    # rewrite the committed lock file outside the protection in restore_dependencies.
+    dotnet publish "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --self-contained --no-restore -p:PublishSingleFile=true -o "$output_dir"
 
     echo -e "${GREEN}Windows Portable published to: $output_dir${NC}"
     BUILD_OUTPUT="$output_dir"

@@ -71,21 +71,30 @@ public class BuildScriptTests
             .Select(match => (match.Groups["name"].Value, match.Value))
             .ToList();
 
+    /// <summary>
+    /// Lines that invoke restore. build.sh branches on the pass index inside a <c>case</c>, so the
+    /// command is not always at the start of the line.
+    /// </summary>
+    static IReadOnlyList<string> RestoreLines(string script) =>
+        CodeLines(script)
+            .Where(line => Regex.IsMatch(line, @"(^|\)\s*|\|\s*)dotnet\s+restore\b", RegexOptions.IgnoreCase))
+            .ToList();
+
     // ------------------------------------------------------------------ restore framework filter
 
     [Theory]
     [MemberData(nameof(BuildScripts))]
-    public void RestoreIsNeverGivenAFrameworkFilter(string script)
+    public void RestoreIsNeverGivenAFrameworkFilterSwitch(string script)
     {
-        var restores = CodeLines(script)
-            .Where(line => Regex.IsMatch(line, @"^(\S*/)?dotnet\s+restore\b", RegexOptions.IgnoreCase))
-            .ToList();
+        var restores = RestoreLines(script);
 
-        // Guards against the assertion passing because the filter moved somewhere unrecognised.
+        // Guards against the assertion passing because the calls moved somewhere unrecognised.
         Assert.NotEmpty(restores);
 
         foreach (var line in restores)
         {
+            // -f and --framework are the trap. -p:TargetFramework=net10.0 is deliberate and correct:
+            // it is how the fallback passes avoid evaluating the Windows target framework.
             Assert.False(
                 Regex.IsMatch(line, @"(?:^|\s)(-f|--framework)(?:\s|=|$)"),
                 $"{script}: 'dotnet restore' has no --framework option and its -f means --force, so a "
@@ -98,9 +107,10 @@ public class BuildScriptTests
     [MemberData(nameof(BuildScripts))]
     public void RestoreIsActuallyPerformed(string script)
     {
-        // The fix for the above is to drop the filter, not to drop the restore. Asserting the restore
-        // still exists keeps a well-meaning edit from turning this into a --no-restore-by-omission.
-        Assert.Contains(CodeLines(script), line => Regex.IsMatch(line, @"^(\S*/)?dotnet\s+restore\b", RegexOptions.IgnoreCase));
+        // The fix for the above is to drop the -f switch, not to drop the restore. Asserting the
+        // restore still exists keeps a well-meaning edit from turning this into a --no-restore by
+        // omission.
+        Assert.NotEmpty(RestoreLines(script));
     }
 
     // ------------------------------------------------------------------ build/publish RID agreement
@@ -155,7 +165,7 @@ public class BuildScriptTests
 
         var invocations = lines
             .Select((line, index) => (Line: line, Index: index))
-            .Where(entry => Regex.IsMatch(entry.Line, @"^(\S*/)?dotnet\s", RegexOptions.IgnoreCase))
+            .Where(entry => Regex.IsMatch(entry.Line, @"^&?\s*(\S*/)?dotnet\s", RegexOptions.IgnoreCase))
             .ToList();
 
         Assert.NotEmpty(invocations);
@@ -164,7 +174,9 @@ public class BuildScriptTests
         {
             var next = index + 1;
             Assert.True(
-                next < lines.Count && lines[next].Contains("Assert-DotnetSucceeded", StringComparison.Ordinal),
+                next < lines.Count
+                    && (lines[next].Contains("Assert-DotnetSucceeded", StringComparison.Ordinal)
+                        || lines[next].Contains("$LASTEXITCODE", StringComparison.Ordinal)),
                 $"build.ps1: '{line}' is not followed by an exit code check. A native command that fails "
                     + $"does not throw, so the script would continue to the next step and report a later, "
                     + $"misleading error instead. Offending line: {line}");
@@ -204,5 +216,57 @@ public class BuildScriptTests
             CodeLines("build.sh").Any(line => Regex.IsMatch(line, @"\$\(\s*build_(?:linux|windows)")),
             "build.sh: the build functions are called in a command substitution, which swallows all of "
                 + "their output including errors.");
+    }
+
+    // ------------------------------------------------------------------ restore fallback
+
+    [Theory]
+    [MemberData(nameof(BuildScripts))]
+    public void RestoreIsTriedMoreThanOnceBeforeGivingUp(string script)
+    {
+        // A single restore command is not reliable everywhere. On Linux, evaluating the Windows target
+        // framework can fail, and the script then has to fall back to restoring net10.0 alone rather
+        // than stopping. Each attempt must therefore be a separate call, not a loop that reuses one.
+        var restores = RestoreLines(script);
+
+        Assert.True(
+            restores.Count >= 2,
+            $"{script}: found {restores.Count} restore command(s). A single one cannot fall back when "
+                + "evaluating the Windows target framework fails on Linux.");
+    }
+
+    [Theory]
+    [MemberData(nameof(BuildScripts))]
+    public void TheCommittedLockFileIsSavedAndRestoredAroundASingleFrameworkRestore(string script)
+    {
+        // -p:TargetFramework=net10.0 rewrites packages.lock.json to hold only that framework, which
+        // deletes 553 lines - the Windows target's entire dependency graph - from a committed file.
+        var lines = CodeLines(script);
+        var text = string.Join("\n", lines);
+
+        Assert.True(
+            text.Contains("packages.lock.json", StringComparison.Ordinal),
+            $"{script}: a single-framework restore rewrites the committed packages.lock.json, but the "
+                + "script never mentions it.");
+
+        Assert.True(
+            lines.Count(line => line.Contains("net10.0", StringComparison.Ordinal)) >= 2
+                && Regex.IsMatch(text, @"net10\.0.*restore|restore.*net10\.0"),
+            $"{script}: expected a fallback restore for net10.0 alongside the full restore.");
+    }
+
+    [Theory]
+    [MemberData(nameof(BuildScripts))]
+    public void PublishDoesNotRestoreAgain(string script)
+    {
+        // Publish runs its own restore by default, which would evaluate the Windows target framework
+        // again on Linux and rewrite the committed lock file outside the protection above.
+        foreach (var line in CodeLines(script).Where(line => Regex.IsMatch(line, @"^&?\s*(\S*/)?dotnet\s+publish\b", RegexOptions.IgnoreCase)))
+        {
+            Assert.True(
+                line.Contains("--no-restore", StringComparison.Ordinal),
+                $"{script}: publish without --no-restore restores again, defeating the fallback and "
+                    + $"touching the committed lock file. Offending line: {line}");
+        }
     }
 }
