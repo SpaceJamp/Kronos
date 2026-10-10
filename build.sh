@@ -152,20 +152,57 @@ fi
 SRC_DIR="$(dirname "$0")/src"
 TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 
+# Restores, then checks that the assets file actually appeared.
+#
+# The check is not redundant. `dotnet restore` failing and `dotnet build --no-restore` reporting
+# "NETSDK1004: Assets file project.assets.json not found" are one failure reported twice, and the
+# second naming names the symptom rather than the cause. Checking here means the message the user
+# reads is the one that says what actually went wrong.
+restore_dependencies() {
+    local src_dir=$1
+
+    # No framework filter here, and that is deliberate rather than incidental. `dotnet restore` has no
+    # --framework option at all, and its -f is --force, so "-f net10.0" parsed as "--force net10.0"
+    # and net10.0 was passed on as a second project: "MSB1008: Only one project can be specified."
+    #
+    # Restoring a single framework was also tried, to avoid evaluating the Windows target framework
+    # on Linux, and all four forms of it break something worse:
+    #
+    #   -p:TargetFramework=net10.0              deletes the Windows target's 553 lines from the
+    #                                           committed src/packages.lock.json
+    #   -p:RestorePackagesWithLockFile=false   NU1005 - a lock file exists and may not be ignored
+    #   -p:RestoreLockFilePath=<scratch>       still rewrites the committed lock file
+    #   --locked-mode                          NU1004 - lock file frameworks differ from the project's
+    #
+    # So restore covers every target framework in the project, which also keeps a build reproducible.
+    dotnet restore "$src_dir/Kronos.csproj"
+
+    local assets="$src_dir/obj/project.assets.json"
+    if [ ! -f "$assets" ]; then
+        echo ""
+        echo -e "${RED}Restore reported no error but did not write $assets.${NC}"
+        echo -e "${RED}The output above is the real failure. Building with --no-restore would${NC}"
+        echo -e "${RED}instead have reported NETSDK1004, which only names the symptom.${NC}"
+        exit 1
+    fi
+}
+
+# Set by the build functions below. These used to be called in a command substitution,
+# "$(build_linux ...)", which ran the whole build in a subshell and captured its standard output -
+# so the progress messages and every compiler and restore error went into an array element instead
+# of the terminal, and the user saw none of them.
+BUILD_OUTPUT=""
+
 build_linux() {
     local config=$1
     local runtime=$2
     local src_dir=$3
-    
+
     echo -e "${GREEN}=== Building Linux CLI ===${NC}"
-    
+
     echo -e "${YELLOW}Restoring dependencies...${NC}"
-    # No framework filter here. `dotnet restore` has no --framework option at all, and its -f is
-    # --force - so "-f net10.0" parsed as "--force net10.0", and net10.0 was then passed on as a
-    # second project: "MSB1008: Only one project can be specified." Restore handles every target
-    # framework in the project by itself, which is what we want anyway.
-    dotnet restore "$src_dir/Kronos.csproj"
-    
+    restore_dependencies "$src_dir"
+
     echo -e "${YELLOW}Building Linux CLI ($config)...${NC}"
     dotnet build "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --no-restore
 
@@ -175,51 +212,55 @@ build_linux() {
     # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
     # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
     dotnet publish "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --self-contained -o "$output_dir"
-    
+
     echo -e "${GREEN}Linux CLI published to: $output_dir${NC}"
-    echo "$output_dir"
+    BUILD_OUTPUT="$output_dir"
 }
 
 build_windows() {
     local config=$1
     local src_dir=$2
-    
+
     echo -e "${GREEN}=== Building Windows GUI ===${NC}"
-    
+
     echo -e "${YELLOW}Restoring dependencies...${NC}"
-    dotnet restore "$src_dir/Kronos.csproj"
-    
+    restore_dependencies "$src_dir"
+
     echo -e "${YELLOW}Building Windows GUI ($config)...${NC}"
     dotnet build "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --no-restore
 
     echo -e "${YELLOW}Publishing Windows Portable...${NC}"
     local output_dir="$(dirname "$0")/Output/win-x64-portable-$(date +"%Y%m%d-%H%M%S")"
     dotnet publish "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --self-contained -p:PublishSingleFile=true -o "$output_dir"
-    
+
     echo -e "${GREEN}Windows Portable published to: $output_dir${NC}"
-    echo "$output_dir"
+    BUILD_OUTPUT="$output_dir"
 }
 
 outputs=()
 
 case "$TARGET" in
     Linux)
-        outputs+=("$(build_linux "$CONFIGURATION" "$RUNTIME" "$SRC_DIR")")
+        build_linux "$CONFIGURATION" "$RUNTIME" "$SRC_DIR"
+        outputs+=("$BUILD_OUTPUT")
         ;;
     Windows)
         if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" && "$OSTYPE" != "win32" ]]; then
             echo -e "${RED}Error: Windows build must run on Windows${NC}"
             exit 1
         fi
-        outputs+=("$(build_windows "$CONFIGURATION" "$SRC_DIR")")
+        build_windows "$CONFIGURATION" "$SRC_DIR"
+        outputs+=("$BUILD_OUTPUT")
         ;;
     All)
         if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" && "$OSTYPE" != "win32" ]]; then
             echo -e "${RED}Error: 'All' target requires Windows (for Windows build)${NC}"
             exit 1
         fi
-        outputs+=("$(build_linux "$CONFIGURATION" "$RUNTIME" "$SRC_DIR")")
-        outputs+=("$(build_windows "$CONFIGURATION" "$SRC_DIR")")
+        build_linux "$CONFIGURATION" "$RUNTIME" "$SRC_DIR"
+        outputs+=("$BUILD_OUTPUT")
+        build_windows "$CONFIGURATION" "$SRC_DIR"
+        outputs+=("$BUILD_OUTPUT")
         ;;
     *)
         echo -e "${RED}Error: Unknown target '$TARGET'. Use: Linux, Windows, or All${NC}"

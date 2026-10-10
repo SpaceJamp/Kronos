@@ -77,6 +77,52 @@ if ($LicenseKey) {
     Write-Host "Using SixLabors ImageSharp license key" -ForegroundColor Green
 }
 
+# Fails loudly if the native command that just ran did not succeed.
+#
+# $ErrorActionPreference = 'Stop' does not apply to native executables - a dotnet command returning
+# non-zero does not throw, so the script used to carry straight on past a failed restore into
+# `dotnet build --no-restore`. That reported "NETSDK1004: Assets file project.assets.json not
+# found", which names the missing file rather than the restore error that caused it, so the actual
+# failure was never shown.
+#
+# This deliberately does not forward arguments. A wrapper taking [string[]] would have to be called
+# with -f, -c and -r, which PowerShell would try to bind to the wrapper's own parameters.
+function Assert-DotnetSucceeded {
+    param([string]$Description)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE. The output above is the real error."
+    }
+}
+
+# Restores, then checks that the assets file actually appeared, so a restore that failed without
+# being caught is reported as itself rather than as a downstream NETSDK1004.
+function Restore-Dependencies {
+    param($srcDir)
+
+    # No framework filter here, and that is deliberate rather than incidental. `dotnet restore` has no
+    # --framework option at all, and its -f is --force, so "-f net10.0" parsed as "--force net10.0"
+    # and net10.0 was passed on as a second project: "MSB1008: Only one project can be specified."
+    #
+    # Restoring a single framework was also tried, to avoid evaluating the Windows target framework
+    # on Linux, and all four forms of it break something worse:
+    #
+    #   -p:TargetFramework=net10.0              deletes the Windows target's 553 lines from the
+    #                                           committed src/packages.lock.json
+    #   -p:RestorePackagesWithLockFile=false   NU1005 - a lock file exists and may not be ignored
+    #   -p:RestoreLockFilePath=<scratch>       still rewrites the committed lock file
+    #   --locked-mode                          NU1004 - lock file frameworks differ from the project's
+    #
+    # So restore covers every target framework in the project, which also keeps a build reproducible.
+    dotnet restore "$srcDir\Kronos.csproj"
+    Assert-DotnetSucceeded "Restore"
+
+    $assets = Join-Path (Join-Path $srcDir "obj") "project.assets.json"
+    if (-not (Test-Path $assets)) {
+        throw "Restore reported no error but did not write $assets. Building with --no-restore would instead have reported NETSDK1004, which only names the symptom."
+    }
+}
+
 function Build-Linux {
     param($Configuration, $Runtime, $NoRestore, $srcDir, $outputDir)
     
@@ -84,15 +130,12 @@ function Build-Linux {
     
     if (-not $NoRestore) {
         Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-        # No framework filter here. `dotnet restore` has no --framework option at all, and its -f is
-        # --force - so "-f net10.0" parsed as "--force net10.0", and net10.0 was then passed on as a
-        # second project: "MSB1008: Only one project can be specified." Restore handles every target
-        # framework in the project by itself, which is what we want anyway.
-        dotnet restore "$srcDir\Kronos.csproj"
+        Restore-Dependencies $srcDir
     }
     
     Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
     dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --no-restore
+    Assert-DotnetSucceeded "Build (Linux CLI)"
 
     Write-Host "Publishing Linux CLI for $Runtime..." -ForegroundColor Yellow
     # Nested Join-Path rather than the three-argument form: -AdditionalChildPath only exists in
@@ -103,6 +146,7 @@ function Build-Linux {
     # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
     # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
     dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained -o $outputDir
+    Assert-DotnetSucceeded "Publish (Linux CLI)"
     
     Write-Host "Linux CLI published to: $outputDir" -ForegroundColor Green
     return $outputDir
@@ -115,15 +159,17 @@ function Build-Windows {
     
     if (-not $NoRestore) {
         Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-        dotnet restore "$srcDir\Kronos.csproj"
+        Restore-Dependencies $srcDir
     }
     
     Write-Host "Building Windows GUI ($Configuration)..." -ForegroundColor Yellow
     dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore
+    Assert-DotnetSucceeded "Build (Windows GUI)"
 
     Write-Host "Publishing Windows Portable..." -ForegroundColor Yellow
     $outputDir = Join-Path (Join-Path $PSScriptRoot "Output") "win-x64-portable-$timestamp"
     dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --self-contained -p:PublishSingleFile=true -o $outputDir
+    Assert-DotnetSucceeded "Publish (Windows GUI)"
     
     Write-Host "Windows Portable published to: $outputDir" -ForegroundColor Green
     return $outputDir

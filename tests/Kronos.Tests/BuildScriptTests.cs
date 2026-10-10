@@ -141,4 +141,68 @@ public class BuildScriptTests
                     + $"publish look for bin/<cfg>/<tfm>/<rid>/ output the build never produced.");
         }
     }
+
+    // ------------------------------------------------------------------ error reporting
+
+    [Fact]
+    public void EveryDotnetCommandInThePowerShellScriptIsFollowedByAnExitCodeCheck()
+    {
+        // $ErrorActionPreference = 'Stop' does not apply to native executables. Without an explicit
+        // check, a failed restore is followed by `dotnet build --no-restore`, which then reports
+        // "NETSDK1004: Assets file project.assets.json not found" - naming the symptom and burying the
+        // restore error that actually caused it.
+        var lines = CodeLines("build.ps1");
+
+        var invocations = lines
+            .Select((line, index) => (Line: line, Index: index))
+            .Where(entry => Regex.IsMatch(entry.Line, @"^(\S*/)?dotnet\s", RegexOptions.IgnoreCase))
+            .ToList();
+
+        Assert.NotEmpty(invocations);
+
+        foreach (var (line, index) in invocations)
+        {
+            var next = index + 1;
+            Assert.True(
+                next < lines.Count && lines[next].Contains("Assert-DotnetSucceeded", StringComparison.Ordinal),
+                $"build.ps1: '{line}' is not followed by an exit code check. A native command that fails "
+                    + $"does not throw, so the script would continue to the next step and report a later, "
+                    + $"misleading error instead. Offending line: {line}");
+        }
+    }
+
+    [Fact]
+    public void TheBashScriptStopsOnTheFirstFailure()
+    {
+        // Without this, a failed step is followed by the next one and the user is told about the
+        // consequence rather than the cause.
+        Assert.Contains(CodeLines("build.sh"), line => line == "set -e");
+    }
+
+    [Theory]
+    [InlineData("build.sh")]
+    [InlineData("build.ps1")]
+    public void RestoreIsVerifiedToHaveWrittenTheAssetsFile(string script)
+    {
+        // A restore that exits 0 without producing project.assets.json would otherwise surface as
+        // NETSDK1004 from the --no-restore build that follows it.
+        Assert.True(
+            CodeLines(script).Any(line => line.Contains("project.assets.json", StringComparison.Ordinal)),
+            $"{script}: nothing checks that restore actually wrote the assets file, so a restore that "
+                + "quietly failed is reported as a missing file by the build step instead.");
+    }
+
+    [Fact]
+    public void TheBashBuildFunctionsAreNotRunInsideACommandSubstitution()
+    {
+        // "$(build_linux ...)" runs the function in a subshell and captures its standard output, so
+        // every progress message and every restore and compiler error was collected into an array
+        // element instead of being printed. The build appeared to produce no output at all.
+        // Matched against comment-stripped lines: the script explains this exact mistake in a
+        // comment, and matching raw text would test the prose.
+        Assert.False(
+            CodeLines("build.sh").Any(line => Regex.IsMatch(line, @"\$\(\s*build_(?:linux|windows)")),
+            "build.sh: the build functions are called in a command substitution, which swallows all of "
+                + "their output including errors.");
+    }
 }
