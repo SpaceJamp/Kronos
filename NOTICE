@@ -1,0 +1,25 @@
+Kronos - DLSS/FSR/XeSS DLL Swapper for Windows and Linux
+=========================================================
+
+This software is a derivative work of DLSS Swapper by beeradmoore
+(https://github.com/beeradmoore/dlss-swapper), licensed under GPL-3.0.
+
+Original DLSS Swapper copyright (c) beeradmoore and contributors.
+All upstream copyright notices are preserved in source files.
+
+Kronos modifications copyright (c) 2024-2026 SpaceJamp
+Modifications include:
+- Linux CLI support (net10.0 target)
+- Cross-platform core libraries (Storage, Database, Updater, WinTrust, Logger, etc.)
+- Auto-updater with GitHub Releases integration and SHA256 verification
+- Linux build scripts (build.sh) and Windows cross-compile script (build.ps1)
+- GitHub Actions workflow for multi-platform releases
+- Platform abstractions for XDG paths, credentials, proxy settings
+- Avalonia GUI foundation (Work in Progress)
+- Multi-target csproj: net10.0 (Linux) + net10.0-windows10.0.26100.0 (Windows)
+- Removed Inno Setup installer scripts
+
+All modifications are licensed under GPL-3.0, same as upstream.
+This is an independent project, not affiliated with or endorsed by DLSS Swapper or NVIDIA.
+Bug reports for Linux builds should be filed in this repository (https://github.com/SpaceJamp/Kronos).
+Official Windows builds: https://github.com/beeradmoore/dlss-swapper/releases

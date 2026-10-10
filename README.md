@@ -275,5 +275,6 @@ sponsorship covers the official project only; Kronos builds are unsigned and are
 
 [GPL-3.0](LICENSE), the same licence as upstream. Kronos is a derivative work and cannot be
 relicensed. Per GPL-3.0 §5(a) the modifications are stated in
-[What changed](#what-changed). `DLSS`, `FSR`, `FidelityFX` and `XeSS` are trademarks of their
+[What changed](#what-changed). See [NOTICE](NOTICE) for copyright ownership details.
+`DLSS`, `FSR`, `FidelityFX` and `XeSS` are trademarks of their
 respective owners; this project is not affiliated with NVIDIA.
