@@ -14,6 +14,7 @@
     <IsTestProject>true</IsTestProject>
     <!-- Deliberately no UseWinUI: these tests exercise plain logic, not XAML. -->
     <SelfContained>false</SelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
 
     <!--
     Same auditing and lock file as src/Kronos.csproj, and for the same reasons. The test project has
