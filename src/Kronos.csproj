@@ -217,8 +217,15 @@
       <Content Remove="Assets\dlss_d_presets.json" />
       <Content Remove="Assets\dlss_g_presets.json" />
       <Content Remove="Assets\ea_app_titles.json" />
-      <Content Remove="Assets\static_manifest.json" />
       <Compile Remove="Data\GitHub\GitHubTypes.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Release_Portable'">
+    <EmbeddedResource Update="Assets\static_manifest.json" />
+    <EmbeddedResource Update="Assets\dlss_presets.json" />
+    <EmbeddedResource Update="Assets\dlss_d_presets.json" />
+    <EmbeddedResource Update="Assets\dlss_g_presets.json" />
+    <EmbeddedResource Update="Assets\ea_app_titles.json" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
@@ -492,19 +499,12 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-        <None Update="Assets\dlss_presets.json">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-      <None Update="Assets\dlss_d_presets.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-      <None Update="Assets\dlss_g_presets.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-        <None Update="Assets\ea_app_titles.json">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-        <None Update="Asssets\icon_256.png">
+    <EmbeddedResource Update="Assets\dlss_presets.json" />
+    <EmbeddedResource Update="Assets\dlss_d_presets.json" />
+    <EmbeddedResource Update="Assets\dlss_g_presets.json" />
+    <EmbeddedResource Update="Assets\ea_app_titles.json" />
+    <EmbeddedResource Update="Assets\static_manifest.json" />
+    <None Update="Asssets\icon_256.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
