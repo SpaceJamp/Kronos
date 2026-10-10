@@ -47,18 +47,46 @@ internal class GitHubRelease
     [JsonPropertyName("assets")]
     public GitHubReleaseAsset[] Assets { get; set; } = [];
 
+    /// <summary>
+    /// The packed version of this release, or 0 if neither the name nor the tag carries one.
+    /// </summary>
+    /// <remarks>
+    /// Upstream parses only <see cref="Name"/>, and requires its first space-delimited token to start
+    /// with "v". That is a silent-failure trap: a release titled "Kronos 1.52 - bug fixes" yields 0,
+    /// which compares below every real version, so <see cref="GitHubUpdater.IsNewerThan"/> reports
+    /// the app as up to date forever and the update check never prompts. Nothing anywhere reports an
+    /// error, because from the code's point of view there simply is no update.
+    ///
+    /// <see cref="TagName"/> is the field GitHub guarantees to be the version, so it is tried when the
+    /// name does not parse. Publishing with a title that begins with the version is still the better
+    /// habit - it is what the dialog displays - but it is no longer the only thing standing between a
+    /// release and a permanently disabled updater.
+    /// </remarks>
     internal ulong GetVersionNumber()
     {
-        // Name should always start with a version, it could be in the format v1, v1.1, v1.1.1, or v1.1.1.1
-        var firstPartOfName = Name?.Split(" ").FirstOrDefault()?.Trim();
-        if (firstPartOfName is null || firstPartOfName.StartsWith("v", StringComparison.InvariantCultureIgnoreCase) == false)
+        var fromName = ParseVersionToken(Name?.Split(" ").FirstOrDefault());
+        return fromName != 0 ? fromName : ParseVersionToken(TagName);
+    }
+
+    /// <summary>
+    /// Parses a single token such as "v1.52.0.0" into the packed form. Returns 0 if it is not one.
+    /// </summary>
+    private static ulong ParseVersionToken(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return 0;
+        }
+
+        var trimmed = token.Trim();
+        if (!trimmed.StartsWith("v", StringComparison.InvariantCultureIgnoreCase))
         {
             return 0;
         }
 
         // This will split v1 through to v1.1.1.1 as 4 parts of the latest release version.
         ulong version = 0;
-        var latestReleaseVersionParts = firstPartOfName.Substring(1).Split(".");
+        var latestReleaseVersionParts = trimmed.Substring(1).Split(".");
         if (latestReleaseVersionParts.Length >= 1)
         {
             if (ulong.TryParse(latestReleaseVersionParts[0], out ulong latestReleaseMajor) == false)

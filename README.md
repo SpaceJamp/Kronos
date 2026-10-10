@@ -103,14 +103,22 @@ described above rather than the broken state an earlier change left it in — se
 ## Getting it
 
 **Official, signed Windows build:** [upstream releases](https://github.com/beeradmoore/dlss-swapper/releases) or
-`winget install --id=beeradmoore.dlss-swapper -e`. Those are the only official sources.
+`winget install --id=beeradmoore.dlss-swapper -e`. Those are the only signed builds of this software.
 
-**Kronos:** This repository **does not provide pre-built executables or installers**. You must build
-from source — see [Building](#building).
+**Kronos:** download `Kronos-<version>.0-portable.zip` from the
+[Releases page](https://github.com/SpaceJamp/Kronos/releases). It is self-contained — unzip anywhere and
+run `Kronos.exe`. No installer, no .NET runtime, no registry.
 
-> **Why no binaries?** Kronos builds are **unsigned** (upstream uses SignPath credentials not
-> available here). Distributing unsigned binaries triggers SmartScreen warnings. Building from source
-> ensures you get exactly what is in the repository.
+> **These builds are unsigned.** Expect SmartScreen to warn; that is inherent to distributing binaries
+> without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for every asset, shown
+> beside its download link, and Kronos verifies it on any in-app update it performs.
+
+> **Kronos will not auto-update a portable build.** The in-app updater looks for an installer-style
+> executable and deliberately ignores a portable zip, rather than replacing a running copy unasked.
+> Take new versions from the Releases page.
+
+**Building from source** produces the same binary, and is covered in [Building](#building). It needs
+your own ImageSharp licence key.
 
 Kronos does not add DLSS to games that do not support it, and swapping DLLs is not guaranteed to
 improve performance, reduce artifacts, or avoid crashes. Downgrading a runtime below the version a
@@ -232,7 +240,27 @@ with a clear error from the ImageSharp MSBuild target. See
 ### Releasing
 
 There is **no CI and no release automation.** Tagging a commit publishes nothing. To cut a release,
-build the portable output and upload the artifact yourself.
+run the publishing script from an authenticated checkout:
+
+```powershell
+./publish-release.ps1                 # tag, release, build and upload the portable artifact
+./publish-release.ps1 -SkipBuild      # notes only
+```
+
+It refuses to run rather than doing the wrong thing quietly:
+
+- **version mismatch** — aborts if the requested version disagrees with `src/Kronos.csproj`, because a
+  tag that disagrees makes the updater compare against the wrong number
+- **dirty working tree** — aborts
+- **tag already exists** — aborts
+- **release exists but the upload failed** — says so, because the retry will otherwise fail on
+  "tag already exists" and leave you guessing
+
+The release title must begin with the version, and the script sets it to `v<version>` for a reason:
+`GitHubUpdater.GetVersionNumber` parses the first space-delimited token of the release **title** and
+requires a leading `v`. A title like "Kronos 1.53" parses to 0, which compares below every real
+version, so the app would report itself as up to date forever with nothing logged. The tag is used as
+a fallback now, but the title should still be right — it is what the update dialog displays.
 
 > [!NOTE]
 > The workflow inherited from upstream was removed. It called `package\*.cmd` scripts that were

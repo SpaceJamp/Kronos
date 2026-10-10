@@ -222,6 +222,12 @@ internal static class Updater
                 }
                 Log.Information("SHA256 verified");
             }
+            else
+            {
+                // Said out loud rather than skipped in silence. This used to be the only outcome, and
+                // nothing in the log distinguished "verified" from "never checked".
+                Log.Warning("GitHub supplied no digest for this asset, so the download is not hash-verified.");
+            }
 
             // Apply update based on platform
             if (OperatingSystem.IsWindows())
@@ -434,6 +440,41 @@ internal sealed class GitHubAsset
     [JsonPropertyName("size")]
     public long Size { get; set; }
 
-    [JsonPropertyName("sha256")]
-    public string? Sha256 { get; set; }
+    /// <summary>
+    /// GitHub's asset digest, formatted <c>"sha256:&lt;hex&gt;"</c>.
+    /// </summary>
+    /// <remarks>
+    /// This was read from a field called <c>sha256</c>, which GitHub's release API has never had, so
+    /// the value was always null and <see cref="ApplyUpdateAsync"/> skipped verification on every
+    /// single download while appearing to support it. The real field is <c>digest</c>.
+    ///
+    /// It is absent on older assets uploaded before GitHub computed digests, so callers must still
+    /// treat an empty result as "unverified" rather than as a failure.
+    /// </remarks>
+    [JsonPropertyName("digest")]
+    public string? Digest { get; set; }
+
+    /// <summary>
+    /// The bare hex digest, or an empty string when GitHub did not supply one.
+    /// </summary>
+    public string Sha256 => ExtractSha256(Digest);
+
+    internal static string ExtractSha256(string? digest)
+    {
+        if (string.IsNullOrWhiteSpace(digest))
+        {
+            return string.Empty;
+        }
+
+        // GitHub writes "sha256:<hex>". Anything else - a bare hex digest, or a future algorithm -
+        // is not something we can verify with SHA256, so it is reported as absent rather than
+        // compared and mismatched.
+        const string prefix = "sha256:";
+        if (digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return digest[prefix.Length..].Trim();
+        }
+
+        return string.Empty;
+    }
 }

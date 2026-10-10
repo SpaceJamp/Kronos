@@ -269,4 +269,41 @@ public class BuildScriptTests
                     + $"touching the committed lock file. Offending line: {line}");
         }
     }
+
+    // ------------------------------------------------------------------ release publishing
+
+    [Fact]
+    public void TheReleaseIsTitledWithTheVersionLeadingAndNothingElse()
+    {
+        // GitHubUpdater.GetVersionNumber takes the first space-delimited token of the release *title*
+        // and requires a leading "v". A title like "Kronos 1.53" therefore parses to 0, which compares
+        // below every real version, so the app reports itself as permanently up to date and nothing is
+        // logged. The tag fallback added later stops that, but the title should still be correct -
+        // it is also what the update dialog displays.
+        var source = ReadRepoFile("publish-release.ps1");
+
+        var match = Regex.Match(source, @"--title\s+""([^""]*)""");
+        Assert.True(match.Success, "publish-release.ps1 does not pass an explicit --title.");
+
+        var template = match.Groups[1].Value;
+        Assert.False(
+            Regex.IsMatch(template, @"(?<![A-Za-z0-9])Kronos\s"),
+            "The release title must not begin with the product name; the leading token is parsed as "
+            + "the version.");
+
+        // The template has to expand to something starting with v, whatever the version interpolates to.
+        var expanded = template.Replace("$Version", "1.53");
+        Assert.StartsWith("v", expanded, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches(@"^v[0-9]", expanded);
+    }
+
+    [Fact]
+    public void TheReleasePublishesAPrebuiltArtifactUnlessExplicitlySkipped()
+    {
+        var source = ReadRepoFile("publish-release.ps1");
+
+        Assert.Contains("gh release upload", source, StringComparison.Ordinal);
+        Assert.Contains("-SkipBuild", source, StringComparison.Ordinal);
+        Assert.Contains("Kronos.exe", source, StringComparison.Ordinal);
+    }
 }

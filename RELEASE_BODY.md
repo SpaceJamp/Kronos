@@ -110,5 +110,26 @@ ImageSharp 3.2+ requires a licence. Builds use a Community Licence supplied at b
 
 No action required. The database schema is unchanged, so 1.52 reads your existing library as-is.
 
-If you want to build it yourself rather than use a pre-built binary — and you should, since there
-isn't one attached to this release — see the README's Building section.
+## Downloading
+
+`Kronos-1.52.0-portable.zip` is attached to this release — 48 MB, self-contained, no .NET runtime
+needed. Unzip it anywhere and run `Kronos.exe`.
+
+It is **not** signed, so SmartScreen will warn. That is expected: the only signed build of this
+software is upstream's, at [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper).
+Verify the download before running it:
+
+```
+sha256  b89b874f074948ec4ec75d8eabdcc7e385a32ff18dcbbf976f4eed474b95ff40
+```
+
+GitHub shows the same digest next to the asset, and Kronos verifies it on any in-app update it
+performs.
+
+**Kronos will not offer to auto-update this portable build.** The in-app updater looks for an
+installer-style executable and deliberately ignores a portable zip, because replacing a running
+portable copy with a fresh one is not something it should do unasked. Download new versions from the
+Releases page.
+
+Building from source is still supported and gives you the same binary — see the README's Building
+section. It does need your own ImageSharp licence key.
