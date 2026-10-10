@@ -387,9 +387,8 @@ Per-file detail is in the commit history.
 
 ## Release notes
 
-Notes for significant releases live in [`RELEASE_NOTES.md`](RELEASE_NOTES.md). Routine changes are
-in the commit history and are not written up here — this section is for big fixes and feature work
-only, so it stays worth reading.
+Notes for significant releases are published as [GitHub Releases](https://github.com/SpaceJamp/Kronos/releases)
+rather than kept in this file. Routine changes are in the commit history and are not written up.
 
 ## Where data is stored
 
