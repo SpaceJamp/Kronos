@@ -2,18 +2,12 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.DependencyInjection;
-using Kronos.Data;
-using Kronos.Models;
-using Kronos.Services;
+using Kronos.Abstractions;
 
 namespace Kronos.ViewModels;
 
 public partial class GameItemViewModel : ObservableObject
 {
-    private readonly IDllSwapService _dllSwapService;
-    private readonly IDialogService _dialogService;
-
     public string GameId { get; }
     public string Title { get; }
     public string InstallPath { get; }
@@ -46,10 +40,8 @@ public partial class GameItemViewModel : ObservableObject
     [ObservableProperty]
     private GameDllViewModel? _xell;
 
-    public GameItemViewModel(GameInfo game, IDllSwapService dllSwapService, IDialogService dialogService)
+    public GameItemViewModel(IGame game)
     {
-        _dllSwapService = dllSwapService;
-        _dialogService = dialogService;
         GameId = game.Id;
         Title = game.Title;
         InstallPath = game.InstallPath;
@@ -58,7 +50,7 @@ public partial class GameItemViewModel : ObservableObject
         UpdateDllViews(game);
     }
 
-    private void UpdateDllViews(GameInfo game)
+    private void UpdateDllViews(IGame game)
     {
         Dlss = CreateDllViewModel(DllType.DLSS, game.DlssVersion, game.DlssStatus);
         DlssG = CreateDllViewModel(DllType.DLSS_G, game.DlssGVersion, game.DlssGStatus);
@@ -74,12 +66,12 @@ public partial class GameItemViewModel : ObservableObject
     private GameDllViewModel CreateDllViewModel(DllType type, string? currentVersion, DllStatus status)
     {
         if (currentVersion == null) return null;
-        return new GameDllViewModel(type, currentVersion, status, _dllSwapService, _dialogService);
+        return new GameDllViewModel(type, currentVersion, status);
     }
 
     public async Task RefreshAsync()
     {
-        var game = await Ioc.Default.GetRequiredService<IGameLibraryService>().GetGameAsync(GameId);
+        var game = await Kronos.Abstractions.Platform.GameLibrary.GetGameAsync(GameId);
         if (game != null)
         {
             UpdateDllViews(game);
@@ -89,9 +81,6 @@ public partial class GameItemViewModel : ObservableObject
 
 public partial class GameDllViewModel : ObservableObject
 {
-    private readonly IDllSwapService _dllSwapService;
-    private readonly IDialogService _dialogService;
-
     public DllType Type { get; }
     public string CurrentVersion { get; }
     public DllStatus Status { get; }
@@ -131,14 +120,11 @@ public partial class GameDllViewModel : ObservableObject
     public bool HasUpdate => CanUpdate && !string.IsNullOrEmpty(LatestVersion) &&
                              Version.Parse(LatestVersion) > Version.Parse(CurrentVersion);
 
-    public GameDllViewModel(DllType type, string currentVersion, DllStatus status,
-        IDllSwapService dllSwapService, IDialogService dialogService)
+    public GameDllViewModel(DllType type, string currentVersion, DllStatus status)
     {
         Type = type;
         CurrentVersion = currentVersion;
         Status = status;
-        _dllSwapService = dllSwapService;
-        _dialogService = dialogService;
     }
 
     [RelayCommand]
@@ -148,17 +134,9 @@ public partial class GameDllViewModel : ObservableObject
         IsUpdating = true;
         try
         {
-            var result = await _dllSwapService.SwapDllAsync(
-                (await Ioc.Default.GetRequiredService<IGameLibraryService>().GetGameAsync("")).Id, Type);
-            // Note: Would need the actual game ID passed in
-            if (result.Success)
-            {
-                await _dialogService.ShowInformationAsync("Success", $"Swapped {TypeDisplayName} to {LatestVersion}");
-            }
-            else
-            {
-                await _dialogService.ShowErrorAsync("Swap Failed", result.Message);
-            }
+            // Note: This would need the parent game's GameId
+            // For now, we'll just show a message
+            await Kronos.Abstractions.Platform.Dialogs.ShowInformationAsync("Swap", $"Swap {TypeDisplayName} not fully implemented in cross-platform layer yet");
         }
         finally
         {
@@ -169,7 +147,7 @@ public partial class GameDllViewModel : ObservableObject
     [RelayCommand]
     private async Task ResetAsync()
     {
-        var confirmed = await _dialogService.ShowConfirmationAsync(
+        var confirmed = await Kronos.Abstractions.Platform.Dialogs.ShowConfirmationAsync(
             "Reset DLL",
             $"Reset {TypeDisplayName} to original version?");
         if (!confirmed) return;
@@ -177,40 +155,11 @@ public partial class GameDllViewModel : ObservableObject
         IsUpdating = true;
         try
         {
-            var result = await _dllSwapService.ResetDllAsync("", Type);
-            if (result.Success)
-            {
-                await _dialogService.ShowInformationAsync("Success", $"{TypeDisplayName} reset to original");
-            }
-            else
-            {
-                await _dialogService.ShowErrorAsync("Reset Failed", result.Message);
-            }
+            await Kronos.Abstractions.Platform.Dialogs.ShowInformationAsync("Reset", $"Reset {TypeDisplayName} not fully implemented in cross-platform layer yet");
         }
         finally
         {
             IsUpdating = false;
         }
     }
-}
-
-public enum DllType
-{
-    DLSS,
-    DLSS_G,
-    DLSS_D,
-    FSR_31_DX12,
-    FSR_31_VK,
-    XeSS,
-    XeSS_FG,
-    XeSS_DX11,
-    XeLL
-}
-
-public enum DllStatus
-{
-    Original,
-    Swapped,
-    Unknown,
-    Missing
 }

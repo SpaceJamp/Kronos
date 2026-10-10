@@ -2,16 +2,12 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Services;
-using Kronos.Models;
+using Kronos.Abstractions;
 
 namespace Kronos.ViewModels;
 
 public partial class UpdatesViewModel : ObservableObject
 {
-    private readonly IUpdateService _updateService;
-    private readonly IDialogService _dialogService;
-
     [ObservableProperty]
     private string _currentVersion = "1.50";
 
@@ -33,10 +29,8 @@ public partial class UpdatesViewModel : ObservableObject
     [ObservableProperty]
     private double _downloadProgress = 0;
 
-    public UpdatesViewModel(IUpdateService updateService, IDialogService dialogService)
+    public UpdatesViewModel()
     {
-        _updateService = updateService;
-        _dialogService = dialogService;
     }
 
     [RelayCommand]
@@ -45,7 +39,7 @@ public partial class UpdatesViewModel : ObservableObject
         IsChecking = true;
         try
         {
-            var info = await _updateService.CheckForUpdatesAsync();
+            var info = await Platform.Updates.CheckForUpdatesAsync();
             if (info != null)
             {
                 LatestVersion = info.Version;
@@ -60,7 +54,7 @@ public partial class UpdatesViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync("Update Check Failed", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Update Check Failed", ex.Message);
         }
         finally
         {
@@ -81,29 +75,29 @@ public partial class UpdatesViewModel : ObservableObject
             {
                 Version = LatestVersion,
                 ReleaseNotes = ReleaseNotes,
-                FileSize = 0 // Would be populated from actual check
+                FileSize = 0
             };
 
-            var success = await _updateService.ApplyUpdateAsync(info, progress =>
+            var success = await Platform.Updates.ApplyUpdateAsync(info, progress =>
             {
                 DownloadProgress = progress;
             });
 
             if (success)
             {
-                await _dialogService.ShowInformationAsync("Update Applied",
+                await Platform.Dialogs.ShowInformationAsync("Update Applied",
                     "Update has been applied. Please restart Kronos.");
                 UpdateAvailable = false;
                 CurrentVersion = LatestVersion;
             }
             else
             {
-                await _dialogService.ShowErrorAsync("Update Failed", "Failed to apply update.");
+                await Platform.Dialogs.ShowErrorAsync("Update Failed", "Failed to apply update.");
             }
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync("Update Failed", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Update Failed", ex.Message);
         }
         finally
         {

@@ -4,19 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.DependencyInjection;
-using Kronos.Data;
-using Kronos.Services;
-using Kronos.Models;
+using Kronos.Abstractions;
 
 namespace Kronos.ViewModels;
 
 public partial class LibraryViewModel : ObservableObject
 {
-    private readonly IGameLibraryService _libraryService;
-    private readonly IDllSwapService _dllSwapService;
-    private readonly IDialogService _dialogService;
-
     [ObservableProperty]
     private ObservableCollection<GameItemViewModel> _games = new();
 
@@ -32,28 +25,25 @@ public partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private int _visibleGameCount = 0;
 
-    public LibraryViewModel(IGameLibraryService libraryService, IDllSwapService dllSwapService, IDialogService dialogService)
+    public LibraryViewModel()
     {
-        _libraryService = libraryService;
-        _dllSwapService = dllSwapService;
-        _dialogService = dialogService;
     }
 
     public async Task LoadGamesAsync()
     {
         try
         {
-            var games = await _libraryService.GetAllGamesAsync();
+            var games = await Platform.GameLibrary.GetAllGamesAsync();
             Games.Clear();
             foreach (var game in games.OrderBy(g => g.Title))
             {
-                Games.Add(new GameItemViewModel(game, _dllSwapService, _dialogService));
+                Games.Add(new GameItemViewModel(game));
             }
             UpdateVisibleCount();
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync("Failed to Load Games", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Failed to Load Games", ex.Message);
         }
     }
 
@@ -83,14 +73,14 @@ public partial class LibraryViewModel : ObservableObject
     {
         if (game == null) return;
 
-        var result = await _dllSwapService.SwapDllAsync(game.GameId, dllType);
+        var result = await Platform.GameLibrary.SwapDllAsync(game.GameId, dllType);
         if (result.Success)
         {
             await game.RefreshAsync();
         }
         else
         {
-            await _dialogService.ShowErrorAsync("Swap Failed", result.Message);
+            await Platform.Dialogs.ShowErrorAsync("Swap Failed", result.Message);
         }
     }
 
@@ -99,19 +89,19 @@ public partial class LibraryViewModel : ObservableObject
     {
         if (game == null) return;
 
-        var confirmed = await _dialogService.ShowConfirmationAsync(
+        var confirmed = await Platform.Dialogs.ShowConfirmationAsync(
             "Reset DLL",
             $"Reset {dllType} to original version for {game.Title}?");
         if (!confirmed) return;
 
-        var result = await _dllSwapService.ResetDllAsync(game.GameId, dllType);
+        var result = await Platform.GameLibrary.ResetDllAsync(game.GameId, dllType);
         if (result.Success)
         {
             await game.RefreshAsync();
         }
         else
         {
-            await _dialogService.ShowErrorAsync("Reset Failed", result.Message);
+            await Platform.Dialogs.ShowErrorAsync("Reset Failed", result.Message);
         }
     }
 
@@ -122,7 +112,7 @@ public partial class LibraryViewModel : ObservableObject
         try
         {
             var path = game.InstallPath;
-            if (System.IO.Directory.Exists(path))
+            if (Directory.Exists(path))
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -134,7 +124,7 @@ public partial class LibraryViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync("Failed to Open Folder", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Failed to Open Folder", ex.Message);
         }
     }
 
@@ -143,12 +133,12 @@ public partial class LibraryViewModel : ObservableObject
     {
         if (game == null) return;
 
-        var confirmed = await _dialogService.ShowConfirmationAsync(
+        var confirmed = await Platform.Dialogs.ShowConfirmationAsync(
             "Remove Game",
             $"Remove {game.Title} from Kronos? This will not delete the game files.");
         if (!confirmed) return;
 
-        await _libraryService.RemoveGameAsync(game.GameId);
+        await Platform.GameLibrary.RemoveGameAsync(game.GameId);
         Games.Remove(game);
         UpdateVisibleCount();
     }

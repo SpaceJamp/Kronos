@@ -4,15 +4,14 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Services;
-using Kronos.Models;
+using Kronos.Abstractions;
+using Kronos.Views;
 
 namespace Kronos.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
-    private readonly ISettingsService _settingsService;
-    private readonly IDialogService _dialogService;
+    private ISettings _settings = Platform.Settings;
 
     [ObservableProperty]
     private string _downloadPath = string.Empty;
@@ -35,22 +34,20 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _newIgnoredPath = string.Empty;
 
-    public SettingsViewModel(ISettingsService settingsService, IDialogService dialogService)
+    public SettingsViewModel()
     {
-        _settingsService = settingsService;
-        _dialogService = dialogService;
         LoadSettings();
     }
 
     private void LoadSettings()
     {
-        var settings = _settingsService.GetSettings();
-        DownloadPath = settings.DownloadPath;
-        AllowUntrusted = settings.AllowUntrusted;
-        CheckSignatures = settings.CheckSignatures;
-        AutoCheckUpdates = settings.AutoCheckUpdates;
-        MaxConcurrentDownloads = settings.MaxConcurrentDownloads;
-        foreach (var path in settings.IgnoredPaths)
+        _settings.Load();
+        DownloadPath = _settings.DownloadPath;
+        AllowUntrusted = _settings.AllowUntrusted;
+        CheckSignatures = _settings.CheckSignatures;
+        AutoCheckUpdates = _settings.AutoCheckUpdates;
+        MaxConcurrentDownloads = _settings.MaxConcurrentDownloads;
+        foreach (var path in _settings.IgnoredPaths)
         {
             IgnoredPaths.Add(path);
         }
@@ -59,7 +56,7 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task BrowseDownloadPathAsync()
     {
-        var dialog = new Avalonia.Controls.OpenFolderDialog
+        var dialog = new OpenFolderDialog
         {
             Title = "Select Download Folder"
         };
@@ -92,34 +89,41 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveAsync()
     {
-        var settings = new SettingsModel
-        {
-            DownloadPath = DownloadPath,
-            AllowUntrusted = AllowUntrusted,
-            CheckSignatures = CheckSignatures,
-            AutoCheckUpdates = AutoCheckUpdates,
-            MaxConcurrentDownloads = MaxConcurrentDownloads,
-            IgnoredPaths = IgnoredPaths.ToList()
-        };
+        _settings.DownloadPath = DownloadPath;
+        _settings.AllowUntrusted = AllowUntrusted;
+        _settings.CheckSignatures = CheckSignatures;
+        _settings.AutoCheckUpdates = AutoCheckUpdates;
+        _settings.MaxConcurrentDownloads = MaxConcurrentDownloads;
+        _settings.IgnoredPaths = IgnoredPaths.ToList();
 
-        await _settingsService.SaveSettingsAsync(settings);
-        await _dialogService.ShowInformationAsync("Settings Saved", "Settings have been saved successfully.");
+        await _settings.SaveAsync();
+        await Platform.Dialogs.ShowInformationAsync("Settings Saved", "Settings have been saved successfully.");
     }
 
     [RelayCommand]
     private async Task ResetToDefaultsAsync()
     {
-        var confirmed = await _dialogService.ShowConfirmationAsync(
+        var confirmed = await Platform.Dialogs.ShowConfirmationAsync(
             "Reset Settings",
             "Reset all settings to defaults?");
         if (!confirmed) return;
 
-        var defaults = _settingsService.GetDefaultSettings();
+        var defaults = Platform.Settings;
         DownloadPath = defaults.DownloadPath;
         AllowUntrusted = defaults.AllowUntrusted;
         CheckSignatures = defaults.CheckSignatures;
         AutoCheckUpdates = defaults.AutoCheckUpdates;
         MaxConcurrentDownloads = defaults.MaxConcurrentDownloads;
         IgnoredPaths.Clear();
+    }
+
+    [RelayCommand]
+    private void ShowChangelog()
+    {
+        var window = new ChangelogWindow
+        {
+            DataContext = new ChangelogViewModel()
+        };
+        window.ShowDialog(Avalonia.Application.Current!.MainWindow!);
     }
 }

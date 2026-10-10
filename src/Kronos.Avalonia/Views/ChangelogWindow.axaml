@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Kronos.Views.ChangelogWindow"
+        Title="Kronos Changelog"
+        Width="700"
+        Height="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="Kronos Changelog" FontSize="24" FontWeight="Bold" Margin="24,24,24,16" />
+
+    <ScrollViewer DockPanel.Dock="Bottom" Margin="24,0,24,24">
+      <StackPanel Spacing="16">
+        <TextBlock Text="v1.50 - Linux Support & Cross-Platform Core" FontWeight="Bold" FontSize="16" />
+        <TextBlock Text="Release Date: 2026" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+        <Separator />
+
+        <TextBlock Text="🎉 New Features" FontWeight="Bold" FontSize="14" />
+        <ItemsControl ItemsSource="{Binding Features}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="16,4,0,0" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Separator />
+
+        <TextBlock Text="🐛 Bug Fixes" FontWeight="Bold" FontSize="14" />
+        <ItemsControl ItemsSource="{Binding Fixes}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="16,4,0,0" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Separator />
+
+        <TextBlock Text="🔧 Improvements" FontWeight="Bold" FontSize="14" />
+        <ItemsControl ItemsSource="{Binding Improvements}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="16,4,0,0" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Separator />
+
+        <TextBlock Text="📋 Known Issues" FontWeight="Bold" FontSize="14" />
+        <ItemsControl ItemsSource="{Binding KnownIssues}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="16,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Button DockPanel.Dock="Bottom" Content="Close" HorizontalAlignment="Right" Margin="24"
+            Command="{Binding CloseCommand}" />
+  </DockPanel>
+</Window>

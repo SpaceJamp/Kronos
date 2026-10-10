@@ -11,6 +11,7 @@
 
   <DockPanel>
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16" Spacing="8">
+      <Button Content="View Changelog" Command="{Binding ShowChangelogCommand}" />
       <Button Content="Reset to Defaults" Command="{Binding ResetToDefaultsCommand}" />
       <Button Content="Cancel" IsCancel="True" />
       <Button Content="Save" IsDefault="True" Classes="Accent" Command="{Binding SaveCommand}" />

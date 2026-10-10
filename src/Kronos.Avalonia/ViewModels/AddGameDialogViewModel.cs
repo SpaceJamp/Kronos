@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Kronos.Services;
+using Kronos.Abstractions;
 
 namespace Kronos.ViewModels;
 
@@ -33,10 +33,9 @@ public partial class AddGameDialogViewModel : ObservableObject
         if (!string.IsNullOrEmpty(result))
         {
             InstallPath = result;
-            // Auto-fill title from folder name if empty
             if (string.IsNullOrWhiteSpace(GameTitle))
             {
-                GameTitle = System.IO.Path.GetFileName(result);
+                GameTitle = Path.GetFileName(result);
             }
         }
     }
@@ -50,7 +49,7 @@ public partial class AddGameDialogViewModel : ObservableObject
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(InstallPath) || !System.IO.Directory.Exists(InstallPath))
+        if (string.IsNullOrWhiteSpace(InstallPath) || !Directory.Exists(InstallPath))
         {
             await ShowErrorAsync("Invalid Path", "Please select a valid install folder.");
             return;

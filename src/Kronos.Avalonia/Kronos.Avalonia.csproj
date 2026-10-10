@@ -38,4 +38,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Kronos.csproj" />
   </ItemGroup>
+
+  <!-- Include Storage.cs from core for cross-platform paths -->
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <Compile Include="..\Storage.cs" />
+  </ItemGroup>
+
+  <!-- Include Linux platform implementations for Avalonia GUI -->
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
+    <Compile Include="..\Platforms\Linux\*.cs" />
+  </ItemGroup>
 </Project>

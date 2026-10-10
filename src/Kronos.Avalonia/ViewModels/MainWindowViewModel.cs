@@ -1,18 +1,15 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.DependencyInjection;
-using Kronos.Services;
-using Kronos.Models;
+using Kronos.Abstractions;
 
 namespace Kronos.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly IDialogService _dialogService;
-    private readonly IUpdateService _updateService;
-
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
@@ -35,15 +32,11 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         LibraryViewModel libraryViewModel,
         UpdatesViewModel updatesViewModel,
-        SettingsViewModel settingsViewModel,
-        IDialogService dialogService,
-        IUpdateService updateService)
+        SettingsViewModel settingsViewModel)
     {
         LibraryViewModel = libraryViewModel;
         UpdatesViewModel = updatesViewModel;
         SettingsViewModel = settingsViewModel;
-        _dialogService = dialogService;
-        _updateService = updateService;
     }
 
     [RelayCommand]
@@ -59,7 +52,7 @@ public partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
-            await _dialogService.ShowErrorAsync("Refresh Failed", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Refresh Failed", ex.Message);
         }
         finally
         {
@@ -77,7 +70,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var updateInfo = await _updateService.CheckForUpdatesAsync(progress =>
+            var updateInfo = await Platform.Updates.CheckForUpdatesAsync(progress =>
             {
                 ProgressValue = progress * 50;
                 ProgressText = $"Downloading: {progress:P0}";
@@ -85,13 +78,13 @@ public partial class MainWindowViewModel : ObservableObject
 
             if (updateInfo != null)
             {
-                var result = await _dialogService.ShowConfirmationAsync(
+                var result = await Platform.Dialogs.ShowConfirmationAsync(
                     "Update Available",
                     $"Version {updateInfo.Version} is available ({updateInfo.FileSize:N0} bytes).\n\n{updateInfo.ReleaseNotes}\n\nDownload and apply now?");
 
                 if (result)
                 {
-                    var success = await _updateService.ApplyUpdateAsync(updateInfo, progress =>
+                    var success = await Platform.Updates.ApplyUpdateAsync(updateInfo, progress =>
                     {
                         ProgressValue = 50 + progress * 50;
                         ProgressText = $"Applying: {progress:P0}";
@@ -99,25 +92,25 @@ public partial class MainWindowViewModel : ObservableObject
 
                     if (success)
                     {
-                        await _dialogService.ShowInformationAsync("Update Applied",
+                        await Platform.Dialogs.ShowInformationAsync("Update Applied",
                             "Update has been applied. Please restart Kronos.");
                     }
                     else
                     {
-                        await _dialogService.ShowErrorAsync("Update Failed", "Failed to apply update. Check logs for details.");
+                        await Platform.Dialogs.ShowErrorAsync("Update Failed", "Failed to apply update. Check logs for details.");
                     }
                 }
             }
             else
             {
-                await _dialogService.ShowInformationAsync("No Updates", "You are running the latest version.");
+                await Platform.Dialogs.ShowInformationAsync("No Updates", "You are running the latest version.");
             }
             StatusText = "Ready";
         }
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
-            await _dialogService.ShowErrorAsync("Update Check Failed", ex.Message);
+            await Platform.Dialogs.ShowErrorAsync("Update Check Failed", ex.Message);
         }
         finally
         {
@@ -136,7 +129,10 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task AddGameAsync()
     {
-        var dialog = Ioc.Default.GetRequiredService<AddGameDialog>();
+        var dialog = new AddGameDialog
+        {
+            DataContext = new AddGameDialogViewModel(Platform.GameLibrary)
+        };
         var result = await dialog.ShowDialog<bool>(this.GetVisualRoot() as Window);
         if (result == true)
         {
