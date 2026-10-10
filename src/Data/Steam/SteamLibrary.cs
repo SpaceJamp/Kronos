@@ -133,10 +133,27 @@ internal partial class SteamLibrary : IGameLibrary
         // If the file already exists in knownAppManifestPaths we can skip it.
         // If the file does not exist in knownAppManifestPaths we should process it as it is likly freshly installed.
 
-        var appManifestRegex = new Regex(@"^(.*)\\appmanifest_(?<app_id>\d*)\.acf$");
+        // [\\/] rather than a literal backslash: Directory.GetFiles returns native separators, so a
+        // pattern pinned to '\' silently matches nothing on a forward-slash path and every newly
+        // installed game was dropped from the scan. \d+ rather than \d* too, so an
+        // "appmanifest_.acf" cannot produce an empty app id.
+        var appManifestRegex = new Regex(@"^(.*)[\\/]appmanifest_(?<app_id>\d+)\.acf$", RegexOptions.Compiled);
         foreach (var steamAppPath in steamAppsPaths)
         {
-            var appManifestPaths = Directory.GetFiles(steamAppPath, "*.acf", SearchOption.TopDirectoryOnly);
+            // A Steam library on a disconnected or permission-denied volume throws from
+            // Directory.GetFiles, which used to abandon the entire scan and lose every other library
+            // with it. A library we cannot read right now is a normal condition, not a reason to stop.
+            string[] appManifestPaths;
+            try
+            {
+                appManifestPaths = Directory.GetFiles(steamAppPath, "*.acf", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception err) when (err is UnauthorizedAccessException or DirectoryNotFoundException or IOException)
+            {
+                Logger.Error(err, $"Unable to read Steam library at {steamAppPath}. Skipping it.");
+                continue;
+            }
+
             if (appManifestPaths?.Length > 0)
             {
                 foreach (var appManifestPath in appManifestPaths)

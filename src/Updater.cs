@@ -83,6 +83,49 @@ internal static class Updater
     }
 
     /// <summary>
+    /// Fetches the newest published release regardless of whether it is newer than
+    /// <paramref name="currentVersion"/>. This is what backs <c>--force</c>: without it,
+    /// <c>kronos update --force</c> falls through with a null result when the user is already on the
+    /// latest version and dereferences it.
+    /// </summary>
+    public static async Task<UpdateInfo?> GetLatestReleaseAsync()
+    {
+        try
+        {
+            var response = await HttpClient.GetStringAsync(GitHubApiUrl).ConfigureAwait(false);
+            var release = JsonSerializer.Deserialize(response, SourceGenerationContext.Default.GitHubRelease);
+
+            if (release is null || string.IsNullOrEmpty(release.TagName))
+            {
+                Log.Warning("Could not parse release information");
+                return null;
+            }
+
+            var asset = FindMatchingAsset(release.Assets);
+            if (asset is null)
+            {
+                Log.Warning("No matching asset found for this platform");
+                return null;
+            }
+
+            return new UpdateInfo
+            {
+                Version = release.TagName.TrimStart('v'),
+                ReleaseNotes = release.Body ?? string.Empty,
+                DownloadUrl = asset.BrowserDownloadUrl,
+                AssetName = asset.Name,
+                Sha256 = asset.Sha256 ?? string.Empty,
+                FileSize = asset.Size
+            };
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to fetch the latest release");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Finds the matching asset for the current platform/architecture.
     /// </summary>
     private static GitHubAsset? FindMatchingAsset(GitHubAsset[] assets)

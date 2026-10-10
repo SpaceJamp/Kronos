@@ -89,9 +89,15 @@ internal class UbisoftConnectLibrary : IGameLibrary
                         {
                             using (var ubisoftConnectInstallDirKey = ubisoftConnectInstallsKey.OpenSubKey(subKeyName))
                             {
+                                // continue, not break. One unreadable subkey used to abandon the rest
+                                // of the enumeration, and because the cleanup further down deletes any
+                                // cached game that was not re-discovered on this scan, the games behind
+                                // those subkeys lost their assets, history and notes. A single
+                                // permission-denied key could do that.
                                 if (ubisoftConnectInstallDirKey is null)
                                 {
-                                    break;
+                                    Logger.Error($"Unable to open Ubisoft Connect install subkey {subKeyName}. Skipping it.");
+                                    continue;
                                 }
 
                                 var gameInstallDir = ubisoftConnectInstallDirKey.GetValue("InstallDir") as string;

@@ -499,7 +499,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     IgnoreInaccessible = true,
                 };
 
-                var oldGameAssets = GameAssets.ToList();
+                var oldGameAssets = GetGameAssetsSnapshot();
 
                 // The new records are built up separately and only swapped into GameAssets once the
                 // scan has completed. Previously GameAssets was cleared and the game_asset rows were
@@ -676,10 +676,14 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                     //App.CurrentApp.Database.ExecuteAsync
                     //savePoint is not valid, and should be the result of a call to SaveTransactionPoint.
+                    // Snapshot rather than handing sqlite-net the live list: InsertAllAsync enumerates
+                    // its argument, and this runs on a thread pool thread that can be racing a scan or
+                    // a mass update, which throws "collection was modified" and is swallowed into the
+                    // game losing all of its DLLs.
                     using (await Database.Instance.Mutex.LockAsync())
                     {
                         await Database.Instance.Connection.InsertAllAsync(dllHistory, false).ConfigureAwait(false);
-                        await Database.Instance.Connection.InsertAllAsync(GameAssets, false).ConfigureAwait(false);
+                        await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
                     }
 
                     if (unknownGameAssets.Any())
@@ -735,17 +739,37 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
     void LoadBackupForGameAsset(GameAsset gameAsset, List<GameAsset> targetCollection)
     {
-        var backupPath = $"{gameAsset.Path}.dlsss";
-        if (File.Exists(backupPath))
+        var backupRecordType = DLLManager.Instance.GetAssetBackupType(gameAsset.AssetType);
+
+        // Backups are a numbered chain (.kronosbak1, .kronosbak2, ...) with the oldest first. Every
+        // entry has to be tracked, not just the oldest: the chain is what makes repeated swaps
+        // reversible, and dropping the tail on a re-scan both loses undo history and lets the next
+        // swap treat an already-backed-up file as pristine and append a duplicate entry.
+        foreach (var backupPath in DllBackupStack.GetStackedBackupPaths(gameAsset.Path))
         {
             var gameAssetBackup = new GameAsset()
             {
                 Id = ID,
-                AssetType = DLLManager.Instance.GetAssetBackupType(gameAsset.AssetType),
+                AssetType = backupRecordType,
                 Path = backupPath,
             };
             gameAssetBackup.LoadVersionAndHash();
             targetCollection.Add(gameAssetBackup);
+        }
+
+        // Builds from before the chain existed left a single .dlsss copy behind. Track it as well so
+        // that upgrading an existing library does not lose track of a backup that is still on disk.
+        var legacyBackupPath = $"{gameAsset.Path}.dlsss";
+        if (File.Exists(legacyBackupPath))
+        {
+            var legacyBackup = new GameAsset()
+            {
+                Id = ID,
+                AssetType = backupRecordType,
+                Path = legacyBackupPath,
+            };
+            legacyBackup.LoadVersionAndHash();
+            targetCollection.Add(legacyBackup);
         }
     }
 
@@ -761,29 +785,38 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
         // TODO: Update if the image last write is > 1 week old or something
 
-        if (File.Exists(ExpectedCustomCoverImage))
+        // try/finally, not a trailing assignment: UpdateCacheImageAsync does network and file I/O and
+        // can throw on a dead connection or a truncated download. Without this, one bad cover left the
+        // flag stuck true and every later call returned immediately at the guard above, so a single
+        // unreachable cover server broke cover art for the whole library for the rest of the session.
+        try
         {
-            // If a custom cover exists use it.
-            App.CurrentApp.RunOnUIThread(() =>
+            if (File.Exists(ExpectedCustomCoverImage))
             {
-                CoverImage = ExpectedCustomCoverImage;
-            });
-        }
-        else if (File.Exists(ExpectedCoverImage))
-        {
-            // If a standard cover exists use it.
-            App.CurrentApp.RunOnUIThread(() =>
+                // If a custom cover exists use it.
+                App.CurrentApp.RunOnUIThread(() =>
+                {
+                    CoverImage = ExpectedCustomCoverImage;
+                });
+            }
+            else if (File.Exists(ExpectedCoverImage))
             {
-                CoverImage = ExpectedCoverImage;
-            });
+                // If a standard cover exists use it.
+                App.CurrentApp.RunOnUIThread(() =>
+                {
+                    CoverImage = ExpectedCoverImage;
+                });
+            }
+            else
+            {
+                // If no cover exists use the abstracted method to get the game as expect for this library.
+                await UpdateCacheImageAsync();
+            }
         }
-        else
+        finally
         {
-            // If no cover exists use the abstracted method to get the game as expect for this library.
-            await UpdateCacheImageAsync();
+            _isLoadingCoverImage = false;
         }
-
-        _isLoadingCoverImage = false;
     }
 
     protected abstract Task UpdateCacheImageAsync();
@@ -806,7 +839,22 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             var dllHistory = new List<GameHistory>();
             foreach (var existingBackupRecord in existingBackupRecords)
             {
-                var primaryRecordName = existingBackupRecord.Path.Replace(".dlsss", string.Empty);
+                var primaryRecordName = DllBackupStack.GetPrimaryPathFromBackup(existingBackupRecord.Path);
+                if (primaryRecordName is null)
+                {
+                    Logger.Info($"Backup record {existingBackupRecord.Path} is not a recognisable backup path.");
+                    continue;
+                }
+
+                // Every entry of the chain refers to the same live DLL, so once it has been restored
+                // there is nothing more for the remaining entries to do. Restoring the newest is the
+                // right one to stop at: that is the file as it was immediately before the last swap,
+                // which is what "reset" means to a user who swapped A then B then C.
+                if (existingBackupRecord.Path != DllBackupStack.GetUndoPath(primaryRecordName))
+                {
+                    continue;
+                }
+
                 var existingRecords = GetGameAssetsSnapshot().Where(x => x.AssetType == gameAssetType && x.Path.Equals(primaryRecordName)).ToList();
 
                 if (existingRecords.Count != 1)
@@ -885,7 +933,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
 
                 // Update game assets list by deleting and re-adding.
                 await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-                await Database.Instance.Connection.InsertAllAsync(GameAssets, false).ConfigureAwait(false);
+                await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
             }
 
             return (true, string.Empty, false);
@@ -1027,7 +1075,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // Back up every dll we are about to overwrite, checking each one individually rather than
         // treating "do we have any backups" as a single yes/no question. See GetPathsNeedingBackup
         // for why that distinction matters.
-        var pathsNeedingBackup = GetPathsNeedingBackup(existingRecords, GameAssets, backupRecordType);
+        // Snapshot the tracked list: GetPathsNeedingBackup enumerates it with Where/Select, and this
+        // runs on a pool thread during a mass update that can be mutating it underneath.
+        var pathsNeedingBackup = GetPathsNeedingBackup(existingRecords, GetGameAssetsSnapshot(), backupRecordType);
 
         foreach (var existingRecord in existingRecords)
         {
@@ -1183,7 +1233,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         {
             await Database.Instance.Connection.InsertAllAsync(dllHistory, false);
             await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-            await Database.Instance.Connection.InsertAllAsync(GameAssets, false).ConfigureAwait(false);
+            await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
         }
 
         return (true, string.Empty, false);

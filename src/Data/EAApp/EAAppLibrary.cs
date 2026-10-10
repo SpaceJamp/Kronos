@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Kronos.Helpers;
 using Kronos.Interfaces;
 using Microsoft.Win32;
 
@@ -34,7 +36,13 @@ internal class EAAppLibrary : IGameLibrary
         // The best way to get covers from EA apps is a static list from the EAAppGameListBuilder tool.
         try
         {
-            var eaAppTitlesJsonPath = @"Assets\ea_app_titles.json";
+            // Resolved against the assembly's own directory rather than the process working directory.
+            // A relative path is resolved against whatever the user happened to launch from, so a
+            // shortcut with a different "Start in" - or a portable build run from elsewhere - silently
+            // failed to find the file and every EA App game lost its cover with no way to tell that
+            // apart from "no match in the list". Path.Combine also keeps this correct off Windows,
+            // where the old hardcoded backslash was not a separator.
+            var eaAppTitlesJsonPath = Path.Combine(AppContext.BaseDirectory, "Assets", "ea_app_titles.json");
             if (File.Exists(eaAppTitlesJsonPath) == true)
             {
                 using (var fileStream = File.OpenRead(eaAppTitlesJsonPath))
@@ -60,28 +68,31 @@ internal class EAAppLibrary : IGameLibrary
 
     public bool IsInstalled()
     {
-        using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32))
+        // Guarded because IsInstalled is called at the top of ListGamesAsync, so an escaping
+        // PlatformNotSupportedException off Windows (or a SecurityException on a locked-down machine)
+        // would cost the user every EA App game instead of just reporting the launcher as absent.
+        try
         {
-            using (var eaDesktopKey = hklm.OpenSubKey(@"SOFTWARE\Electronic Arts\EA Desktop"))
+            using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32);
+            using var eaDesktopKey = hklm.OpenSubKey(@"SOFTWARE\Electronic Arts\EA Desktop");
+
+            if (eaDesktopKey is null)
             {
-                if (eaDesktopKey is null)
-                {
-                    return false;
-                }
-
-                var installPath = eaDesktopKey.GetValue("InstallLocation")?.ToString();
-                if (string.IsNullOrWhiteSpace(installPath))
-                {
-                    return false;
-                }
-
-                if (Directory.Exists(installPath) == false)
-                {
-                    return false;
-                }
-
-                return true;
+                return false;
             }
+
+            var installPath = eaDesktopKey.GetValue("InstallLocation")?.ToString();
+            if (string.IsNullOrWhiteSpace(installPath))
+            {
+                return false;
+            }
+
+            return Directory.Exists(installPath);
+        }
+        catch (Exception err) when (err is PlatformNotSupportedException or SecurityException or UnauthorizedAccessException)
+        {
+            Logger.Error(err, "Unable to read the EA Desktop registry key. Assuming EA App is not installed.");
+            return false;
         }
     }
 
@@ -150,21 +161,47 @@ internal class EAAppLibrary : IGameLibrary
 
 
                                     var name = programUninstallSubKey.GetValue("DisplayName")?.ToString() ?? string.Empty;
-                                    var installPath = programUninstallSubKey.GetValue("InstallLocation")?.ToString() ?? string.Empty;
 
-                                    if (string.IsNullOrWhiteSpace(installPath))
+                                    // Read every registry value before handing anything to another
+                                    // thread. programUninstallSubKey is scoped to this loop body's
+                                    // `using`, so the DisplayIcon read further down - which happens
+                                    // inside a RunOnUIThreadAsync callback - only worked because the
+                                    // await happened to complete before the key was disposed. Remove
+                                    // that await and it becomes ObjectDisposedException.
+                                    var rawInstallPath = programUninstallSubKey.GetValue("InstallLocation")?.ToString() ?? string.Empty;
+                                    var displayIconPath = programUninstallSubKey.GetValue("DisplayIcon")?.ToString()?.Trim('"') ?? string.Empty;
+
+                                    if (string.IsNullOrWhiteSpace(rawInstallPath))
                                     {
                                         Logger.Error($"Install path was empty for {name} in key {fullSubKey}");
                                         continue;
                                     }
+
+                                    // Normalised like every other library does. The EA registry value
+                                    // carries a trailing separator, and Game.IsInIgnoredPath and
+                                    // GameManager.CheckIfGameIsAdded both compare paths for exact
+                                    // equality, so an untrimmed path made this the only library whose
+                                    // games could not be matched against an ignore list or a
+                                    // not-already-added check.
+                                    var installPath = PathHelpers.NormalizePath(rawInstallPath);
 
                                     var installerDataPath = Path.Combine(installPath, "__Installer", "installerdata.xml");
 
                                     string contentId = string.Empty;
                                     if (File.Exists(installerDataPath))
                                     {
-                                        var doc = XDocument.Load(installerDataPath);
-                                        contentId = doc.Descendants("contentID").FirstOrDefault()?.Value ?? string.Empty;
+                                        try
+                                        {
+                                            var doc = XDocument.Load(installerDataPath);
+                                            contentId = doc.Descendants("contentID").FirstOrDefault()?.Value ?? string.Empty;
+                                        }
+                                        catch (Exception err) when (err is System.Xml.XmlException or IOException)
+                                        {
+                                            // installerdata.xml is written by the EA installer and is
+                                            // routinely truncated mid-update. One bad file should cost
+                                            // this game's cover, not the whole scan.
+                                            Logger.Error(err, $"Unable to read {installerDataPath} for {name}.");
+                                        }
                                     }
 
                                     if (string.IsNullOrWhiteSpace(contentId))
@@ -179,12 +216,14 @@ internal class EAAppLibrary : IGameLibrary
                                     // These are UI-bound properties. Parallel.ForEachAsync above always schedules its
                                     // work on the thread pool, never the UI thread, so these must be marshalled
                                     // explicitly or WinUI throws RPC_E_WRONGTHREAD when a bound control is updated
-                                    // from a background thread.
+                                    // from a background thread. Only the assignments are marshalled - the
+                                    // registry value was read above, before this callback runs on another
+                                    // thread.
                                     await App.CurrentApp.RunOnUIThreadAsync(() =>
                                     {
                                         activeGame.Title = name;
                                         activeGame.InstallPath = installPath;
-                                        activeGame.DisplayIconPath = programUninstallSubKey.GetValue("DisplayIcon")?.ToString()?.Trim('"') ?? string.Empty;
+                                        activeGame.DisplayIconPath = displayIconPath;
 
                                         return Task.CompletedTask;
                                     }).ConfigureAwait(false);

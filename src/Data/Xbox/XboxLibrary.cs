@@ -91,8 +91,13 @@ internal class XboxLibrary : IGameLibrary
                             var configFile = Path.Combine(gameDirectory, "Content", "MicrosoftGame.config");
                             if (File.Exists(configFile))
                             {
-                                var xmlDocument = new XmlDocument();
-                                xmlDocument.Load(configFile);
+                                // MicrosoftGame.config is written while a game is installing or patching, so a
+                                // truncated one is routine. An unguarded Load threw XmlException out of
+                                // ListGamesAsync and cost the user every Xbox game.
+                                try
+                                {
+                                    var xmlDocument = new XmlDocument();
+                                    xmlDocument.Load(configFile);
 
                                 var gameNode = xmlDocument.DocumentElement?.SelectSingleNode("/Game");
                                 if (gameNode is null)
@@ -164,9 +169,32 @@ internal class XboxLibrary : IGameLibrary
                                     potentialIcons.Add(square44x44Logo);
                                 }
 
-                                gameNamesToFindPackages[identityNodeName] = potentialIcons;
+                                // Merge rather than replace. A title installed in two places - an
+                                // internal drive and a game drive - is enumerated once per location, and
+                                // the second MicrosoftGame.config can legitimately carry no image
+                                // attributes. Assigning over the first result replaced a good icon list
+                                // with an empty one and the game lost its cover.
+                                if (gameNamesToFindPackages.TryGetValue(identityNodeName, out var existingIcons))
+                                {
+                                    foreach (var icon in potentialIcons)
+                                    {
+                                        if (existingIcons.Contains(icon) == false)
+                                        {
+                                            existingIcons.Add(icon);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    gameNamesToFindPackages[identityNodeName] = potentialIcons;
+                                }
+                            }
+                            catch (Exception err) when (err is XmlException or IOException or UnauthorizedAccessException)
+                            {
+                                Logger.Error(err, $"Unable to parse {configFile}. Skipping this game directory.");
                             }
                         }
+                    }
                     }
                 }
                 else
@@ -177,7 +205,17 @@ internal class XboxLibrary : IGameLibrary
         }
 
         var packageManager = new PackageManager();
-        var packages = packageManager.FindPackagesForUser(WindowsIdentity.GetCurrent().User?.Value ?? string.Empty);
+        // WindowsIdentity.GetCurrent() returns null on a non-interactive host, and this call site was
+        // missing the ?. that line 37 has. A null here threw NullReferenceException straight out of
+        // ListGamesAsync and cost the user every Xbox game.
+        var currentUserSid = WindowsIdentity.GetCurrent()?.User?.Value;
+        if (string.IsNullOrWhiteSpace(currentUserSid))
+        {
+            Logger.Error("Could not determine the current user SID. Skipping Xbox package lookup.");
+            return [];
+        }
+
+        var packages = packageManager.FindPackagesForUser(currentUserSid);
         foreach (var package in packages)
         {
             if (package is null)

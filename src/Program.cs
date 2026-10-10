@@ -85,12 +85,22 @@ public static class Program
                 Log.Information("No updates available");
                 return;
             }
-            // Force mode: try to get latest anyway
-            Log.Information("Force mode: attempting to fetch latest release...");
-            // Would need to modify CheckForUpdateAsync to support force
+
+            // CheckForUpdateAsync only returns a release when it is newer than what we are running,
+            // so --force has nothing to hand back here either. Fetch the latest release regardless
+            // of version so the flag means "reinstall the current release" rather than crashing on
+            // a null dereference.
+            Log.Information("Already up to date, but --force was given. Re-fetching the latest release...");
+            updateInfo = await Updater.GetLatestReleaseAsync().ConfigureAwait(false);
+            if (updateInfo is null)
+            {
+                Log.Error("Could not reach the release feed. Check network connectivity and try again.");
+                Environment.ExitCode = 1;
+                return;
+            }
         }
 
-        Log.Information("Update available: v{Version} ({Size:N0} bytes)", updateInfo!.Version, updateInfo!.FileSize);
+        Log.Information("Update available: v{Version} ({Size:N0} bytes)", updateInfo.Version, updateInfo.FileSize);
         if (!string.IsNullOrEmpty(updateInfo.ReleaseNotes))
         {
             Log.Information("Release notes:\n{Notes}", updateInfo.ReleaseNotes!.Trim());

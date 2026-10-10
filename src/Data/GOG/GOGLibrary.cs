@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Kronos.Helpers;
@@ -36,18 +37,22 @@ internal class GOGLibrary : IGameLibrary
     {
         // We check for the registry key as offline installers will still make this, even if
         // the galaxy-2.0.db from GOG Galaxy is not found.
-        using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32))
+        //
+        // Guarded: this has no try/catch, and OpenBaseKey throws PlatformNotSupportedException off
+        // Windows as well as SecurityException on a locked-down machine. IsInstalled is called at the
+        // top of ListGamesAsync, so an escaping exception there lost the entire GOG library.
+        try
         {
-            using (var registryKey = hklm.OpenSubKey(@"SOFTWARE\GOG.com\Games"))
-            {
-                if (registryKey is not null)
-                {
-                    return true;
-                }
-            }
-        }
+            using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32);
+            using var registryKey = hklm.OpenSubKey(@"SOFTWARE\GOG.com\Games");
 
-        return false;
+            return registryKey is not null;
+        }
+        catch (Exception err) when (err is PlatformNotSupportedException or SecurityException or UnauthorizedAccessException)
+        {
+            Logger.Error(err, "Unable to read the GOG registry key. Assuming GOG is not installed.");
+            return false;
+        }
     }
 
     public async Task<List<Game>> ListGamesAsync(bool forceNeedsProcessing = false)
@@ -160,20 +165,32 @@ internal class GOGLibrary : IGameLibrary
             //await Task.Delay(1);
             var db = new SQLiteAsyncConnection(storageFileLocation, SQLiteOpenFlags.ReadOnly);
 
+            // These two lookups used to sit outside any try, so a GOG Galaxy that was running (the
+            // database is locked), or a schema that shipped without the table, threw out of
+            // ListGamesAsync and cost the user every GOG game rather than just their cover art. Both
+            // values are only used to pick nicer images, so a failure just means we fall back to the
+            // hardcoded ids.
             // Default resource type for verticalCover images is 3. We default to this, but we also add try load it in case it changes.
             var webCacheResourceTypeId = 3;
-            var webCacheResourceType = (await db.QueryAsync<WebCacheResourceType>("SELECT * FROM WebCacheResourceTypes WHERE type=?", "verticalCover").ConfigureAwait(false)).FirstOrDefault();
-            if (webCacheResourceType is not null)
-            {
-                webCacheResourceTypeId = webCacheResourceType.Id;
-            }
-
-            // Default resource type for originalImages is 378. We default to this, but we also add try load it in case it changes.
             var gamePieceTypeId = 378;
-            var gamePieceType = (await db.QueryAsync<GamePieceType>("SELECT * FROM GamePieceTypes WHERE type=?", "originalImages").ConfigureAwait(false)).FirstOrDefault();
-            if (gamePieceType is not null)
+
+            try
             {
-                gamePieceTypeId = gamePieceType.Id;
+                var webCacheResourceType = (await db.QueryAsync<WebCacheResourceType>("SELECT * FROM WebCacheResourceTypes WHERE type=?", "verticalCover").ConfigureAwait(false)).FirstOrDefault();
+                if (webCacheResourceType is not null)
+                {
+                    webCacheResourceTypeId = webCacheResourceType.Id;
+                }
+
+                var gamePieceType = (await db.QueryAsync<GamePieceType>("SELECT * FROM GamePieceTypes WHERE type=?", "originalImages").ConfigureAwait(false)).FirstOrDefault();
+                if (gamePieceType is not null)
+                {
+                    gamePieceTypeId = gamePieceType.Id;
+                }
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err, $"Could not read image metadata from {storageFileLocation}. Falling back to default image types.");
             }
 
             var programDataDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -254,42 +271,11 @@ internal class GOGLibrary : IGameLibrary
         {
             if (string.IsNullOrEmpty(gogGame.FallbackHeaderUrl))
             {
-                var webcachePath = Path.Combine(gogGame.InstallPath, "webcache.zip");
-                if (File.Exists(webcachePath))
-                {
-                    using (var zip = ZipFile.Open(webcachePath, ZipArchiveMode.Read))
-                    {
-                        var resourcesEntry = zip.GetEntry("resources.json");
-                        if (resourcesEntry is null)
-                        {
-                            Logger.Error($"Unable to load resources.json for {gogGame.PlatformId}.");
-                            continue;
-                        }
-
-                        using (var resourcesStream = resourcesEntry.Open())
-                        {
-                            var limitedDetailImages = JsonSerializer.Deserialize(resourcesStream, SourceGenerationContext.Default.ResourceImages);
-                            if (limitedDetailImages is null)
-                            {
-                                Logger.Error($"Unable to deserialize resources.json for {gogGame.PlatformId}.");
-                                continue;
-                            }
-
-                            if (string.IsNullOrEmpty(limitedDetailImages.Logo) == false)
-                            {
-                                var url = $"https://images.gog.com/{limitedDetailImages.Logo}";
-                                url = url.Replace("glx_logo", "glx_vertical_cover");
-
-                                gogGame.FallbackHeaderUrl = url;
-                            }
-                        }
-
-                    }
-                }
-                else
-                {
-                    Logger.Error($"Unable to get covers through any normal methods for {gogGame.PlatformId}.");
-                }
+                // Every failure in here is a *cover* failure. None of it may skip the game: the
+                // previous code used `continue`, which dropped the loop body that saves the game to
+                // the database and processes its DLLs, so a missing or corrupt webcache.zip meant an
+                // installed, perfectly valid game never appeared in the app at all.
+                await TrySetCoverFromWebCacheAsync(gogGame).ConfigureAwait(false);
             }
 
             await gogGame.SaveToDatabaseAsync();
@@ -311,6 +297,57 @@ internal class GOGLibrary : IGameLibrary
         }
 
         return new List<Game>(gogGames);
+    }
+
+    /// <summary>
+    /// Reads webcache.zip out of a GOG install and points the game at its vertical cover.
+    /// </summary>
+    /// <remarks>
+    /// Best effort by design. GOG writes this file while the game is being installed or patched, so a
+    /// truncated archive, a missing entry or unparseable JSON are all routine. Every failure is
+    /// logged and swallowed rather than allowed to escape, because an escaping exception here would
+    /// abandon the whole GOG library instead of just this game's artwork.
+    /// </remarks>
+    async Task TrySetCoverFromWebCacheAsync(GOGGame gogGame)
+    {
+        var webcachePath = Path.Combine(gogGame.InstallPath, "webcache.zip");
+        if (File.Exists(webcachePath) == false)
+        {
+            Logger.Error($"Unable to get covers through any normal methods for {gogGame.PlatformId}.");
+            return;
+        }
+
+        try
+        {
+            using var zip = ZipFile.OpenRead(webcachePath);
+
+            var resourcesEntry = zip.GetEntry("resources.json");
+            if (resourcesEntry is null)
+            {
+                Logger.Error($"Unable to load resources.json for {gogGame.PlatformId}.");
+                return;
+            }
+
+            using var resourcesStream = resourcesEntry.Open();
+
+            var limitedDetailImages = await JsonSerializer
+                .DeserializeAsync(resourcesStream, SourceGenerationContext.Default.ResourceImages)
+                .ConfigureAwait(false);
+
+            if (limitedDetailImages is null || string.IsNullOrEmpty(limitedDetailImages.Logo))
+            {
+                Logger.Error($"resources.json for {gogGame.PlatformId} had no logo.");
+                return;
+            }
+
+            var url = $"https://images.gog.com/{limitedDetailImages.Logo}";
+
+            gogGame.FallbackHeaderUrl = url.Replace("glx_logo", "glx_vertical_cover");
+        }
+        catch (Exception err) when (err is InvalidDataException or JsonException or IOException or UnauthorizedAccessException)
+        {
+            Logger.Error(err, $"Unable to read {webcachePath}. The game will be listed without cover art.");
+        }
     }
 
     /// <summary>

@@ -119,6 +119,60 @@ public static class DllBackupStack
     }
 
     /// <summary>
+    /// The suffix used by builds from before the backup chain existed.
+    /// </summary>
+    public const string LegacySuffix = ".dlsss";
+
+    /// <summary>
+    /// Recovers the DLL path a backup belongs to, or null if the path is not a backup at all.
+    /// </summary>
+    /// <remarks>
+    /// The inverse of <see cref="GetStackedBackupPath"/> and of the legacy <c>.dlsss</c> suffix.
+    /// Callers that map a tracked backup record back to the live DLL used to strip the literal
+    /// string ".dlsss" instead, which is a no-op against a ".kronosbakN" path - the record resolves
+    /// to itself, the primary lookup finds nothing, and reset gives up with "repair your game
+    /// manually" for every DLL swapped by the current build. Keeping both shapes here means the
+    /// suffix knowledge lives in one place.
+    /// </remarks>
+    public static string? GetPrimaryPathFromBackup(string backupPath)
+    {
+        if (string.IsNullOrWhiteSpace(backupPath))
+        {
+            return null;
+        }
+
+        if (backupPath.EndsWith(LegacySuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return backupPath[..^LegacySuffix.Length];
+        }
+
+        var backupFileName = Path.GetFileName(backupPath);
+
+        // LastIndexOf, not the trailing digits: for a name like "foo.kronosbak2.dll.kronosbak1" the
+        // boundary is the final marker, and scanning back from the end finds it without having to
+        // know how many digits the index has.
+        var markerIndex = backupFileName.LastIndexOf(BackupSuffixPrefix, StringComparison.Ordinal);
+        if (markerIndex <= 0)
+        {
+            return null;
+        }
+
+        // Everything after the marker must be the chain index and nothing else, otherwise this is
+        // some unrelated file that happens to contain ".kronosbak" in its name.
+        var indexText = backupFileName[(markerIndex + BackupSuffixPrefix.Length)..];
+        if (indexText.Length == 0 ||
+            int.TryParse(indexText, NumberStyles.None, CultureInfo.InvariantCulture, out _) == false)
+        {
+            return null;
+        }
+
+        var directory = Path.GetDirectoryName(backupPath);
+        var dllFileName = backupFileName[..markerIndex];
+
+        return string.IsNullOrEmpty(directory) ? dllFileName : Path.Combine(directory, dllFileName);
+    }
+
+    /// <summary>
     /// The position a new backup should be written at.
     /// </summary>
     /// <remarks>
