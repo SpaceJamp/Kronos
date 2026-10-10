@@ -38,44 +38,45 @@
 | Platform | Target framework | Status |
 |---|---|---|
 | **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection and DLL swapping. |
-| **Linux x64** | `net10.0` | 🟡 **Core builds.** Game model, DLL management and the database compile and run, but the CLI has no DLL commands yet. |
+| **Linux x64** | `net10.0` | ⏸️ **Paused — not being worked on.** The target still compiles, but no build has ever been run on Linux and the CLI cannot do anything useful. See [Linux support is paused](#linux-support-is-paused). |
 | **Linux x64 GUI** | — | ❌ **Does not build.** The Avalonia project depends on types not present in the Linux target. |
 | **macOS** | — | ❌ Not supported (no DLSS/FSR/XeSS on macOS). |
 
 Everything below describes the **Windows** build unless stated otherwise. That is the only platform
 where Kronos does the thing its name describes end to end.
 
-### Honest status of Linux support
+### Linux support is paused
 
-The Linux port is **partly done**. An earlier change in this fork removed the core game-management
-files from the Linux compile list in `src/Kronos.csproj`, leaving their cross-platform branches
-uncompiled. Those files are now back in, and the Linux target builds again — see
-[What changed](#what-changed) for what it took.
+**Linux support has been dropped for now.** It is not unfinished work waiting to be picked up — it is
+being set aside, and this section says so plainly so nobody wastes time on it.
 
-What works on Linux today:
+The reason is straightforward: **no Kronos build has ever been run on Linux.** Every Linux claim in
+this repository rests on the target compiling on a Windows machine and on tests that mock the
+platform. The first real run on real Linux kept failing on restore, and each fix was verified against
+a stub rather than against Linux itself. Continuing to build on that basis would be guessing.
 
+What exists, and what state it is in:
+
+- The `net10.0` target compiles. `build.sh` works, including installing the .NET 10 SDK when it is
+  absent — that part was confirmed on a real Linux machine before the pause.
 - The game model (`Game`, `GameAsset`, `GameHistory`), `DLLManager`, `DLLRecord`, `DLLAssetTypes` and
-  the SQLite database all compile and are reachable.
-- Manifest download and deserialisation, including the localised display names — the `.resw` files
+  the SQLite database are compiled and reachable.
+- Manifest download and deserialisation work, including localised display names — the `.resw` files
   are parsed directly instead of through WinUI's `ResourceManager`.
-- Manually-added games, since that library is just a folder on disk.
-
-What does not:
-
-- **The CLI still only has `update`, `version` and `self-update`.** The building blocks for `list`,
-  `swap` and `reset` are compiled and reachable, but nothing wires them to command-line arguments
-  yet. That is the next piece of work.
-- **No automatic game detection.** Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all
-  discovered through the Windows registry. There is no registry on Linux, so each needs discovery
-  written against that platform's on-disk layout instead — Steam's `libraryfolders.vdf` and
-  `appmanifest_*.acf`, for instance, which is plain file parsing rather than a registry key.
-  `IGameLibrary.GetGameLibrary` currently returns `null` for those stores on Linux and the load loop
-  skips them, so adding one is a self-contained change.
+- **But the CLI only has `update`, `version` and `self-update`.** Nothing wires `list`, `swap` or
+  `reset` to command-line arguments, so there is nothing on Linux that does what Kronos is for.
+- **No game detection.** Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all discovered
+  through the Windows registry, and there is no registry on Linux. Each would need discovery written
+  against that platform's on-disk layout — Steam's `libraryfolders.vdf` and `appmanifest_*.acf`, for
+  instance, which is plain file parsing rather than a registry key.
 - **The Avalonia GUI does not compile.**
 
-> **Ownership notice:** The Linux work is owned and maintained by this repository's maintainer. It is
-> not affiliated with, endorsed by, or supported by the upstream DLSS Swapper project. Bugs and feature
-> requests for it should be filed here, not upstream.
+None of this is hidden or reverted. If Linux is picked up again, the starting point is the one
+described above rather than the broken state an earlier change left it in — see
+[What changed](#what-changed).
+
+> **Ownership notice:** Any Linux work is owned and maintained by this repository's maintainer. It is
+> not affiliated with, endorsed by, or supported by the upstream DLSS Swapper project.
 
 ## Requirements
 
@@ -88,13 +89,15 @@ What does not:
 | **GPU** | Any |
 | **To build** | .NET 10 SDK, Windows SDK 10.0.26100 |
 
-### Linux (building only)
+### Linux (building only — paused)
+
+> Paused. See [Linux support is paused](#linux-support-is-paused).
 
 | | |
 |---|---|
 | **OS** | Any modern Linux (glibc 2.31+) |
 | **CPU** | x64 |
-| **To build** | .NET 10 SDK |
+| **To build** | .NET 10 SDK — `build.sh` installs it if missing |
 | **Runtime** | Self-contained (no system .NET required) |
 
 ## Getting it
@@ -145,8 +148,13 @@ configurations keep all data inside the build output, so neither touches a real 
 
 ### Linux
 
+> **Paused — see [Linux support is paused](#linux-support-is-paused).** `build.sh` still works and the
+> `net10.0` target still compiles, but the CLI has no commands that do anything useful, and no
+> resulting binary has ever been run on Linux. Treat anything below as untested on the platform it
+> describes.
+
 ```bash
-# CLI — see the Platform Support section for what it can currently do
+# CLI — updater commands only
 ./build.sh
 # → Output/linux-x64-<timestamp>/Kronos
 
@@ -193,9 +201,9 @@ with a missing SDK. You can also install it yourself from
 ./Kronos self-update --path ./update.tar.gz   # Internal: apply a downloaded update
 ```
 
-`list`, `swap`, `reset` and `import` are **not implemented yet**. The code they would call is
-compiled and reachable in the Linux build; what is missing is the argument parsing and output
-formatting on top of it.
+`list`, `swap`, `reset` and `import` are **not implemented**, and are not scheduled. The code they
+would call is compiled and reachable in the Linux build; what is missing is the argument parsing and
+output formatting on top of it.
 
 ### Build script options
 
@@ -357,8 +365,8 @@ Three things were also needlessly Windows-only and are now shared:
 The genuinely Windows-only parts stayed Windows-only: `IsInstalled`, the registry-backed store
 libraries, and the `PromptTo*` methods that drive a `ContentDialog` and a WinRT file picker.
 
-**The Avalonia GUI still does not build**, and the Linux CLI still has no DLL commands. See
-[Platform support](#platform-support).
+**The Avalonia GUI still does not build**, and the Linux CLI still has no DLL commands. Linux work
+is paused — see [Linux support is paused](#linux-support-is-paused).
 
 ### Signature verification is honest about what it checked
 

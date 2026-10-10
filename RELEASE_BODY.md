@@ -96,10 +96,11 @@ ImageSharp 3.2+ requires a licence. Builds use a Community Licence supplied at b
 
 ## Known limitations
 
-- **Linux is partial.** The core now compiles (that was fixed here too), but the CLI only has
-  `update`, `version` and `self-update` — no `list`, `swap` or `reset` yet. No automatic game detection
-  on Linux; game discovery is registry-based and each store needs porting. The Avalonia GUI does not
-  build. See the README's Platform Support section.
+- **Linux support has been dropped for now.** The `net10.0` target compiles and `build.sh` works, but
+  the CLI has only `update`, `version` and `self-update` — nothing that swaps a DLL — and no
+  resulting build has ever been run on a real Linux machine. Treat the Linux target as unverified and
+  unmaintained. Game discovery is registry-based and each store would need porting. The Avalonia GUI
+  does not build. See the README's "Linux support is paused" section.
 - **Builds are unsigned.** Expect SmartScreen warnings. The official signed build is upstream's, at
   [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper).
 - DLL swapping isn't guaranteed to improve performance or avoid crashes. Downgrading below a game's
