@@ -72,7 +72,6 @@ internal partial class GameManager : ObservableObject
     Dictionary<GameLibrary, ICollectionView> libraryGamesView = new Dictionary<GameLibrary, ICollectionView>();
 #endif
 
-
     Predicate<object> GetPredicateForAllGames(bool hideNonDLSSGames, string? filterText = null)
     {
         return (obj) =>
@@ -140,16 +139,83 @@ internal partial class GameManager : ObservableObject
         AllGamesView.ObserveFilterProperty(nameof(Game.IsHidden));
         AllGamesView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
 
+        allGamesGroup = new GameGroup("All Games", null, AllGamesView);
+        favouriteGamesGroup = new GameGroup("Favourites", null, FavouriteGamesView);
+
+        // The grouped and ungrouped views are two lists of GameGroup over the SAME _allGames
+        // collection. Each library's view filters _allGames down to that library, so adding a
+        // game to _allGames is enough to make it appear in the matching group - the groups
+        // themselves never own a copy of the games.
+        var groupedList = new ObservableCollection<GameGroup>
+        {
+            favouriteGamesGroup
+        };
+
+        var ungroupedList = new List<GameGroup>
+        {
+            favouriteGamesGroup,
+            allGamesGroup
+        };
+
+        foreach (var gameLibraryEnum in GetGameLibraries(false))
+        {
+            var gameLibrary = IGameLibrary.GetGameLibrary(gameLibraryEnum);
+
+            var gameView = new AdvancedCollectionView(_allGames, true);
+            gameView.Filter = GetPredicateForLibraryGames(gameLibraryEnum, Settings.Instance.HideNonDLSSGames);
+            gameView.ObserveFilterProperty(nameof(ShowHiddenGames));
+            gameView.ObserveFilterProperty(nameof(Game.HasSwappableItems));
+            gameView.ObserveFilterProperty(nameof(Game.IsHidden));
+            gameView.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
+
+            libraryGamesView[gameLibraryEnum] = gameView;
+
+            var gameGroup = new GameGroup(gameLibrary.Name, gameLibraryEnum, gameView);
+            groupedList.Add(gameGroup);
+            libraryGameGroups[gameLibraryEnum] = gameGroup;
+        }
+
         GroupedGameCollectionViewSource = new CollectionViewSource
         {
-            Source = _allGames,
             IsSourceGrouped = true,
+            Source = groupedList,
             ItemsPath = new PropertyPath("Games")
         };
+
         UngroupedGameCollectionViewSource = new CollectionViewSource
         {
-            Source = _allGames
+            IsSourceGrouped = true,
+            Source = ungroupedList,
+            ItemsPath = new PropertyPath("Games")
         };
+
+        WeakReferenceMessenger.Default.Register<GameLibrariesOrderChangedMessage>(this, (sender, message) =>
+        {
+            var reordered = groupedList.ToList();
+
+            groupedList.Clear();
+
+            // Favourites is always first.
+            groupedList.Add(reordered[0]);
+            reordered.RemoveAt(0);
+
+            // Then each library in the order the user set in settings.
+            foreach (var gameLibrarySetting in Settings.Instance.GameLibrarySettings)
+            {
+                var groupedItem = reordered.FirstOrDefault(x => x.GameLibrary == gameLibrarySetting.GameLibrary);
+                if (groupedItem is null)
+                {
+                    continue;
+                }
+                groupedList.Add(groupedItem);
+                reordered.Remove(groupedItem);
+            }
+
+            if (reordered.Count > 0)
+            {
+                Logger.Error($"Somehow extra grouped items were left over. {string.Join(", ", reordered)}");
+            }
+        });
 #else
         // Linux: Use Avalonia's CollectionView
         FavouriteGamesView = new CollectionView(_allGames);
@@ -162,31 +228,21 @@ internal partial class GameManager : ObservableObject
 
         GroupedGameView = new CollectionView(_allGames);
         UngroupedGameView = new CollectionView(_allGames);
-#endif
 
-        allGamesGroup = new GameGroup("All Games", null, AllGamesView);
-        favouriteGamesGroup = new GameGroup("Favourites", null, FavouriteGamesView);
+        allGamesGroup = new GameGroup("All Games", null, null);
+        favouriteGamesGroup = new GameGroup("Favourites", null, null);
 
         foreach (var library in Enum.GetValues<GameLibrary>())
         {
-#if WINDOWS
-            var view = new AdvancedCollectionView(new ObservableCollection<Game>(), true);
-            view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
-            view.ObserveFilterProperty(nameof(ShowHiddenGames));
-            view.ObserveFilterProperty(nameof(Game.HasSwappableItems));
-            view.ObserveFilterProperty(nameof(Game.IsHidden));
-            view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), SortDirection.Ascending));
-            libraryGamesView[library] = view;
-#else
-            var view = new CollectionView(new ObservableCollection<Game>());
+            var view = new CollectionView(_allGames);
             view.Filter = GetPredicateForLibraryGames(library, Settings.Instance.HideNonDLSSGames);
             view.SortDescriptions.Add(new SortDescription(nameof(Game.Title), ListSortDirection.Ascending));
             libraryGamesView[library] = view;
-#endif
 
-            var group = new GameGroup(library.ToString(), library, view);
+            var group = new GameGroup(library.ToString(), library, null);
             libraryGameGroups[library] = group;
         }
+#endif
     }
 
     public async Task LoadGamesFromCacheAsync()
