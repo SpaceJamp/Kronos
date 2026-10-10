@@ -65,11 +65,14 @@ build_linux() {
     dotnet restore "$src_dir/Kronos.csproj" -f net10.0
     
     echo -e "${YELLOW}Building Linux CLI ($config)...${NC}"
-    dotnet build "$src_dir/Kronos.csproj" -f net10.0 -c "$config" --no-restore
-    
+    dotnet build "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --no-restore
+
     echo -e "${YELLOW}Publishing Linux CLI for $runtime...${NC}"
-    local output_dir="$(dirname "$0")/Output/linux-$runtime-$(date +"%Y%m%d-%H%M%S")"
-    dotnet publish "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --self-contained -o "$output_dir" --no-build
+    local output_dir="$(dirname "$0")/Output/$runtime-$(date +"%Y%m%d-%H%M%S")"
+    # No --no-build here: publish has to re-evaluate for the RID anyway (runtime pack, self-contained
+    # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
+    # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
+    dotnet publish "$src_dir/Kronos.csproj" -f net10.0 -c "$config" -r "$runtime" --self-contained -o "$output_dir"
     
     echo -e "${GREEN}Linux CLI published to: $output_dir${NC}"
     echo "$output_dir"
@@ -85,11 +88,11 @@ build_windows() {
     dotnet restore "$src_dir/Kronos.csproj"
     
     echo -e "${YELLOW}Building Windows GUI ($config)...${NC}"
-    dotnet build "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" --no-restore
-    
+    dotnet build "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --no-restore
+
     echo -e "${YELLOW}Publishing Windows Portable...${NC}"
     local output_dir="$(dirname "$0")/Output/win-x64-portable-$(date +"%Y%m%d-%H%M%S")"
-    dotnet publish "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --self-contained -p:PublishSingleFile=true -o "$output_dir" --no-build
+    dotnet publish "$src_dir/Kronos.csproj" -f net10.0-windows10.0.26100.0 -c "$config" -r win-x64 --self-contained -p:PublishSingleFile=true -o "$output_dir"
     
     echo -e "${GREEN}Windows Portable published to: $output_dir${NC}"
     echo "$output_dir"

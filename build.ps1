@@ -35,13 +35,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Auto-detect target if not specified
+# Auto-detect target if not specified.
+# [System.Runtime.InteropServices.RuntimeInformation] rather than the bare [RuntimeInformation]: the
+# bare form only resolves once some other code has loaded that assembly, which is true under pwsh 7 but
+# not under the Windows PowerShell 5.1 that a double-clicked .ps1 still uses. The fully qualified type
+# loads it on demand.
 if (-not $Target) {
-    if ([RuntimeInformation]::IsOSPlatform('Windows')) {
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+            [System.Runtime.InteropServices.OSPlatform]::Windows)) {
         $Target = 'Windows'
-    } elseif ([RuntimeInformation]::IsOSPlatform('Linux')) {
+    }
+    elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+                [System.Runtime.InteropServices.OSPlatform]::Linux)) {
         $Target = 'Linux'
-    } else {
+    }
+    else {
         Write-Host "Error: Could not auto-detect platform. Specify -Target explicitly." -ForegroundColor Red
         exit 1
     }
@@ -80,11 +88,17 @@ function Build-Linux {
     }
     
     Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration --no-restore
-    
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --no-restore
+
     Write-Host "Publishing Linux CLI for $Runtime..." -ForegroundColor Yellow
-    $outputDir = Join-Path $PSScriptRoot "Output" "linux-$Runtime-$timestamp"
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained -o $outputDir --no-build
+    # Nested Join-Path rather than the three-argument form: -AdditionalChildPath only exists in
+    # PowerShell 7+, so the short form failed outright on the Windows PowerShell 5.1 that ships with
+    # Windows and is still the default for a double-clicked .ps1.
+    $outputDir = Join-Path (Join-Path $PSScriptRoot "Output") "$Runtime-$timestamp"
+    # No --no-build here: publish has to re-evaluate for the RID anyway (runtime pack, self-contained
+    # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
+    # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained -o $outputDir
     
     Write-Host "Linux CLI published to: $outputDir" -ForegroundColor Green
     return $outputDir
@@ -101,11 +115,11 @@ function Build-Windows {
     }
     
     Write-Host "Building Windows GUI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration --no-restore
-    
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore
+
     Write-Host "Publishing Windows Portable..." -ForegroundColor Yellow
-    $outputDir = Join-Path $PSScriptRoot "Output" "win-x64-portable-$timestamp"
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --self-contained -p:PublishSingleFile=true -o $outputDir --no-build
+    $outputDir = Join-Path (Join-Path $PSScriptRoot "Output") "win-x64-portable-$timestamp"
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --self-contained -p:PublishSingleFile=true -o $outputDir
     
     Write-Host "Windows Portable published to: $outputDir" -ForegroundColor Green
     return $outputDir
@@ -114,19 +128,22 @@ function Build-Windows {
 $srcDir = Join-Path $PSScriptRoot "src"
 $outputs = @()
 
+$runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+    [System.Runtime.InteropServices.OSPlatform]::Windows)
+
 switch ($Target) {
     'Linux' {
         $outputs += Build-Linux -Configuration $Configuration -Runtime $Runtime -NoRestore $NoRestore -srcDir $srcDir
     }
     'Windows' {
-        if (-not [RuntimeInformation]::IsOSPlatform('Windows')) {
+        if (-not $runningOnWindows) {
             Write-Host "Error: Windows build must run on Windows" -ForegroundColor Red
             exit 1
         }
         $outputs += Build-Windows -Configuration $Configuration -NoRestore $NoRestore -srcDir $srcDir
     }
     'All' {
-        if (-not [RuntimeInformation]::IsOSPlatform('Windows')) {
+        if (-not $runningOnWindows) {
             Write-Host "Error: 'All' target requires Windows (for Windows build)" -ForegroundColor Red
             exit 1
         }
