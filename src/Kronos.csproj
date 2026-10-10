@@ -53,7 +53,13 @@
     <PackageIcon>Assets\icon_256.png</PackageIcon>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-    <Version>1.50</Version>
+    <!--
+      Bumped to 1.52 for the Games page / DLL reset / data-loss fixes. This must match the git tag
+      or the in-app and CLI updater will compare against the wrong version: it reads the release
+      title, and CheckForUpdateAsync only offers a release strictly newer than this number.
+      Kept in step with Kronos.Avalonia.csproj.
+    -->
+    <Version>1.52</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
