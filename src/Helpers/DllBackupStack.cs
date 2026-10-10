@@ -247,6 +247,7 @@ public static class DllBackupStack
     /// to an older runtime. Returns null when the versions cannot be compared, which the UI renders as
     /// "unknown" rather than as a downgrade.
     /// </remarks>
+#if WINDOWS
     public static SwapVersionAdvisor.Advice? GetRestoreAdvice(string? currentVersion, string? backupVersion)
     {
         var comparison = VersionExtensions.CompareVersionStrings(currentVersion, backupVersion);
@@ -258,4 +259,5 @@ public static class DllBackupStack
 
         return SwapVersionAdvisor.Classify(comparison);
     }
+#endif
 }

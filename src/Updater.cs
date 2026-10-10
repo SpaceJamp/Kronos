@@ -1,12 +1,15 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Kronos.Data.GitHub;
 using Kronos.Helpers;
 using Serilog;
 
@@ -278,7 +281,7 @@ internal static class Updater
             }
 
             // Find the Kronos binary
-            var newBinary = Directory.GetFiles(extractDir, "Kronos", SearchOption.AllDirectaries).FirstOrDefault();
+            var newBinary = Directory.GetFiles(extractDir, "Kronos", SearchOption.AllDirectories).FirstOrDefault();
             if (newBinary is null)
             {
                 // Try without extension

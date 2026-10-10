@@ -2,11 +2,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Kronos.Extensions;
 using Kronos.Helpers;
 using Kronos.Interfaces;
-using Kronos.UserControls;
-using Microsoft.UI.Xaml.Controls;
-using NvAPIWrapper.DRS;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using SQLite;
 using System;
 using System.Collections.Generic;
@@ -16,6 +11,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+#if WINDOWS
+using Kronos.UserControls;
+using Microsoft.UI.Xaml.Controls;
+using NvAPIWrapper.DRS;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+#endif
 
 namespace Kronos.Data;
 
@@ -89,8 +92,10 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     [Ignore]
     public partial uint? DlssGPreset { get; set; }
 
+    #if WINDOWS
     [Ignore]
     public DriverSettingsProfile? DriverSettingsProfile { get; set; }
+#endif
 
     /*
     [ObservableProperty]
@@ -1277,6 +1282,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     */
 
 
+    #if WINDOWS
     protected async Task ResizeCoverAsync(Stream imageStream)
     {
         // TODO:
@@ -1356,6 +1362,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             Logger.Error(err);
         }
     }
+#endif
 
     protected async Task<bool> DownloadCoverAsync(string url)
     {

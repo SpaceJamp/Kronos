@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
+#if WINDOWS
 namespace Kronos.Data;
 
 internal class Manifest
@@ -35,3 +36,4 @@ internal class Manifest
     [JsonPropertyName("known_dlls")]
     public KnownDLLs KnownDLLs { get; set; } = new KnownDLLs();
 }
+#endif

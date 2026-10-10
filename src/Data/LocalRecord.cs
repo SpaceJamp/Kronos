@@ -1,7 +1,10 @@
 using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
+
+#if WINDOWS
 using Kronos.Helpers;
+#endif
 
 namespace Kronos.Data;
 
@@ -15,8 +18,10 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
     [ObservableProperty]
     public partial bool IsImported { get; set; } = false;
 
+#if WINDOWS
     [ObservableProperty]
     public partial FileDownloader? FileDownloader { get; set; } = null;
+#endif
 
     [ObservableProperty]
     public partial bool HasDownloadError { get; set; } = false;
@@ -113,7 +118,9 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
 
         ExpectedPath = localRecord.ExpectedPath;
         IsDownloaded = localRecord.IsDownloaded;
+#if WINDOWS
         FileDownloader = localRecord.FileDownloader;
+#endif
         HasDownloadError = localRecord.HasDownloadError;
         DownloadErrorMessage = localRecord.DownloadErrorMessage;
         IsImported = localRecord.IsImported;

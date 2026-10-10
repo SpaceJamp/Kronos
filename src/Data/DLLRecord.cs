@@ -202,8 +202,10 @@ public class DLLRecord : IComparable<DLLRecord>, INotifyPropertyChanged
     [JsonIgnore]
     public GameAssetType AssetType { get; set; } = GameAssetType.Unknown;
 
+#if WINDOWS
     [JsonIgnore]
     public DLLRecordModelTranslationProperties TranslationProperties { get; } = new DLLRecordModelTranslationProperties();
+#endif
 
     public int CompareTo(DLLRecord? other)
     {

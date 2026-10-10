@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kronos.Extensions;
 using Kronos.Helpers;
+using Kronos.Interfaces;
 
 namespace Kronos.Data;
 
@@ -266,15 +267,13 @@ internal class DLLManager
             }
         }
 
-        // Migrate records from zip to raw dlls
-        var zipDirectories = Directory.GetDirectories(Storage.GetStorageFolder(), "*_zip", SearchOption.TopDirectoryOnly);
-        if (zipDirectories.Length > 0)
-        {
+        #if WINDOWS
             var oldLoadingMessage = App.CurrentApp.MainWindow.ViewModel.LoadingMessage;
             App.CurrentApp.RunOnUIThread(() =>
             {
                 App.CurrentApp.MainWindow.ViewModel.LoadingMessage = ResourceHelper.GetString("DllManager_MigratingDlls");
             });
+#endif
 
             // NOTE: DLL type
             foreach (var info in DLLAssetTypes.All)
@@ -282,11 +281,12 @@ internal class DLLManager
                 CheckDllRecordsForMigration_117(info.ManifestRecords(Manifest), ImportedManifest is null ? null : info.ManifestRecords(ImportedManifest));
             }
 
+#if WINDOWS
             App.CurrentApp.RunOnUIThread(() =>
             {
                 App.CurrentApp.MainWindow.ViewModel.LoadingMessage = oldLoadingMessage;
             });
-        }
+#endif
 
         // Load local records
         // NOTE: DLL type

@@ -37,17 +37,23 @@ internal static class Logger
             Directory.CreateDirectory(LogDirectory);
         }
 
-        Log.Logger = new LoggerConfiguration()
+        var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.ControlledBy(levelSwitch)
             .Enrich.With(new ThreadAndSessionEnricher())
-            .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
             .WriteTo.File(
                 loggingFile,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7,
                 formatProvider: CultureInfo.InvariantCulture,
-                outputTemplate: OutputTemplate)
-            .CreateLogger();
+                outputTemplate: OutputTemplate);
+
+#if WINDOWS
+        loggerConfig = loggerConfig.WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture);
+#else
+        loggerConfig = loggerConfig.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
+#endif
+
+        Log.Logger = loggerConfig.CreateLogger();
 
         ChangeLoggingLevel(Settings.Instance.LoggingLevel);
         WriteSessionHeader();

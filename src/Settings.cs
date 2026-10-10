@@ -1,11 +1,14 @@
 using CommunityToolkit.Mvvm.Messaging;
 using Kronos.Data;
 using Kronos.Interfaces;
-using Kronos.Pages;
-using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
+#if WINDOWS
+using Kronos.Pages;
+using Microsoft.UI.Xaml;
+#endif
 
 namespace Kronos;
 
@@ -89,6 +92,7 @@ public class Settings
         }
     }
 
+    #if WINDOWS
     ElementTheme _appTheme = ElementTheme.Default;
     public ElementTheme AppTheme
     {
@@ -105,6 +109,7 @@ public class Settings
             }
         }
     }
+#endif
 
     bool _allowDebugDlls;
     public bool AllowDebugDlls
@@ -250,6 +255,7 @@ public class Settings
         }
     }
 
+    #if WINDOWS
     WindowPositionRect _lastWindowSizeAndPosition = new WindowPositionRect();
     public WindowPositionRect LastWindowSizeAndPosition
     {
@@ -283,6 +289,7 @@ public class Settings
             }
         }
     }
+#endif
 
 
     int _gridViewItemWidth = 200;

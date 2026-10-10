@@ -12,6 +12,7 @@ internal class ProxySettings
 
     internal void LoadIfNeeded()
     {
+#if WINDOWS
         if (_hasLoaded == false)
         {
             // Only bother trying to load once.
@@ -42,10 +43,12 @@ internal class ProxySettings
                 Logger.Error(ex);
             }
         }
+#endif
     }
 
     internal void SaveIfRequired(string? server, string? username, string? password)
     {
+#if WINDOWS
         try
         {
             var vault = new Windows.Security.Credentials.PasswordVault();
@@ -82,5 +85,6 @@ internal class ProxySettings
         {
             Logger.Error(ex);
         }
+#endif
     }
 }

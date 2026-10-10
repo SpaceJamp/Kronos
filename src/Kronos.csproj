@@ -142,40 +142,29 @@
     <Compile Include="Logger.cs" />
     <Compile Include="BuildInfo.cs" />
     <Compile Include="ProxySettings.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="SourceGenerationContext.cs" />
+    <Compile Include="Updater.cs" />
 
     <!-- Core data models (no UI dependencies) -->
-    <Compile Include="Data\GameAsset.cs" />
     <Compile Include="Data\GameAssetType.cs" />
-    <Compile Include="Data\GameHistory.cs" />
-    <Compile Include="Data\DLLAssetTypeInfo.cs" />
-    <Compile Include="Data\DLLManager.cs" />
-    <Compile Include="Data\DLLRecord.cs" />
     <Compile Include="Data\DLLImportResult.cs" />
     <Compile Include="Data\KnownDLLs.cs" />
     <Compile Include="Data\HashedKnownDLL.cs" />
-    <Compile Include="Data\Manifest.cs" />
     <Compile Include="Data\GameLibrarySettings.cs" />
     <Compile Include="Data\LocalRecord.cs" />
-    <Compile Include="Data\UnknownGameAsset.cs" />
-    <Compile Include="Data\ComboBoxOption.cs" />
-    <Compile Include="Data\GameLibrarySelector.cs" />
-    <Compile Include="Data\NVIDIA\NGXModel.cs" />
-    <Compile Include="Data\NVIDIA\NGXModelRow.cs" />
     <Compile Include="Data\NVIDIA\ListBucketResult.cs" />
     <Compile Include="Data\NVIDIA\ListBucketResultContents.cs" />
-    <Compile Include="Data\DLSS\PresetOption.cs" />
     <Compile Include="Data\Steam\SteamStateFlag.cs" />
-    <Compile Include="Data\Steam\SteamCoverUrlResolver.cs" />
     <Compile Include="Data\Steam\Manifest\LibraryFoldersVDF.cs" />
     <Compile Include="Data\Steam\SteamAPI\*.cs" />
     <Compile Include="Data\Steam\Manifest\AppManifestACF.cs" />
+    <Compile Include="Data\GitHub\GitHubTypes.cs" />
 
     <!-- Helpers (cross-platform only) -->
     <Compile Include="Helpers\PathHelpers.cs" />
     <Compile Include="Helpers\DllBackupStack.cs" />
-    <Compile Include="Helpers\MassUpgradePlanner.cs" />
     <Compile Include="Helpers\RepackDetector.cs" />
-    <Compile Include="Helpers\FileDownloader.cs" />
     <Compile Include="Helpers\CommonHelpers.cs" />
     <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
     <Compile Include="Helpers\FSR31\FxxConsts.cs" />
@@ -187,7 +176,6 @@
 
     <!-- Interfaces -->
     <Compile Include="Interfaces\IGameLibrary.cs" />
-    <Compile Include="Interfaces\LocalizedViewModelBase.cs" />
 
     <!-- JSON Converters -->
     <Compile Include="JsonConverters\HexStringToUintConverter.cs" />
@@ -201,10 +189,6 @@
 
     <!-- Attributes -->
     <Compile Include="Attributes\TranslationPropertyAttribute.cs" />
-
-    <!-- Manually added games (cross-platform) -->
-    <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
-    <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
 
     <!-- EA App (cross-platform data models) -->
     <Compile Include="Data\EAApp\GameSearchResult.cs" />
@@ -228,6 +212,7 @@
       <Content Remove="Assets\dlss_g_presets.json" />
       <Content Remove="Assets\ea_app_titles.json" />
       <Content Remove="Assets\static_manifest.json" />
+      <Compile Remove="Data\GitHub\GitHubTypes.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
@@ -623,6 +608,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="sqlite-net-e" Version="1.11.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Management" Version="10.0.9" />
     <PackageReference Include="ValveKeyValue" Version="0.70.0.499" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />

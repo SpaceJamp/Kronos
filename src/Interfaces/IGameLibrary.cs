@@ -1,15 +1,17 @@
 using Kronos.Data;
-using Kronos.Data.EpicGamesStore;
-using Kronos.Data.GOG;
+#if WINDOWS
+using Kronos.Data.ManuallyAdded;
 using Kronos.Data.Steam;
+using Kronos.Data.GOG;
+using Kronos.Data.EpicGamesStore;
 using Kronos.Data.UbisoftConnect;
 using Kronos.Data.Xbox;
-using Kronos.Data.ManuallyAdded;
 using Kronos.Data.BattleNet;
+using Kronos.Data.EAApp;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Kronos.Data.EAApp;
 
 namespace Kronos.Interfaces;
 
@@ -33,6 +35,7 @@ public interface IGameLibrary
     string Name { get; }
     Type GameType { get; }
 
+#if WINDOWS
     Task<List<Game>> ListGamesAsync(bool forceNeedsProcessing);
     Task LoadGamesFromCacheAsync();
     bool IsInstalled();
@@ -52,6 +55,7 @@ public interface IGameLibrary
             _ => throw new Exception($"Could not load game library {gameLibrary}."),
         };
     }
+#endif
 
     public bool IsEnabled
     {

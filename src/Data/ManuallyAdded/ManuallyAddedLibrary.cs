@@ -19,7 +19,17 @@ public class ManuallyAddedLibrary : IGameLibrary
     public static ManuallyAddedLibrary Instance => instance ??= new ManuallyAddedLibrary();
 
     GameLibrarySettings? _gameLibrarySettings;
-    public GameLibrarySettings? GameLibrarySettings => _gameLibrarySettings ??= GameManager.Instance.GetGameLibrarySettings(GameLibrary);
+    public GameLibrarySettings? GameLibrarySettings
+    {
+        get
+        {
+#if WINDOWS
+            return _gameLibrarySettings ??= GameManager.Instance.GetGameLibrarySettings(GameLibrary);
+#else
+            return _gameLibrarySettings;
+#endif
+        }
+    }
 
     private ManuallyAddedLibrary()
     {
