@@ -333,6 +333,39 @@ libraries, and the `PromptTo*` methods that drive a `ContentDialog` and a WinRT 
 **The Avalonia GUI still does not build**, and the Linux CLI still has no DLL commands. See
 [Platform support](#platform-support).
 
+### Signature verification is honest about what it checked
+
+`WinTrust.VerifyEmbeddedSignature` used to return `bool`, and its Linux implementation returned
+`true` — which reads as "verified" when nothing was checked at all. Anyone importing a DLL on Linux
+got a clean success and no indication that the one check Windows performs simply does not exist
+there.
+
+It now returns a three-valued `SignatureCheckResult`:
+
+| Result | Meaning |
+|---|---|
+| `Valid` | Checked, and it passed |
+| `Invalid` | Checked, and it did not pass |
+| `Unavailable` | **Nothing was checked** — the platform has no Authenticode implementation |
+
+Only `Invalid` blocks. `Unavailable` proceeds, because blocking would make the feature impossible
+where it has no alternative, but the result is annotated:
+
+- The import summary dialog shows a **banner in orange with a warning icon**, and its title becomes
+  *"N file(s) imported WITHOUT signature verification"*.
+- The log records it.
+- Windows never returns `Unavailable`, so the banner never appears there.
+
+Scope worth being precise about: **the download and swap path was already hash-verified** on both
+platforms — the zip is checked against `ZipMD5Hash` on download, and the extracted DLL against
+`MD5Hash` before it is written into a game. That check is plain `System.Security.Cryptography` and
+worked on Linux the whole time. This change affects the *import* paths (`ImportDll` and the NVIDIA
+driver import), where the file is not in the signed manifest and so has no expected hash — there,
+the signature check was the only gate, and on Linux there is none.
+
+The user-facing judgement is unchanged: these are files already on the user's disk that they picked.
+The change is that the app now says so rather than implying it verified something.
+
 ### Dependencies
 
 `SixLabors.ImageSharp` was moved from 3.1.5 (Apache-2.0) to 4.1.2 under a Community Licence, because
@@ -351,6 +384,12 @@ The DLL manifest is still fetched from upstream's public `beeradmoore.github.io`
 themselves still come from NVIDIA. Kronos depends on those staying available.
 
 Per-file detail is in the commit history.
+
+## Release notes
+
+Notes for significant releases live in [`RELEASE_NOTES.md`](RELEASE_NOTES.md). Routine changes are
+in the commit history and are not written up here — this section is for big fixes and feature work
+only, so it stays worth reading.
 
 ## Where data is stored
 

@@ -45,9 +45,7 @@ public class WinTrustTests
 
         foreach (var file in signed)
         {
-            Assert.True(WinTrust.VerifyEmbeddedSignature(file),
-                $"{file} is a known Microsoft-signed binary and should verify. " +
-                "If this fails the interop change has broken signature verification.");
+            Assert.Equal(SignatureCheckResult.Valid, WinTrust.VerifyEmbeddedSignature(file));
         }
     }
 
@@ -73,15 +71,12 @@ public class WinTrustTests
 
         foreach (var exe in executables)
         {
-            Assert.False(WinTrust.VerifyEmbeddedSignature(exe),
-                $"{Path.GetFileName(exe)} is reported Valid by Windows but rejected here. " +
-                "If this now passes, the inherited .exe verification bug has been fixed and this " +
-                "test should be updated or removed.");
+            Assert.Equal(SignatureCheckResult.Invalid, WinTrust.VerifyEmbeddedSignature(exe));
         }
     }
 
     [Fact]
-    public void VerifyEmbeddedSignature_ReturnsFalseForAnUnsignedFile()
+    public void VerifyEmbeddedSignature_ReturnsInvalidForAnUnsignedFile()
     {
         // A text file is not a PE image at all, so it cannot carry a valid embedded signature.
         var path = Path.Combine(Path.GetTempPath(), $"wintrust_unsigned_{Guid.NewGuid():N}.txt");
@@ -89,11 +84,36 @@ public class WinTrustTests
 
         try
         {
-            Assert.False(WinTrust.VerifyEmbeddedSignature(path));
+            Assert.Equal(SignatureCheckResult.Invalid, WinTrust.VerifyEmbeddedSignature(path));
         }
         finally
         {
             try { File.Delete(path); } catch { /* best effort */ }
+        }
+    }
+
+    [Fact]
+    public void WindowsNeverReportsUnavailable()
+    {
+        // The whole point of the three-valued result is that "checked and passed" and "could not
+        // check" are distinguishable. Windows can always check, so Unavailable must never come back
+        // from it - otherwise every import would claim to have been unverified, and the warning
+        // banner would appear on a platform where verification genuinely happened.
+        Assert.True(WinTrust.SignatureCheckingSupported);
+
+        var signed = KnownSignedFiles().First();
+        Assert.Equal(SignatureCheckResult.Valid, WinTrust.VerifyEmbeddedSignature(signed));
+
+        var unsignedPath = Path.Combine(Path.GetTempPath(), $"wintrust_unavailable_{Guid.NewGuid():N}.txt");
+        File.WriteAllText(unsignedPath, "not a PE image");
+
+        try
+        {
+            Assert.Equal(SignatureCheckResult.Invalid, WinTrust.VerifyEmbeddedSignature(unsignedPath));
+        }
+        finally
+        {
+            try { File.Delete(unsignedPath); } catch { /* best effort */ }
         }
     }
 

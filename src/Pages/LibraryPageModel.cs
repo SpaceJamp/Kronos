@@ -739,14 +739,35 @@ public partial class LibraryPageModel : ObservableObject
             App.CurrentApp.MainWindow.FilterDLLRecords();
         }
 
+        // If anything was accepted without its signature being checked, say so in the dialog title
+        // rather than only inside the results list. An imported dll has no expected hash to compare
+        // against, so on a platform with no Authenticode the signature check is the only gate there
+        // is - and it did not run. The import still succeeded, and this does not block it, but the
+        // user should not have to scroll a results list to find that out.
+        var unverifiedImports = importResults
+            .Where(x => x.Success && x.SignatureNotVerified)
+            .ToList();
+
+        var importTitle = unverifiedImports.Count > 0
+            ? $"{ResourceHelper.GetString("LibraryPage_Finished")} - " +
+              $"{unverifiedImports.Count} file(s) imported WITHOUT signature verification"
+            : ResourceHelper.GetString("LibraryPage_Finished");
+
         var dialog = new EasyContentDialog(_libraryPage.XamlRoot)
         {
             CloseButtonText = ResourceHelper.GetString("General_Okay"),
             DefaultButton = ContentDialogButton.Close,
-            Title = ResourceHelper.GetString("LibraryPage_Finished"),
+            Title = importTitle,
             Content = new ImportDLLSummaryControl(importResults),
         };
         await dialog.ShowAsync();
+
+        if (unverifiedImports.Count > 0)
+        {
+            Logger.Warning(
+                $"{unverifiedImports.Count} imported file(s) were not signature-verified: " +
+                SignatureWarning.UnsupportedPlatform);
+        }
     }
 
     /// <summary>

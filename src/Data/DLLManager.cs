@@ -864,10 +864,16 @@ internal class DLLManager
         var importedRecordList = info.ManifestRecords(ImportedManifest);
 
         var versionInfo = FileVersionInfo.GetVersionInfo(filePath);
-        var isTrusted = WinTrust.VerifyEmbeddedSignature(filePath);
+        var signature = WinTrust.VerifyEmbeddedSignature(filePath);
 
         // Don't do anything with untrusted dlls.
-        if (Settings.Instance.AllowUntrusted == false && isTrusted == false)
+        //
+        // Only a failed check blocks. An imported dll is not in the signed manifest, so unlike the
+        // swap path there is no expected hash to compare against here - the signature check is the
+        // entire gate. On Linux there is no signature check, so there is no gate at all, and saying
+        // otherwise would be a lie. The import still proceeds, because the file is one the user
+        // already had and picked, but the result is flagged so the caller can shout about it.
+        if (Settings.Instance.AllowUntrusted == false && signature == SignatureCheckResult.Invalid)
         {
             return DLLImportResult.FromFail(zippedDllFullName ?? filePath, ResourceHelper.GetString("DllManager_UntrustedDll"));
         }
@@ -899,7 +905,7 @@ internal class DLLManager
                 FileSize = fileInfo.Length,
                 ZipFileSize = 0,
                 ZipMD5Hash = string.Empty,
-                IsSignatureValid = isTrusted,
+                IsSignatureValid = signature == SignatureCheckResult.Valid,
                 AssetType = gameAssetType,
             };
 
@@ -951,7 +957,13 @@ internal class DLLManager
                 importedRecordList.Insert(importedInsertIndex, dllRecord);
             }
 
-            return DLLImportResult.FromSucces(zippedDllFullName ?? filePath, fileName, importingAsDownloadedDll);
+            var result = DLLImportResult.FromSucces(zippedDllFullName ?? filePath, fileName, importingAsDownloadedDll);
+
+            // Annotate the success so the caller warns instead of showing a plain green tick for a
+            // file nothing verified. See DLLImportResult.SignatureNotVerified.
+            return signature == SignatureCheckResult.Unavailable
+                ? result.WithSignatureNotVerified(SignatureWarning.UnsupportedPlatform)
+                : result;
         }
         catch (Exception err)
         {

@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel Orientation="Vertical">
+    <StackPanel Orientation="Vertical" Spacing="8">
         <TextBlock>
             <Run Text="{x:Bind ViewModel.TranslationProperties.SuccessText, Mode=OneWay}" FontWeight="Bold"></Run>
             <Run Text="{x:Bind ViewModel.SuccessCount}" />
@@ -17,5 +17,32 @@
             <Run Text="{x:Bind ViewModel.TranslationProperties.FailedText, Mode=OneWay}" FontWeight="Bold"></Run>
             <Run Text="{x:Bind ViewModel.FailedCount}" />
         </TextBlock>
+
+        <!--
+          Shown only when files were imported without a signature check, which currently means a
+          platform with no Authenticode. SuccessCount above counts these, so without this banner a
+          user would read "imported successfully" and reasonably assume it had been verified.
+          Collapsed on Windows, where it never applies.
+        -->
+        <Border
+            x:Name="UnverifiedWarningBorder"
+            Visibility="{x:Bind ViewModel.ShowUnverifiedWarning, Mode=OneWay}"
+            Background="#40FF9800"
+            BorderBrush="#FFB26A00"
+            BorderThickness="2"
+            CornerRadius="4"
+            Padding="12"
+            Margin="0,8,0,0">
+            <StackPanel Spacing="6">
+                <TextBlock Text="⚠ WARNING — THESE FILES WERE NOT VERIFIED"
+                           FontWeight="Bold"
+                           FontSize="16"
+                           Foreground="#FFFFB300" />
+                <TextBlock Text="{x:Bind ViewModel.UnverifiedWarning, Mode=OneWay}"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="{x:Bind ViewModel.UnverifiedCount, Mode=OneWay}"
+                           Foreground="#FFFFB300" />
+            </StackPanel>
+        </Border>
     </StackPanel>
 </UserControl>

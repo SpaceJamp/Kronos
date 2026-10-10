@@ -1064,11 +1064,17 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
 
-        // Validate new DLL
+        // Validate new DLL. The MD5 above has already checked this file against the signed manifest, so
+        // this is a second, independent gate - and it is the only one on Linux, where Authenticode
+        // does not exist.
         if (Settings.Instance.AllowUntrusted == false)
         {
-            var isTrusted = WinTrust.VerifyEmbeddedSignature(dllRecord.LocalRecord.ExpectedPath);
-            if (isTrusted == false)
+            var signature = WinTrust.VerifyEmbeddedSignature(dllRecord.LocalRecord.ExpectedPath);
+
+            // Only an actual failed check blocks. Unavailable means nothing was checked, which is
+            // not evidence of anything; blocking on it would make swapping impossible on Linux,
+            // and letting it pass silently would misrepresent what just happened.
+            if (signature == SignatureCheckResult.Invalid)
             {
                 return (false, "Unable to swap dll as we are unable to verify the signature of the version you are trying to use.\nIf you wish to override this decision please enable 'Allow Untrusted' in settings.", false);
             }

@@ -3,6 +3,54 @@ using System.Runtime.InteropServices;
 
 namespace Kronos;
 
+/// <summary>
+/// The outcome of an Authenticode signature check.
+/// </summary>
+/// <remarks>
+/// Declared outside the #if so both platforms return the same type and the callers are not
+/// duplicated per platform.
+///
+/// The distinction between <see cref="Invalid"/> and <see cref="Unavailable"/> is the point of it.
+/// A plain bool could not express it: returning <c>true</c> where nothing was checked says
+/// "verified", which is false, and returning <c>false</c> says "untrusted", which is also false and
+/// would block a feature that has no alternative. Both are worse than saying which of the three
+/// things actually happened.
+/// </remarks>
+public enum SignatureCheckResult
+{
+    /// <summary>The file carries a valid Authenticode signature from a trusted signer.</summary>
+    Valid,
+
+    /// <summary>The file was checked and did not verify - missing, malformed, or untrusted signer.</summary>
+    Invalid,
+
+    /// <summary>
+    /// The platform has no Authenticode implementation, so nothing was checked.
+    /// </summary>
+    /// <remarks>
+    /// Every call returns this on Linux. It is not a pass. Callers decide separately what to do, and
+    /// must not present it to the user as a verification that took place.
+    /// </remarks>
+    Unavailable
+}
+
+/// <summary>
+/// Wording shown whenever a file was accepted without its signature being checked.
+/// </summary>
+/// <remarks>
+/// Declared outside the #if because the callers that surface it are shared code - the import flow
+/// lives in LibraryPageModel, which compiles for both targets. On Windows it is never displayed,
+/// because there <see cref="SignatureCheckResult.Unavailable"/> cannot be returned; it exists so
+/// that branch has something to say if that ever changes.
+/// </remarks>
+internal static class SignatureWarning
+{
+    internal const string UnsupportedPlatform =
+        "WARNING: This platform cannot verify Authenticode signatures, so this file was NOT checked. " +
+        "It was accepted because it is a file you already had on disk, not because it was verified. " +
+        "On Windows this step would reject an untrusted DLL.";
+}
+
 // Full implementation taken from here: https://docs.microsoft.com/en-us/windows/win32/seccrypto/example-c-program--verifying-the-signature-of-a-pe-file
 // Help also from the comments in here: https://www.pinvoke.net/default.aspx/wintrust.winverifytrust
 
@@ -169,7 +217,7 @@ internal static class WinTrust
         }
     }
 
-    public static bool VerifyEmbeddedSignature(string fileName)
+    public static SignatureCheckResult VerifyEmbeddedSignature(string fileName)
     {
         WinVerifyTrustResult lStatus;
         uint dwLastError;
@@ -255,19 +303,42 @@ internal static class WinTrust
             WinTrustData.Dispose();
         }
 
-        return validSignature;
+        return validSignature ? SignatureCheckResult.Valid : SignatureCheckResult.Invalid;
     }
+
+    /// <summary>Windows can verify Authenticode.</summary>
+    internal static bool SignatureCheckingSupported => true;
 }
 #else
-// Stub implementation for non-Windows platforms (Linux)
-// On Linux, Authenticode signatures are not applicable. 
-// We return true to allow DLLs, but log a warning.
+
+/// <summary>
+/// Signature verification on platforms without Authenticode.
+/// </summary>
+/// <remarks>
+/// Windows uses WinVerifyTrust through the P/Invoke above. There is no Linux equivalent - the
+/// format is a Microsoft PE certificate table - so nothing can be checked here.
+///
+/// This used to return <c>true</c>, on the reasoning that the files reaching this point are ones the
+/// user already had on disk and picked. That reasoning holds, but the return value was doing double
+/// duty as "this passed a check", and callers reported success without saying that no check had run.
+/// A silent pass is worse than an honest gap: the user has no way to learn that the one protection
+/// Windows has is simply absent.
+///
+/// Returning <see cref="SignatureCheckResult.Unavailable"/> lets callers keep the feature working
+/// while making the gap visible. See <see cref="UnsupportedPlatformWarning"/> for the wording.
+/// </remarks>
 internal static class WinTrust
 {
-    public static bool VerifyEmbeddedSignature(string filePath)
+    /// <summary>Whether this platform can verify Authenticode signatures at all.</summary>
+    internal static bool SignatureCheckingSupported => false;
+
+    public static SignatureCheckResult VerifyEmbeddedSignature(string filePath)
     {
-        Kronos.Logger.Warning($"Signature verification not supported on this platform. Skipping check for: {filePath}");
-        return true; // Allow on non-Windows
+        Logger.Warning(
+            $"Signature verification is not supported on this platform; {filePath} was NOT verified. " +
+            "Accepted because it is a local file the user selected.");
+
+        return SignatureCheckResult.Unavailable;
     }
 }
 #endif

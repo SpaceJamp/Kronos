@@ -996,12 +996,16 @@ internal partial class NVAPIHelper : ObservableObject
                 {
                     var fileInfo = new FileInfo(binFile);
                     var fileVersionInfo = FileVersionInfo.GetVersionInfo(binFile);
-                    var isTrusted = WinTrust.VerifyEmbeddedSignature(binFile);
+                    var signature = WinTrust.VerifyEmbeddedSignature(binFile);
 
                     var isValid = true;
 
-                    // Ignore a game if it is not trusted.
-                    if (isTrusted == false)
+                    // Ignore a game if it is not trusted. Only a *failed* check invalidates - on a
+                    // platform with no Authenticode the result is Unavailable, which means nothing
+                    // was checked rather than something being wrong. Treating that as untrusted
+                    // would silently discard every game on Linux, which is worse than importing an
+                    // unverified one that the user pointed us at.
+                    if (signature == SignatureCheckResult.Invalid)
                     {
                         isValid = false;
                     }
