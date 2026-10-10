@@ -146,7 +146,7 @@ configurations keep all data inside the build output, so neither touches a real 
 ### Linux
 
 ```bash
-# CLI — updater only, see the status note above
+# CLI — see the Platform Support section for what it can currently do
 ./build.sh
 # → Output/linux-x64-<timestamp>/Kronos
 
@@ -154,7 +154,34 @@ configurations keep all data inside the build output, so neither touches a real 
 .\build.ps1 -Target Linux
 ```
 
-Requires the .NET 10 SDK. Output is self-contained — no .NET runtime needed on the target machine.
+Output is self-contained — no .NET runtime needed on the target machine.
+
+**The .NET 10 SDK is installed for you if it is missing.** The project targets `net10.0`, which
+needs the .NET 10 SDK specifically — an installed .NET 8 or 9 will not build it. `build.sh` checks
+for the right major version and, if it is not there, downloads Microsoft's official
+[`dotnet-install.sh`](https://dot.net/v1/dotnet-install.sh) and installs into `~/.dotnet`. That is a
+per-user install, so it does not need `sudo` and does not touch a system-wide installation.
+
+It also appends `~/.dotnet` to `PATH` in your `~/.profile`, so later shells find it too. That
+applies to **new** shells — run `source ~/.profile`, or open a new terminal, before building again
+by hand.
+
+To install somewhere else, or to skip the auto-install entirely:
+
+```bash
+DOTNET_INSTALL_DIR=/opt/dotnet ./build.sh     # different location
+```
+
+If the automatic install fails, it prints the manual instructions and exits rather than carrying on
+with a missing SDK. You can also install it yourself from
+[dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+### Prerequisites at a glance
+
+| Building | Needs |
+|---|---|
+| Windows | .NET 10 SDK, Windows SDK 10.0.26100 |
+| Linux | .NET 10 SDK — or just run `build.sh`, which installs it |
 
 #### Linux commands
 

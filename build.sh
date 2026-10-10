@@ -36,14 +36,112 @@ echo -e "${GREEN}=== Kronos Build Script (Bash) ===${NC}"
 echo -e "${BLUE}Target: $TARGET | Configuration: $CONFIGURATION | Runtime: $RUNTIME${NC}"
 echo ""
 
-# Check for .NET SDK
-if ! command -v dotnet &> /dev/null; then
-    echo -e "${RED}Error: .NET SDK not found. Please install .NET 10 SDK.${NC}"
-    exit 1
+# ---------------------------------------------------------------------------
+# .NET SDK
+#
+# The project targets net10.0, which needs the .NET 10 SDK specifically - an
+# installed .NET 8 or 9 will not build it, so "is dotnet on PATH" is not a
+# sufficient check. If the required SDK is missing we install it with
+# Microsoft's official dotnet-install.sh into ~/.dotnet rather than system-wide,
+# because a system-wide install needs root and this script should not ask for it.
+# ---------------------------------------------------------------------------
+REQUIRED_SDK_MAJOR=10
+DOTNET_INSTALL_DIR="${DOTNET_INSTALL_DIR:-$HOME/.dotnet}"
+
+# Prints the major version of the dotnet on PATH, or fails if there is none.
+dotnet_sdk_major() {
+    command -v dotnet >/dev/null 2>&1 || return 1
+    local version
+    version=$(dotnet --version 2>/dev/null) || return 1
+    # "10.0.301" -> "10"
+    printf '%s' "${version%%.*}"
+}
+
+has_required_sdk() {
+    local major
+    major=$(dotnet_sdk_major) || return 1
+    [ "$major" -ge "$REQUIRED_SDK_MAJOR" ]
+}
+
+# Puts a ~/.dotnet install on PATH for this process and for the user's future
+# shells, if it is not there already. Both halves matter: without the export the
+# rest of this script cannot find it, and without the shell profile change the
+# user's next build would fail the same way this one did.
+use_local_dotnet() {
+    case ":${PATH}:" in
+        *":${DOTNET_INSTALL_DIR}:"*) : ;;
+        *) export PATH="${DOTNET_INSTALL_DIR}:${PATH}" ;;
+    esac
+
+    # Append rather than prepend to the profile, and check first so repeat runs
+    # do not keep adding the same line.
+    local profile="${HOME}/.profile"
+    if [ -f "$profile" ] && ! grep -qF "DOTNET_INSTALL_DIR" "$profile"; then
+        {
+            echo ""
+            echo "# Added by Kronos build.sh"
+            echo "export DOTNET_INSTALL_DIR=\"\${DOTNET_INSTALL_DIR:-$HOME/.dotnet}\""
+            echo "export PATH=\"\$DOTNET_INSTALL_DIR:\$PATH\""
+        } >> "$profile"
+        echo -e "${BLUE}Added ~/.dotnet to your PATH in ~/.profile (applies to new shells).${NC}"
+    fi
+}
+
+install_dotnet_sdk() {
+    local script="${DOTNET_INSTALL_DIR}/dotnet-install.sh"
+
+    mkdir -p "$DOTNET_INSTALL_DIR" || return 1
+
+    if [ ! -f "$script" ]; then
+        echo -e "${YELLOW}Downloading Microsoft's dotnet-install.sh...${NC}"
+        if command -v curl >/dev/null 2>&1; then
+            curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$script" || return 1
+        elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$script" https://dot.net/v1/dotnet-install.sh || return 1
+        else
+            echo -e "${RED}Neither curl nor wget is available, so the SDK cannot be downloaded.${NC}"
+            return 1
+        fi
+        chmod +x "$script"
+    fi
+
+    echo -e "${YELLOW}Installing .NET ${REQUIRED_SDK_MAJOR} SDK into ${DOTNET_INSTALL_DIR}...${NC}"
+    # --channel tracks the latest 10.0.x rather than pinning a patch, so a
+    # security update in the SDK does not require changing this script. The
+    # resulting apphost and framework are what the published self-contained
+    # output is built against.
+    "$script" --channel "${REQUIRED_SDK_MAJOR}.0" --install-dir "$DOTNET_INSTALL_DIR" --no-path || return 1
+}
+
+if ! has_required_sdk; then
+    existing=$(dotnet_sdk_major || echo "none")
+
+    if [ "$existing" = "none" ]; then
+        echo -e "${YELLOW}No .NET SDK found.${NC}"
+    else
+        echo -e "${YELLOW}.NET ${existing} SDK found, but this project needs .NET ${REQUIRED_SDK_MAJOR}.${NC}"
+    fi
+
+    if ! install_dotnet_sdk; then
+        echo ""
+        echo -e "${RED}Could not install the .NET ${REQUIRED_SDK_MAJOR} SDK automatically.${NC}"
+        echo -e "${RED}Install it manually and re-run:${NC}"
+        echo "  https://dotnet.microsoft.com/download/dotnet/10.0"
+        exit 1
+    fi
+
+    use_local_dotnet
+
+    if ! has_required_sdk; then
+        echo -e "${RED}SDK install reported success but .NET ${REQUIRED_SDK_MAJOR} is still not available.${NC}"
+        exit 1
+    fi
+
+    echo ""
 fi
 
 DOTNET_VERSION=$(dotnet --version)
-echo -e "${GREEN}Found .NET SDK: ${DOTNET_VERSION}${NC}"
+echo -e "${GREEN}Using .NET SDK: ${DOTNET_VERSION}${NC}"
 
 # Set license key env var if provided
 if [ -n "$LICENSE_KEY" ]; then
