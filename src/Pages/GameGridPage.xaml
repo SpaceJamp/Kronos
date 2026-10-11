@@ -182,7 +182,22 @@
                                       ToolTipService.ToolTip="Select this game for a mass update" />
 
                             <!-- Weird, but allows image to strecth centered rather than left align -->
-                            <Border BorderThickness="0" FlowDirection="LeftToRight">
+
+                            <!--
+                            IsHitTestVisible="False" on this and the bar below.
+
+                            Grid draws later children on top, and this Border has no width, height or
+                            alignment, so it stretches over the entire tile - including the checkbox,
+                            which is declared before it. Every click on the tick therefore landed on the
+                            Border, which opened the game instead of selecting it, and the checkbox could
+                            never be reached in grid view at all. The list view is unaffected because
+                            there the cover sits in its own column and never overlaps the tick.
+
+                            Without this the selection could still be made from the "Select all shown"
+                            flyout, so the failure looked like "Update all does nothing" rather than
+                            like "I cannot tick anything".
+                            -->
+                            <Border BorderThickness="0" FlowDirection="LeftToRight" IsHitTestVisible="False">
                                 <Border.RenderTransform>
                                     <CompositeTransform ScaleX="1" />
                                 </Border.RenderTransform>
@@ -195,7 +210,7 @@
                                 </Border.Background>
                             </Border>
 
-                            <Grid VerticalAlignment="Bottom"  Background="#88000000" Padding="8" ColumnSpacing="8">
+                            <Grid VerticalAlignment="Bottom"  Background="#88000000" Padding="8" ColumnSpacing="8" IsHitTestVisible="False">
 
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />

@@ -1,139 +1,79 @@
-Kronos 1.52 — bug fixes and dependency security
+Kronos 1.53 — selection in grid view, and an update check that works
 
-A bug-fix release. No new features. The Games page now works, "Reset to default" now works, and two
-libraries can no longer delete your game data on a recoverable error.
+Three fixes, one of which means the update check has probably never worked before.
 
-## Games page showed no games
+## "Update all" could not be used in grid view
 
-The Games page was empty on **every** build and every configuration — while the database held your
-games correctly. Steam, GOG and the rest were being discovered and stored the whole time; only the
-display was broken.
+You could not tick a game in grid view, so there was nothing for **Update all** to act on. The button
+itself was fine — the selection underneath it was unreachable.
 
-A refactor for Linux support rebuilt the collection views with a list of `Game` objects while leaving
-"IsSourceGrouped" enabled, so the UI tried to group individual games by a group-name property that
-doesn't exist on them and produced nothing. Each library's view was also built over a throwaway
-collection instead of the shared one, so even the ungrouped path lost everything.
+The cover art sits in the same tile as the selection checkbox, and it was declared *after* it. A Grid
+draws later children on top, and that cover had no width, height or alignment, so it stretched over
+the whole tile — over the checkbox, and over the version text. Every click on the tick landed on the
+cover instead, which opened the game.
 
-Restored the original design, including library reordering in Settings, which had been silently dead
-for the same period.
+Nothing in the XAML says "this element is on top of that one", so nothing looked wrong. List view was
+unaffected, because there the cover sits in its own column and never overlaps the tick.
 
-## "Reset to default" never worked
+The cover and the version bar are now transparent to input. The tile itself still opens the game on a
+click, exactly as before — only the checkbox belongs to the checkbox now.
 
-Swapping a DLL in worked fine. Putting it back did not — every reset returned *"Unable to reset to
-default. Please repair your game manually."*
+## The update check was pointed at a repository that does not exist
 
-Backups had been changed from a single `.dlsss` file to a numbered chain (`.kronosbak1`, `.kronosbak2`,
-…) so swaps can be undone more than once. The write paths were updated; the read paths were not. Reset
-looked for the literal text `".dlsss"` in a path that doesn't contain it.
+`SpaceJamp/kronos-dlss-swapper`. There is no such repository. Every check 404'd.
 
-Worse: a rescan found no backups, dropped those records, and deleted them from the database — leaving
-the files on disk untracked. That made reset permanently impossible and made each subsequent swap
-append another chain entry without bound.
+The updater has had two wrong repository names: it was `SpaceJamp/unofficial-dlss-swapper` first, left
+over from when this was a fork. Neither showed up, because GitHub redirects the old path for `git`, so
+pushing still worked and the stale name stayed invisible — right up until something read it without
+credentials, which is exactly what the update check does. A 404 there is reported as *the check
+failed*, so the symptom was never "wrong version offered", just "checking for updates" doing nothing.
 
-**If you have a game where reset fails, this is the fix.** No manual repair needed.
+It is `SpaceJamp/Kronos` now. The test that was supposed to prevent this **asserted the wrong name**,
+which is how it stayed wrong; it now compares the constant against this repository's own `origin`
+remote, so a rename breaks the build rather than the updater.
 
-## One unreadable registry key could delete game data
+**If you are on 1.52 you will not be offered this update**, because 1.52 is looking in the wrong
+place. Download it once from the Releases page, and 1.53 and later will find each other.
 
-**Ubisoft Connect:** the library used `break` where `continue` was meant. A single permission-denied
-install subkey abandoned the rest of the enumeration — and the cleanup pass that follows deletes
-cached games it didn't rediscover, taking their assets, history and notes with them.
+## Portable builds now update themselves
 
-**GOG:** `continue` on a cover-art failure skipped the calls that save and process the game, so a
-missing or corrupt `webcache.zip` made an installed, working game never appear at all.
+Previously they could not. The updater only knew how to launch an `-installer.exe`, so with a
+portable zip it found nothing and offered nothing.
 
-Cover handling is now separate from game handling, so a missing cover can no longer hide a game.
+A portable build now downloads the new archive, checks it against the SHA256 GitHub publishes for it,
+and replaces itself. The copy is done by a detached helper *after* the app exits, because Windows will
+not let a running executable be overwritten. The helper keeps a rollback copy of `Kronos.exe` and puts
+it back if the copy fails, and the app restarts afterwards.
 
-## Thread-safety holes in the game scanner
+A release with no published checksum is **refused**, not installed unverified. The helper is
+replacing the running application with whatever it is handed, so there is no gate on an unverified
+file, and there is nothing behind this gate but the checksum.
 
-Five sites read the live game-asset list from a background thread while `ProcessGame` was running up
-to four scans concurrently and clearing that list. Any interleaving threw `Collection was modified`,
-which a catch-all turned into "this game has no DLLs" — permanently.
+## Also fixed
 
-All now use the snapshot helper the class already documented as required.
-
-## A single failed cover fetch broke cover art library-wide
-
-The in-progress flag guarding cover loading was cleared by a trailing statement rather than a
-`finally`. One network failure left the flag stuck and every later call returned immediately.
-
-## Imports no longer claim to be verified when they weren't
-
-`WinTrust.VerifyEmbeddedSignature` returned `true` on Linux — which reads as "verified" when nothing was
-checked. Authenticode is a Microsoft PE certificate format with no Linux implementation.
-
-It now returns `Valid` / `Invalid` / `Unavailable`, and only `Invalid` blocks. Where a file is
-accepted without being checked, the import summary shows an orange warning banner and the dialog title
-states how many files were not verified. Windows never returns `Unavailable`, so it never appears
-there.
-
-**To be precise about scope:** the download and swap path was already hash-verified on both platforms
-— `ZipMD5Hash` on download, `MD5Hash` before the swap. That was never broken. This affects the
-*import* paths, where the file isn't in the signed manifest and so has no expected hash and no
-signature gate either.
-
-## Dependencies — no known vulnerabilities
-
-`dotnet list package --vulnerable` reports **no vulnerable packages** for either project on either
-target framework.
-
-| Package | Was | Now | Advisory |
-|---|---|---|---|
-| SixLabors.ImageSharp | 3.1.5 → 4.0.0 | **4.1.2** | CVE-2026-106115 — out-of-bounds write in the TIFF CCITT T6 encoder — plus six others |
-| SQLitePCLRaw.bundle_e_sqlite3 | 2.1.8 | **3.0.5** | CVE-2025-6965 — memory corruption. Every 2.x release is affected with no patched 2.x, so 3.x was the only option |
-
-ImageSharp 3.2+ requires a licence. Builds use a Community Licence supplied at build time via
-`IMAGESHARP_LICENSE_KEY`; it is never committed. Contributors building from source need their own key.
-
-## Build notes
-
-- **`dotnet test` is green: 367 tests, both target frameworks.**
-- The inherited GitHub Actions workflow was removed — it called `package\*.cmd` scripts deleted with
-  the installer, so every step failed. **There is no CI.** Run the tests locally before pushing.
-- `.gitignore` had three UTF-16 encoded rules that matched nothing, including the one meant to keep
-  the licence file out of the repository. Fixed.
-- `build.ps1` failed outright on Windows PowerShell 5.1 (three-argument `Join-Path`, unqualified
-  `[RuntimeInformation]`). Fixed; both build scripts verified working.
-
-## Known limitations
-
-- **Linux support has been dropped for now.** The `net10.0` target compiles and `build.sh` works, but
-  the CLI has only `update`, `version` and `self-update` — nothing that swaps a DLL — and no
-  resulting build has ever been run on a real Linux machine. Treat the Linux target as unverified and
-  unmaintained. Game discovery is registry-based and each store would need porting. The Avalonia GUI
-  does not build. See the README's "Linux support is paused" section.
-- **Builds are unsigned.** Expect SmartScreen warnings. The official signed build is upstream's, at
-  [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper).
-- DLL swapping isn't guaranteed to improve performance or avoid crashes. Downgrading below a game's
-  shipped version can disable Frame Generation; Kronos warns first. Originals are always restorable.
-
-## Upgrading
-
-No action required. The database schema is unchanged, so 1.52 reads your existing library as-is.
+- **The release title now has to start with the version.** `GetVersionNumber` parses the first word of
+  the release *title* and needs a leading `v`. The 1.52 release was titled `Kronos 1.52 — …`, so it
+  parsed to 0, and 0 compares below every real version — the app would have called itself up to date
+  forever, with nothing logged. The tag is used as a fallback now, and releases are titled `v1.53`.
+- **Downloads are verified against GitHub's digest.** The Linux updater read the checksum from a
+  field GitHub does not send, so verification was silently skipped on every download.
+- **No console window.** The portable build was a console-subsystem binary, so a command prompt opened
+  behind the app and stayed there.
 
 ## Downloading
 
-`Kronos-1.52.0-portable.zip` is attached to this release — 52 MB, self-contained, no console window.
-Unzip it anywhere and run `Kronos.exe`.
+`Kronos-1.53.0-portable.zip` is attached. Unzip anywhere, run `Kronos.exe`. It is **unsigned**, so
+SmartScreen will warn — that is expected.
 
-Verify before running:
+**It needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads).**
+This is an unpackaged WinUI app and loads `Microsoft.UI.Xaml.dll` from that runtime rather than
+carrying a copy. If `Kronos.exe` exits without showing a window, install it. (Bundling the runtime was
+tried; it makes the crash worse, not better.)
 
-```
-sha256  9e0836ba070f952ee89aa4be468f4b87f3af0403714f1de2b79da551e431c915
-```
+GitHub shows a SHA256 beside every asset, and Kronos verifies it on update.
 
-GitHub shows the same digest beside the asset, and Kronos verifies it on any in-app update.
+## Testing
 
-**If `Kronos.exe` exits without showing a window**, the
-[Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) is not
-installed. This is an unpackaged WinUI application, so it loads `Microsoft.UI.Xaml.dll` from that
-runtime rather than carrying a copy — bundling it was tried and makes the crash worse, not better.
-Upstream's signed installer installs the runtime as part of setup.
-
-The build is **unsigned**, so SmartScreen will warn. That is expected.
-
-**Kronos will not offer to auto-update this build.** The in-app updater looks for an installer-style
-executable and deliberately ignores a portable zip, because replacing a running portable copy with a
-fresh one unasked is not something it should do. Take new versions from the Releases page.
-
-Building from source produces the same binary and needs your own ImageSharp licence key — see the
-README's Building section.
+430 tests, green on the Windows target framework. The build also **launches the binary it just
+published** and fails if it exits immediately — the 1.52 archive was a binary that died on startup and
+nothing in the build output mentioned it.

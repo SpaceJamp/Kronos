@@ -234,14 +234,82 @@ public class BuildInfoAndUpdateTests
     }
 
     [Fact]
-    public void TheRepositoryIsNotTheOldForkPath()
+    public void TheRepositoryTheUpdaterQueriesIsTheOneThisRepositoryActuallyIs()
     {
-        // GitHub redirects the old path for git, so a stale name here is invisible until something
-        // reads it without credentials. That is precisely what the update check does.
+        // This constant has been wrong twice: SpaceJamp/unofficial-dlss-swapper, left over from the
+        // fork, and then SpaceJamp/kronos-dlss-swapper, which does not exist either. Neither showed
+        // up because GitHub redirects the old path for git, so a push still succeeds, and the update
+        // check reads without credentials - so the failure appeared as a 404 with no visible cause.
+        //
+        // The previous test for this asserted the constant contained "kronos-dlss-swapper", which
+        // pinned the second wrong name in place. Comparing against the origin remote cannot go stale
+        // the same way: rename the repository and this fails, rather than the updater.
         var source = ReadRepoFile("src", "Data", "GitHub", "GitHubUpdater.cs");
 
-        Assert.DoesNotContain("unofficial-dlss-swapper\"", source);
-        Assert.Contains("kronos-dlss-swapper", source);
+        var declared = Regex.Match(
+            source,
+            @"internal\s+const\s+string\s+DefaultRepository\s*=\s*""([^""]+)""");
+
+        Assert.True(declared.Success, "No DefaultRepository constant found in GitHubUpdater.cs.");
+
+        var expected = OriginRepository();
+        Assert.Equal(expected, declared.Groups[1].Value);
+    }
+
+    [Fact]
+    public void TheRepositoryTheUpdaterQueriesIsNotOneOfTheNamesItHasAlreadyUsed()
+    {
+        // Belt and braces. The origin comparison catches a rename; this catches a re-introduction of
+        // a name that was corrected once and might be "fixed" back by someone who trusts the comment.
+        var source = ReadRepoFile("src", "Data", "GitHub", "GitHubUpdater.cs");
+
+        var declared = Regex.Match(
+            source,
+            @"internal\s+const\s+string\s+DefaultRepository\s*=\s*""([^""]+)""");
+
+        Assert.True(declared.Success);
+
+        foreach (var stale in new[] { "unofficial-dlss-swapper", "kronos-dlss-swapper", "beeradmoore/dlss-swapper" })
+        {
+            Assert.DoesNotContain(stale, declared.Groups[1].Value, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>The owner/repo this working copy is a clone of, read from its own origin remote.</summary>
+    static string OriginRepository()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && Directory.Exists(Path.Combine(dir.FullName, "src")) == false)
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+
+        var root = dir!.FullName;
+
+        // .git/config is read directly rather than shelling out to git, so the test does not depend on
+        // git being installed or on the caller's credentials.
+        var config = Path.Combine(root, ".git", "config");
+        Assert.True(File.Exists(config), $"Could not find {config}");
+
+        var origin = Regex.Match(
+            File.ReadAllText(config),
+            @"\[remote\s+""origin""\][^\[]*?url\s*=\s*(?<url>\S+)",
+            RegexOptions.Singleline);
+
+        Assert.True(origin.Success, "No origin remote found in .git/config.");
+
+        var url = origin.Groups["url"].Value.Trim();
+
+        var match = Regex.Match(
+            url,
+            @"github\.com[/:](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?$",
+            RegexOptions.IgnoreCase);
+
+        Assert.True(match.Success, $"Could not read owner/repo from the origin remote: {url}");
+
+        return $"{match.Groups["owner"].Value}/{match.Groups["repo"].Value}";
     }
 
     // ---------------------------------------------------------------- repack tag layout

@@ -119,9 +119,11 @@ No installer, no console window, and no .NET runtime required.
 > without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for every asset, shown
 > beside its download link, and Kronos verifies it on any in-app update it performs.
 
-> **Kronos will not auto-update a portable build.** The in-app updater looks for an installer-style
-> executable and deliberately ignores a portable zip, rather than replacing a running copy unasked.
-> Take new versions from the Releases page.
+> **Kronos updates itself.** A portable build downloads the new archive from the Releases page,
+> checks it against the SHA256 GitHub publishes for it, and replaces itself. The copy is done by a
+> detached helper after the app exits, because Windows will not let a running executable be
+> overwritten; the helper keeps a rollback copy of `Kronos.exe` and restores it if the copy fails. A
+> release with no published checksum is refused rather than installed unverified.
 
 **Building from source** produces the same binary, and is covered in [Building](#building). It needs
 your own ImageSharp licence key.
@@ -262,11 +264,22 @@ It refuses to run rather than doing the wrong thing quietly:
 - **release exists but the upload failed** — says so, because the retry will otherwise fail on
   "tag already exists" and leave you guessing
 
-The release title must begin with the version, and the script sets it to `v<version>` for a reason:
-`GitHubUpdater.GetVersionNumber` parses the first space-delimited token of the release **title** and
-requires a leading `v`. A title like "Kronos 1.53" parses to 0, which compares below every real
-version, so the app would report itself as up to date forever with nothing logged. The tag is used as
-a fallback now, but the title should still be right — it is what the update dialog displays.
+It also builds and smoke tests before it uploads. `build.ps1` launches the binary it just published and
+fails if it exits during the first twelve seconds or if `Kronos.pri` is missing. That check exists
+because the first artifact published from this repository was a binary that died on startup, and
+nothing in the build output said so.
+
+Two things the script gets right that are easy to get wrong:
+
+- **The release title begins with the version.** `GitHubUpdater.GetVersionNumber` parses the first
+  space-delimited token of the release *title* and requires a leading `v`. A title like "Kronos 1.53"
+  parses to 0, which compares below every real version, so the app reports itself as up to date forever
+  with nothing logged. The tag is a fallback now, but the title should still be right — it is also
+  what the update dialog displays.
+- **The updater's repository is `SpaceJamp/Kronos`.** It was `SpaceJamp/kronos-dlss-swapper`, which
+  does not exist, so every check 404'd and surfaced as a failed check rather than as a wrong name. A
+  test now compares the constant against this repository's own `origin` remote, so a rename breaks the
+  build instead of the updater.
 
 > [!NOTE]
 > The workflow inherited from upstream was removed. It called `package\*.cmd` scripts that were

@@ -54,12 +54,12 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.52 for the Games page / DLL reset / data-loss fixes. This must match the git tag
-      or the in-app and CLI updater will compare against the wrong version: it reads the release
-      title, and CheckForUpdateAsync only offers a release strictly newer than this number.
-      Kept in step with Kronos.Avalonia.csproj.
+      Bumped to 1.53 for the grid view selection fix and the working update check. This must match the
+      git tag or the updater will compare against the wrong version: it reads the release title, and
+      the comparison only offers a release strictly newer than this number. Kept in step with
+      Kronos.Avalonia.csproj.
     -->
-    <Version>1.52</Version>
+    <Version>1.53</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
@@ -210,6 +210,12 @@
     <Compile Include="Helpers\ResourceHelper.cs" />
     <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
     <Compile Include="Helpers\FSR31\FxxConsts.cs" />
+    <!--
+      PortableSelfUpdate.cs is deliberately absent. It replaces a running portable build with a newer
+      one by waiting on the current process id and relaunching the executable, which are Windows
+      behaviours with no meaning here. This group sets EnableDefaultCompileItems to false precisely
+      so the Linux target is an explicit list rather than everything under src/.
+    -->
     <Compile Include="Data\DLLAssetTypeInfo.cs" />
     <Compile Include="Data\Steam\SteamCoverUrlResolver.cs" />
 

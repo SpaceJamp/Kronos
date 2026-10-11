@@ -51,17 +51,22 @@ internal class GitHubUpdater
     /// In one place, because it was previously repeated in two string literals and a private or
     /// renamed repository 404s without saying so anywhere the user could see.
     ///
-    /// The path is SpaceJamp/kronos-dlss-swapper. It used to be SpaceJamp/unofficial-dlss-swapper, which
-    /// was left over from when this was a fork and was never changed when it stopped being one. GitHub
-    /// redirects the old path for git, so a push still succeeds and the stale name stays invisible until
-    /// something reads it without credentials, which is exactly what this code does.
+    /// This has now been wrong twice. It was SpaceJamp/unofficial-dlss-swapper, left over from when
+    /// this was a fork and never changed when it stopped being one. It was then changed to
+    /// SpaceJamp/kronos-dlss-swapper, which does not exist either. The repository is SpaceJamp/Kronos.
     ///
-    /// Note that GitHub answers 404, not 403, for a repository that exists but is private and the
-    /// request is unauthenticated. This repository is private, so this code cannot read it at all,
-    /// because there is no token and adding one would mean shipping a credential to every install.
-    /// Update checking only starts working once the repository is made public.
+    /// Neither stale name showed up, because GitHub redirects the old path for git operations, so a
+    /// push still succeeds and the wrong name stays invisible until something reads it without
+    /// credentials - which is exactly what this code does. A 404 here surfaces as a failed check, so
+    /// the update check has simply never worked, with an error the user cannot connect to a name.
+    ///
+    /// A test now compares this against the repository's own origin remote, so a rename breaks the
+    /// build rather than the updater.
+    ///
+    /// The repository is public. GitHub answers 404 rather than 403 for a private repository read
+    /// unauthenticated, so a change back to private would look exactly as this did.
     /// </remarks>
-    internal const string DefaultRepository = "SpaceJamp/kronos-dlss-swapper";
+    internal const string DefaultRepository = "SpaceJamp/Kronos";
 
     /// <summary>
     /// The API root for a repository's releases.
@@ -348,7 +353,12 @@ internal class GitHubUpdater
 
             GitHubReleaseAsset? installerAsset = null;
 
-#if PORTABLE == false
+#if PORTABLE
+            // A portable build has no installer to hand off to. The portable archive is downloaded,
+            // verified against the digest GitHub publishes for it, and copied over the running app by
+            // a detached helper once this process exits - see PortableSelfUpdate.
+            installerAsset = Helpers.PortableSelfUpdate.FindPortableAsset(gitHubRelease.Assets);
+#else
             // Only show the update button if we could fetch the update that is ready to install.
             foreach (var gitHubAsset in gitHubRelease.Assets)
             {
@@ -388,14 +398,16 @@ internal class GitHubUpdater
 
                 installerAsset = gitHubAsset;
             }
+#endif
 
-            // If the installer asset is found we add the update button and make it the primary response.
+            // If the asset is found we add the update button and make it the primary response. For a
+            // portable build that asset is the zip we will replace ourselves with; for a packaged build
+            // it is the installer we will launch.
             if (installerAsset is not null)
             {
                 dialog.PrimaryButtonText = ResourceHelper.GetString("General_Update");
                 dialog.DefaultButton = ContentDialogButton.Primary;
             }
-#endif
 
             var result = await dialog.ShowAsync();
 
@@ -413,8 +425,7 @@ internal class GitHubUpdater
     async Task DownloadAndInstallAsync(GitHubRelease gitHubRelease, GitHubReleaseAsset gitHubAsset, XamlRoot xamlRoot)
     {
 #if PORTABLE
-        // You should not have got here.
-        return;
+        await DownloadAndReplacePortableAsync(gitHubRelease, gitHubAsset, xamlRoot);
 #else
         var filesProgressBar = new ProgressBar()
         {
@@ -609,6 +620,175 @@ internal class GitHubUpdater
         }
 #endif
     }
+
+    /// <summary>
+    /// Downloads a portable release, verifies it, and hands the replacement to a detached helper.
+    /// </summary>
+    /// <remarks>
+    /// The verification is not optional. The helper replaces the running application with whatever it
+    /// is given, so an unverified download here would be code execution with no gate at all. If
+    /// GitHub has not published a digest for the asset, the update is refused rather than accepted
+    /// unverified - <see cref="Helpers.PortableSelfUpdate.FindPortableAsset"/> already filters those
+    /// out, and this re-checks rather than trusting one caller to have done it.
+    ///
+    /// Nothing is deleted until the new copy is verified and the helper is running, so a failure at
+    /// any point leaves the working installation exactly as it was.
+    /// </remarks>
+#if PORTABLE
+    async Task DownloadAndReplacePortableAsync(GitHubRelease gitHubRelease, GitHubReleaseAsset gitHubAsset, XamlRoot xamlRoot)
+    {
+        if (string.IsNullOrWhiteSpace(gitHubAsset.Digest))
+        {
+            await ReportPortableUpdateFailure(gitHubRelease, xamlRoot, "This update has no published checksum, so it cannot be verified and will not be installed.");
+            return;
+        }
+
+        var updatesFolder = Storage.GetUpdatesFolder();
+        Directory.CreateDirectory(updatesFolder);
+        var archivePath = Path.Combine(updatesFolder, gitHubAsset.Name);
+
+        var progressBar = new ProgressBar() { IsIndeterminate = true };
+        var progressText = new TextBlock { Text = string.Empty, HorizontalAlignment = HorizontalAlignment.Left };
+        progressText.Inlines.Add(new Run() { Text = $"{ResourceHelper.GetString("GitHubUpdater_DownloadProgress")}: " });
+        var progressRun = new Run() { Text = "-" };
+        progressText.Inlines.Add(progressRun);
+
+        var progressPanel = new StackPanel
+        {
+            Spacing = 16,
+            Orientation = Orientation.Vertical,
+            Children = { progressBar, progressText },
+        };
+
+        var cancellation = new CancellationTokenSource();
+        var progressDialog = new EasyContentDialog(xamlRoot)
+        {
+            Title = ResourceHelper.GetString("GitHubUpdater_DownloadingUpdate_Title"),
+            Content = progressPanel,
+            CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+        };
+        progressDialog.CloseButtonClick += (sender, args) =>
+        {
+            try { cancellation.Cancel(); }
+            catch (Exception) { /* cancellation is best effort */ }
+        };
+        _ = progressDialog.ShowAsync();
+
+        try
+        {
+            var totalSizeString = ByteSize.FromBytes(gitHubAsset.Size).ToString("MB", CultureInfo.CurrentCulture);
+            var downloader = new FileDownloader(gitHubAsset.BrowserDownloadUrl);
+
+            using (var fileStream = File.Create(archivePath))
+            {
+                var downloaded = await downloader.DownloadFileToStreamAsync(
+                    fileStream,
+                    cancellation.Token,
+                    progressCallback: (downloadedBytes, totalBytes, percent) =>
+                    {
+                        progressBar.IsIndeterminate = false;
+                        progressBar.Value = percent;
+                        progressRun.Text = $"{ByteSize.FromBytes(downloadedBytes).MegaBytes.ToString("F2", CultureInfo.CurrentCulture)} / {totalSizeString} ({percent:F1}%)";
+                    });
+
+                if (downloaded == false)
+                {
+                    throw new IOException("The download did not complete.");
+                }
+            }
+
+            progressDialog.Hide();
+
+            // Verified before anything is handed off, and before the app is closed.
+            string actualHash;
+            using (var fileStream = File.OpenRead(archivePath))
+            {
+                actualHash = fileStream.GetSha256Hash();
+            }
+
+            var expected = gitHubAsset.Digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
+                ? gitHubAsset.Digest["sha256:".Length..]
+                : gitHubAsset.Digest;
+
+            if (actualHash.Equals(expected, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                File.Delete(archivePath);
+                await ReportPortableUpdateFailure(
+                    gitHubRelease,
+                    xamlRoot,
+                    "The download did not match the checksum GitHub published for it, so it was discarded and nothing was changed.");
+                return;
+            }
+
+            var targetDirectory = Path.GetDirectoryName(Environment.ProcessPath ?? AppContext.BaseDirectory)!;
+
+            var updatingDialog = new EasyContentDialog(xamlRoot)
+            {
+                Title = ResourceHelper.GetString("GitHubUpdater_Updating_Title"),
+                Content = new ProgressRing() { IsIndeterminate = true },
+            };
+            _ = updatingDialog.ShowAsync();
+
+            // Give the dialog a moment to appear before the window goes away.
+            await Task.Delay(500);
+
+            Helpers.PortableSelfUpdate.PrepareHandoff(archivePath, targetDirectory, relaunch: true);
+
+            Application.Current.Exit();
+        }
+        catch (TaskCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            progressDialog.Hide();
+            TryDeleteQuietly(archivePath);
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err);
+            progressDialog.Hide();
+            TryDeleteQuietly(archivePath);
+
+            await ReportPortableUpdateFailure(
+                gitHubRelease,
+                xamlRoot,
+                $"{ResourceHelper.GetString("GitHubUpdater_UpdateDownloadFailed")}\n\n{err.Message}");
+        }
+    }
+
+    async Task ReportPortableUpdateFailure(GitHubRelease gitHubRelease, XamlRoot xamlRoot, string message)
+    {
+        var dialog = new EasyContentDialog(xamlRoot)
+        {
+            Title = ResourceHelper.GetString("General_Error"),
+            Content = message,
+            PrimaryButtonText = ResourceHelper.GetString("GitHubUpdater_ViewUpdate"),
+            CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await Launcher.LaunchUriAsync(new Uri(gitHubRelease.HtmlUrl));
+        }
+    }
+
+    static void TryDeleteQuietly(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+            // A leftover download is not worth failing an update over.
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+#endif
 
     internal async Task DisplayWhatsNewDialog(GitHubRelease gitHubRelease, XamlRoot xamlRoot)
     {
