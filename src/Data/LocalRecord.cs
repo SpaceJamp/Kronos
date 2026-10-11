@@ -64,20 +64,32 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
                 File.Delete(ExpectedPath);
             }
 
-            var path = Path.GetDirectoryName(ExpectedPath) ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(path) == false)
-            {
-                if (Directory.GetFiles(path).Length == 0 && Directory.GetDirectories(path).Length == 0)
-                {
-                    Directory.Delete(path);
-                }
-            }
-
-
-
+            // IsDownloaded is cleared before the folder tidy-up, not after. The delete above is the part
+            // that matters and it has already happened; if removing the now-empty directory then fails,
+            // the catch below used to skip the flag updates entirely and leave a record claiming to be
+            // downloaded for a file that no longer exists. Nothing reads that flag without checking
+            // File.Exists first, so the visible effect was small - but the record was lying about its own
+            // state, which is how "the DLL is downloaded but the UI says it is missing" bugs start.
             IsDownloaded = false;
             HasDownloadError = false;
             DownloadErrorMessage = string.Empty;
+
+            // Purely tidying up. A folder left behind is harmless; failing the whole delete over one is not.
+            try
+            {
+                var path = Path.GetDirectoryName(ExpectedPath) ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(path) == false)
+                {
+                    if (Directory.GetFiles(path).Length == 0 && Directory.GetDirectories(path).Length == 0)
+                    {
+                        Directory.Delete(path);
+                    }
+                }
+            }
+            catch (Exception cleanupErr)
+            {
+                Logger.Error(cleanupErr);
+            }
             // We don't update IsImported here as that wont change.
             return true;
         }

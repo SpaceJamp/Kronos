@@ -28,6 +28,65 @@ namespace Kronos.Data;
 
 public abstract partial class Game : ObservableObject, IComparable<Game>, IEquatable<Game> //, INotifyPropertyChanged
 {
+    /// <summary>
+    /// Rewrites every game_asset row for this game inside a single SQL transaction.
+    /// </summary>
+    /// <param name="history">History rows to add in the same transaction, if any.</param>
+    /// <param name="assets">
+    /// The replacement rows. A snapshot taken by the caller, not the live list: InsertAllAsync enumerates
+    /// its argument, and these run on thread pool threads that can be racing a scan or a mass update, which
+    /// throws "collection was modified" - so the caller hands over a list that cannot change underneath us.
+    /// </param>
+    /// <remarks>
+    /// Every site that needs to "delete this game's rows and put new ones in" used to run those as two
+    /// separate statements. A throw, a crash or a killed process between them left the game with *no*
+    /// tracked DLLs at all - the exact half-state the backup chain and the reset button both depend on, and
+    /// the user sees a game that appears to have nothing swappable.
+    ///
+    /// It recovers on the next scan, since the files are found again and re-recorded, but only if that
+    /// scan succeeds, and the game is broken until then. One transaction means the rows are either all
+    /// replaced or all left as they were.
+    ///
+    /// Explicit BEGIN/COMMIT/ROLLBACK rather than a helper from the sqlite package: this build uses
+    /// SQLiteAsyncConnection, which exposes no transaction API, so this is the route that works.
+    /// </remarks>
+    internal async Task RewriteGameAssetsAsync(List<GameHistory>? history, List<GameAsset> assets)
+    {
+        using (await Database.Instance.Mutex.LockAsync())
+        {
+            await Database.Instance.Connection.ExecuteAsync("BEGIN").ConfigureAwait(false);
+
+            try
+            {
+                if (history is { Count: > 0 })
+                {
+                    await Database.Instance.Connection.InsertAllAsync(history, false).ConfigureAwait(false);
+                }
+
+                await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
+                await Database.Instance.Connection.InsertAllAsync(assets, false).ConfigureAwait(false);
+
+                await Database.Instance.Connection.ExecuteAsync("COMMIT").ConfigureAwait(false);
+            }
+            catch
+            {
+                // Without this the connection is left inside an open transaction, and every later write on
+                // it joins that transaction instead of committing - which turns a recoverable failure into
+                // a database that silently stops saving.
+                try
+                {
+                    await Database.Instance.Connection.ExecuteAsync("ROLLBACK").ConfigureAwait(false);
+                }
+                catch (Exception rollbackError)
+                {
+                    Logger.Error(rollbackError);
+                }
+
+                throw;
+            }
+        }
+    }
+
     [PrimaryKey]
     [Column("id")]
     public string ID { get; set; } = string.Empty;
@@ -650,34 +709,30 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     UpdateCurrentDLLsFromGameAssets();
                 });
 
-                // Delete the old rows before re-inserting, now that we know we have replacements.
-                using (await Database.Instance.Mutex.LockAsync())
-                {
-                    await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-                }
-
                 // A snapshot, read after the replace above, so it sees what was just written rather than
                 // racing a mass update that may be mutating the list on another thread.
-                if (GetGameAssetsSnapshot().Any())
+                var rewrittenAssets = GetGameAssetsSnapshot();
+
+                if (rewrittenAssets.Any())
                 {
                     newHasSwappableItems = true;
 
                     //App.CurrentApp.Database.ExecuteAsync
                     //savePoint is not valid, and should be the result of a call to SaveTransactionPoint.
-                    // Snapshot rather than handing sqlite-net the live list: InsertAllAsync enumerates
-                    // its argument, and this runs on a thread pool thread that can be racing a scan or
-                    // a mass update, which throws "collection was modified" and is swallowed into the
-                    // game losing all of its DLLs.
-                    using (await Database.Instance.Mutex.LockAsync())
-                    {
-                        await Database.Instance.Connection.InsertAllAsync(dllHistory, false).ConfigureAwait(false);
-                        await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
-                    }
+                    // Delete and re-insert together in one transaction, so an interrupted rewrite cannot
+                    // leave this game with no tracked DLLs at all - see RewriteGameAssetsAsync.
+                    await RewriteGameAssetsAsync(dllHistory, rewrittenAssets).ConfigureAwait(false);
 
                     if (unknownGameAssets.Any())
                     {
                         GameManager.Instance.AddUnknownGameAssets(GameLibrary, Title, unknownGameAssets);
                     }
+                }
+                else
+                {
+                    // Nothing found on disk, so the game's tracked DLLs really are gone and the old rows
+                    // should go with them. Still one statement, still transactional.
+                    await RewriteGameAssetsAsync(history: null, assets: []).ConfigureAwait(false);
                 }
 
                 if (coverImageTask is not null)
@@ -871,7 +926,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     // the next swap then captured the swapped file as the new "original", so the
                     // runtime the game shipped with was gone for good. Copying leaves the chain
                     // intact, which is what makes repeated undo possible.
-                    File.Copy(existingBackupRecord.Path, existingRecord.Path, true);
+                    //
+                    // Written atomically, so a failure partway through cannot leave a truncated DLL in the
+                    // game folder. The user's own file is the source here and the backup is preserved, so
+                    // the worst case is that nothing changed and they are told to repair the game.
+                    AtomicFile.Replace(existingBackupRecord.Path, existingRecord.Path);
                 }
                 catch (UnauthorizedAccessException err)
                 {
@@ -926,14 +985,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // are the correct ones for both.
             }
 
-            using (await Database.Instance.Mutex.LockAsync())
-            {
-                await Database.Instance.Connection.InsertAllAsync(dllHistory, false);
-
-                // Update game assets list by deleting and re-adding.
-                await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-                await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
-            }
+            // Delete and re-insert as one transaction, so a failure cannot leave this game's tracked
+            // DLLs deleted with nothing put back.
+            await RewriteGameAssetsAsync(dllHistory, GetGameAssetsSnapshot()).ConfigureAwait(false);
 
             if (matchedBackup == false)
             {
@@ -1205,8 +1259,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         {
             try
             {
-                // Copy the DLL
-                File.Copy(dllRecord.LocalRecord.ExpectedPath, existingRecord.Path, true);
+                // Written atomically rather than with File.Copy, which truncates the destination to
+                // zero before writing and so can leave a half-written nvngx_dlss.dll in the game folder if
+                // the process dies, the disk fills or antivirus interferes. The backup chain is supposed to
+                // make that recoverable; it cannot help if the live file is already corrupt.
+                AtomicFile.Replace(dllRecord.LocalRecord.ExpectedPath, existingRecord.Path);
 
                 var newGameAsset = new GameAsset()
                 {
@@ -1268,12 +1325,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
         // Update game assets list by deleting and re-adding.
-        using (await Database.Instance.Mutex.LockAsync())
-        {
-            await Database.Instance.Connection.InsertAllAsync(dllHistory, false);
-            await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
-            await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
-        }
+        // Delete and re-insert as one transaction, so a failure cannot leave this game's tracked
+        // DLLs deleted with nothing put back.
+        await RewriteGameAssetsAsync(dllHistory, GetGameAssetsSnapshot()).ConfigureAwait(false);
 
         return (true, string.Empty, false);
     }

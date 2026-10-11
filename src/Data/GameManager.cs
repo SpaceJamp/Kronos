@@ -266,7 +266,16 @@ internal partial class GameManager : ObservableObject
     public async Task LoadGamesFromCacheAsync()
     {
         UnknownAssetsFound = false;
-        _unknownGameAssets.Clear();
+
+        // Under the lock, as every other access to this list is. LoadGamesAsync takes it for the identical
+        // clear a few methods below, so this was an omission rather than a decision: a scan still running
+        // can be adding entries through AddUnknownGameAssets on a thread pool thread while this clears,
+        // and List<T>.Clear racing Add throws or silently loses entries. The symptom is an unknown-asset
+        // list that comes back empty when it should not be.
+        lock (unknownGameAsseetLock)
+        {
+            _unknownGameAssets.Clear();
+        }
 
         foreach (var gameLibraryEnum in GameManager.Instance.GetGameLibraries(true))
         {

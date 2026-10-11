@@ -1,76 +1,66 @@
-v1.56 — three ways Kronos could lose your data
+v1.57 — the rest of the audit
 
-An audit of the code around settings, backups and the swap path found three bugs that destroy data. The first one can delete the only remaining copy of a game's original DLL.
+v1.56 fixed the three that destroyed data. These are the remainder: two that could corrupt a game's files, one that could empty your DLL list, and several where a small failure took the whole app down without saying why.
 
-**If you have a game whose backup was already destroyed, the notes at the bottom tell you what is left. Nothing here can bring a deleted file back.**
+**If you are on 1.56, this is a normal upgrade.** No recovery steps are needed.
 
-## 1. A swap that failed partway could delete your game's original DLL
+## Your game's DLL is no longer written in place
 
-**This is the serious one.**
+Swapping and restoring both copied the new file **straight onto the live DLL** in the game folder. That truncates the destination to zero and *then* writes, so a process kill, a full disk, or antivirus stepping in partway through left a **truncated `nvngx_dlss.dll`** sitting in your install directory.
 
-A game's DLLs are overwritten one at a time, and the database was updated **after** all of them. The database is the only thing that records "Kronos wrote this file" as opposed to "something else did".
+That is exactly the state the backup chain exists to prevent — and nothing in the app would have told you. The game would simply stop launching, with the file sitting there looking superficially fine.
 
-So when a swap failed partway through — a second copy of a DLL in a folder you don't have permission to write, a locked database, the app closed mid-swap — you were left with:
+DLLs are now written to a temporary file beside the original and moved into place. The rename is atomic, so the file is either entirely the old one or entirely the new one, never half of each. **If anything fails, your game's own DLL is left untouched.**
 
-- the game's DLL **already overwritten**
-- its backup file on disk
-- the database still describing the **original** version
+## A game can no longer lose all of its tracked DLLs
 
-On the next launch, Kronos compared the DLL on disk against the version it had recorded, concluded the file had been changed by something else, and did what it does to files it did not write: **deleted the backup chain**.
+Every place that rewrites a game's records did it as two separate statements: delete its rows, then insert the new ones. Anything that went wrong in between — a crash, a killed process, a locked database — left the game with **no tracked DLLs at all**.
 
-That backup was the only surviving copy of the runtime your game shipped with. After that, "Reset" could only say *"Unable to reset to default. Please repair your game manually."*
+That is the worst possible state: the game looks like it has nothing swappable, and the backup chain the reset button depends on has nothing to reference. It recovers on the next scan, if that scan succeeds.
 
-**What changed:** the backup records are now written to the database *before* any game file is touched. An interrupted swap now leaves records that match what is on disk, so the chain is recognised as Kronos's and kept.
+These rewrites now happen inside a single transaction. Either all the rows are replaced or none are.
 
-## 2. A failed settings save reset every setting you had
+## A stray folder could empty your entire DLL list
 
-Settings were saved by opening `settings.json` and writing over it — which truncates the file to zero bytes *before* anything is written. Anything that interrupted that (full disk, antivirus lock, closing the app) left a 0-byte file.
+While migrating an old DLL layout, Kronos checked whether a now-empty folder could be tidied away. That check sat **between two `try` blocks**, so if it threw — the folder removed by you, a sync client, antivirus, or a drive disappearing — nothing caught it.
 
-On the next launch that file could not be parsed, Kronos treated it as a first run, and **wrote the defaults over it**. No warning, no prompt.
+It escaped all the way out, and the result was:
 
-Lost silently: theme, language, *Allow untrusted DLLs*, logging level, grid width, ignored paths, window position.
+- the DLL list rendered **empty**
+- the "Migrating DLLs" message never cleared
+- the app then **terminated**, because the crash handler logs but doesn't handle
 
-Settings save on every change, so there were many chances to hit this.
+Tidying a folder you've finished with cannot now abort loading your whole DLL library.
 
-**What changed:** settings are written to a temporary file and moved into place, so the real file is either the old one or the new one and never half-written. A settings file that cannot be parsed is now **kept**, alongside a copy, instead of being replaced by defaults.
+## Failures that killed startup now fail quietly
 
-## 3. "Reset" could report success while restoring nothing
+**If Kronos couldn't write its log, it would not start at all.** Both the log folder and the log file are inside the install directory for a portable build — so unpacking it somewhere you can't write (Program Files, a read-only share) meant the app died inside its own constructor: no window, no error, no log explaining why. The log is now optional.
 
-Restore only matched the newer `.kronosbakN` backup chain. For a game carried over from an older Kronos — which has only the legacy `.dlsss` backup — every backup was skipped, nothing was restored, and the method returned **success**. The dialog closed as though the DLL had been put back while the swapped file was still installed.
+**The Windows version backstop didn't work.** If it ever fired, it returned from the constructor without building the window — and the app showed that empty frame anyway, then crashed on a null view model. It now refuses to build and shows you the proper "unsupported Windows" window.
 
-**What changed:** a restore that matched nothing reports failure instead of success.
+## Smaller fixes
 
-## Also
+- **Signature checks leaked a native handle per file.** Verifying a DLL's signature allocates a native block that only a second call releases, and that release sat at the end of a `try` — so any failure leaked it. A mass update verifies many files.
+- **A folder-cleanup failure could leave a deleted DLL marked as still downloaded.**
+- **The unknown-assets list was cleared without the lock every other access takes**, so a running scan could race it.
+- **A settings field is read but can no longer be written** — left alone, as nothing writes it and the migration that reads it is correct.
 
-- **Imported DLLs no longer risk losing their manifest.** The same truncate-then-write bug meant a failed save left a 0-byte manifest, which Kronos read as "importing is disabled" — every custom DLL you had imported became untracked.
-- **The games grid no longer races your settings.** Changing the grid width with Ctrl+scroll saved settings from a background thread, and a concurrent save from anywhere else silently lost one of them. Saving is now on the UI thread, and the pending save is discarded when you navigate away rather than firing during shutdown.
+## One thing I want to flag
 
-## Dead code removed
-
-- `GameAsset.GetBackup()` — only understood the legacy `.dlsss`, so it would have found no backup for anything swapped by a current version
-- `LocalRecord.UpdateFromNewLocalRecord` — copied `IsDownloaded` without checking the file existed
-- `SwapVersionAdvisor.GetShippedVersion`, `VersionExtensions.DescribeVersion`, `DLLManager.HasLoadedImportedManifest`
-- `FileStreamExtensions.GetSha256Hash` — **kept.** It looked unused; it is what verifies the downloaded update against GitHub's published digest. Nearly removed; the compiler caught it.
+The audit reported that two `DROP INDEX` statements in the database migration were dead code that could never match. **They are not.** I had someone verify it against the actual package rather than take it on trust: `sqlite-net-e` names indexes `{table}_{column}`, exactly as those statements assume, and dropping the stale PascalCase index after a table rename is what lets the snake_case one be recreated. Working code, left alone.
 
 ## Testing
 
-475 tests, up from 470. `Storage` had **no** tests at all before this, which is how settings loss went unnoticed.
+491 tests, up from 475. 16 new.
 
-The new settings tests were checked against the old code and do fail on it, so they are guarding the fix rather than merely passing alongside it.
+- Six run the atomic file replacement for real, including a forced failure that asserts your DLL is untouched.
+- Ten assert on the specific fixes above.
 
-## If your backup was already destroyed
-
-Kronos cannot restore a file it deleted. What is usually left:
-
-1. **Other launcher versions.** Steam, Epic and Ubisoft keep older builds under ` depot` / `InstalledDepot` folders. The original DLL is almost always in one of those.
-2. **Verify the game files** in its launcher. That restores the shipped DLL without touching your save data.
-3. **Re-download** from Steam if the above fails.
-
-Do this before swapping anything else in that game.
+Three consecutive full runs, all green.
 
 ## Downloading
 
-`Kronos-1.56.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
+`Kronos-1.57.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
 
 **It needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads).** If `Kronos.exe` exits without a window, install it.
 

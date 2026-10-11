@@ -54,9 +54,9 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.56 for three data-loss fixes found by an audit: a failed swap could destroy the backup
-      of a game's original DLL, a failed settings save silently reset every setting, and a reset could
-      report success while restoring nothing.
+      Bumped to 1.57 for the remaining audit findings: DLLs are now written atomically, game_asset rows are
+      rewritten inside a transaction, and several failures that took down startup or the whole DLL list
+      without a message now fail quietly instead.
 
       This must match the git tag or the updater will compare against the wrong version: it reads the
       release title, and the comparison only offers a release strictly newer than this number.
@@ -64,7 +64,7 @@
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.56</Version>
+    <Version>1.57</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
@@ -167,6 +167,8 @@
 
     <!-- Game model and DLL management -->
     <Compile Include="Data\GameAsset.cs" />
+    <!-- Used by Game's swap and reset, which are both compiled for Linux, so it has to be listed too. -->
+    <Compile Include="Data\AtomicFile.cs" />
     <Compile Include="Data\Game.cs" />
     <Compile Include="Data\GameHistory.cs" />
     <Compile Include="Data\GameManager.cs" />

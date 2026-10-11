@@ -42,7 +42,19 @@ public sealed partial class MainWindow : Window
         {
             Logger.Error("MainWindow constructed on an unsupported Windows despite the launch check: " +
                          WindowsVersionSupport.DescribeRefusal(Environment.OSVersion.Version));
-            return;
+
+            // Throws rather than returning. A bare return left the constructor half-finished - no
+            // InitializeComponent, ViewModel null - and App still handed that object to WindowManager, which
+            // activated and registered it. The user got an empty window, and the first navigation threw a
+            // NullReferenceException on a null ViewModel, which the unhandled handler turns into an app
+            // that disappears. UnsupportedArchitectureWindow, shown just above, is what the user should be
+            // looking at instead.
+            //
+            // This path is unreachable while the launch gate in App.OnLaunched is intact, and that is the
+            // point: it is a backstop for the case where someone deleted one line from one file.
+            throw new NotSupportedException(
+                "Kronos cannot run on this version of Windows. " +
+                WindowsVersionSupport.DescribeRefusal(Environment.OSVersion.Version));
         }
 
         this.InitializeComponent();

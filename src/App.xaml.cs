@@ -194,7 +194,19 @@ public sealed partial class App : Application
 
         if (_mainWindow is null)
         {
-            _mainWindow = new MainWindow();
+            try
+            {
+                _mainWindow = new MainWindow();
+            }
+            catch (NotSupportedException err)
+            {
+                // The MainWindow backstop. Reaching it means the launch gate above was bypassed, which is
+                // not expected - but if it is, the user gets the explanation window rather than an empty
+                // frame with a null ViewModel, or an app that vanishes with no window at all.
+                Logger.Error(err);
+                WindowManager.ShowWindow(new UnsupportedWindowsVersionWindow());
+                return;
+            }
         }
         WindowManager.ShowWindow(_mainWindow);
 

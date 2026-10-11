@@ -451,16 +451,28 @@ internal class DLLManager
             }
 
             // If the old zip father is empty we can delete it.
-            if (Directory.GetFiles(zipPath).Length == 0 && Directory.GetDirectories(zipPath).Length == 0)
+            //
+            // The emptiness check is inside the try, and it used to sit between the two try blocks above.
+            // GetFiles throws DirectoryNotFoundException if the folder has been removed in between - by the
+            // user, a sync client, antivirus, or a drive disappearing - and UnauthorizedAccessException on
+            // an ACL change. Unhandled, it escapes CheckDllRecordForMigration_117 and then
+            // ProcessManifestsAsync, which has no try of its own, so LoadLocalRecords never runs for any
+            // asset type: every DLLRecord.LocalRecord stays null, the whole DLL list renders empty, and
+            // the "Migrating DLLs" message never clears. The app then terminates, because the unhandled
+            // exception handler logs but does not set e.Handled.
+            //
+            // This is only tidying up a folder we have already finished with. If we cannot tell whether it
+            // is empty, leaving it behind is harmless; aborting the whole DLL library over it is not.
+            try
             {
-                try
+                if (Directory.GetFiles(zipPath).Length == 0 && Directory.GetDirectories(zipPath).Length == 0)
                 {
                     Directory.Delete(zipPath);
                 }
-                catch (Exception err)
-                {
-                    Logger.Error(err, $"Could not delete {zipPath}");
-                }
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err, $"Could not clean up {zipPath}");
             }
         }
     }

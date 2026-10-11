@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -32,20 +33,48 @@ internal static class Logger
 
     internal static void Init()
     {
-        if (Directory.Exists(LogDirectory) == false)
+        // Guarded. LogDirectory is under Storage.GetTemp(), and for a portable build that is
+        // AppContext.BaseDirectory/StoredData/temp - inside the install folder. A portable build unpacked
+        // somewhere the user cannot write (Program Files, a read-only share) makes Storage.GetTemp()'s own
+        // directory creation fail, and then this one threw too. That is fatal: Init runs from App's
+        // constructor, before the UnhandledException handler is registered a few lines later, so the app
+        // dies inside its own constructor with no window and no log explaining why.
+        //
+        // If the directory cannot be made, carry on and let the file sink fail below. A missing log file
+        // is a far better outcome than an app that will not start.
+        try
         {
-            Directory.CreateDirectory(LogDirectory);
+            if (Directory.Exists(LogDirectory) == false)
+            {
+                Directory.CreateDirectory(LogDirectory);
+            }
+        }
+        catch (Exception err)
+        {
+            System.Diagnostics.Debug.WriteLine($"Could not create the log directory {LogDirectory}: {err.Message}");
         }
 
         var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.ControlledBy(levelSwitch)
-            .Enrich.With(new ThreadAndSessionEnricher())
-            .WriteTo.File(
+            .Enrich.With(new ThreadAndSessionEnricher());
+
+        // The file sink is optional, not required. WriteTo.File throws at configuration time if it cannot
+        // create its file, so on a portable install that cannot be written this would take down startup
+        // with the same fatal error as above - while the Debug sink below would have worked perfectly well
+        // on its own. Losing the log file is survivable; not launching is not.
+        try
+        {
+            loggerConfig = loggerConfig.WriteTo.File(
                 loggingFile,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7,
                 formatProvider: CultureInfo.InvariantCulture,
                 outputTemplate: OutputTemplate);
+        }
+        catch (Exception err)
+        {
+            System.Diagnostics.Debug.WriteLine($"Could not open the log file {loggingFile}: {err.Message}");
+        }
 
 #if WINDOWS
         loggerConfig = loggerConfig.WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture);

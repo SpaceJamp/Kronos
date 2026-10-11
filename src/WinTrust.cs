@@ -226,11 +226,22 @@ internal static class WinTrust
         WinTrustData WinTrustData = default;
 
         var validSignature = false;
+
+        // The close happens in a finally, not at the end of the try.
+        //
+        // WinVerifyTrust allocates a native state block and hands back a handle in hWVTStateData. The only
+        // thing that releases it is a second call with dwStateAction = Close. If anything between the two
+        // calls throws - and WinVerifyTrust is a P/Invoke into an untrusted file's signature, so it can -
+        // the handle was leaked, once per failed verification. A mass update verifies many files, so a run
+        // of them over a folder of unsigned DLLs leaked a handle each time until the process ran out.
+        //
+        // Dispose frees pFile, which is separate, and does not touch this.
+        Guid WVTPolicyGUID = default;
         try
         {
             FileData = new WinTrustFileInfo(fileName);
 
-            var WVTPolicyGUID = new Guid(WINTRUST_ACTION_GENERIC_VERIFY_V2);
+            WVTPolicyGUID = new Guid(WINTRUST_ACTION_GENERIC_VERIFY_V2);
 
             WinTrustData = new WinTrustData(FileData)
             {
@@ -289,9 +300,6 @@ internal static class WinTrust
                     Logger.Error($"Error is: 0x{lStatus}.");
                     break;
             }
-
-            WinTrustData.dwStateAction = WinTrustDataStateAction.Close;
-            lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
         }
         catch (Exception err)
         {
@@ -299,6 +307,25 @@ internal static class WinTrust
         }
         finally
         {
+            // Releases the native state block WinVerifyTrust allocated in hWVTStateData. In the finally
+            // rather than at the end of the try, because that is the only version that runs when a
+            // verification throws - which is exactly when the handle would otherwise be leaked.
+            //
+            // Guarded on hWVTStateData being non-zero, since it stays IntPtr.Zero if the verify call never
+            // happened, and each call needs the same GUID that opened it.
+            try
+            {
+                if (WinTrustData.hWVTStateData != IntPtr.Zero)
+                {
+                    WinTrustData.dwStateAction = WinTrustDataStateAction.Close;
+                    WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);
+                }
+            }
+            catch (Exception closeErr)
+            {
+                Logger.Error(closeErr);
+            }
+
             FileData.Dispose();
             WinTrustData.Dispose();
         }
