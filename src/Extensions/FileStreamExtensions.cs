@@ -17,6 +17,14 @@ internal static class FileStreamExtensions
         }
     }
 
+    /// <summary>
+    /// SHA256 of a stream, upper-case hex, which is the form GitHub publishes asset digests in.
+    /// </summary>
+    /// <remarks>
+    /// Used to verify the downloaded release archive against the digest in the release metadata, which is
+    /// the gate on installing anything at all. Nearly removed as dead code on the strength of a grep that
+    /// missed the call sites; the compiler caught it, which is the argument for having a compiler.
+    /// </remarks>
     internal static string GetSha256Hash(this Stream fileStream)
     {
         fileStream.Position = 0;

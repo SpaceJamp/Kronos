@@ -113,24 +113,6 @@ internal static class VersionExtensions
     }
 
     /// <summary>
-    /// Whether a version string looks like it came from a real file, for logging.
-    /// </summary>
-    internal static string DescribeVersion(string? version)
-    {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return "unknown";
-        }
-
-        var trimmed = version.Trim();
-        var parsed = TryParseVersionNumber(trimmed);
-
-        return parsed is null
-            ? $"{trimmed} (unrecognised)"
-            : trimmed;
-    }
-
-    /// <summary>
     /// Formats a version string for display, trimming trailing zero components.
     /// </summary>
     /// <remarks>

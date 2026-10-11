@@ -13,6 +13,7 @@
     mc:Ignorable="d"
     d:DataContext="pages:GameGridPageModel"
     Loaded="Page_Loaded"
+    Unloaded="Page_Unloaded"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     NavigationCacheMode="Required"
     x:Name="RootGameGridPage">

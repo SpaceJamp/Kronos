@@ -685,11 +685,6 @@ internal class DLLManager
         return Manifest is not null;
     }
 
-    internal bool HasLoadedImportedManifest()
-    {
-        return ImportedManifest is not null;
-    }
-
     internal async Task<bool> SaveImportedManifestJsonAsync()
     {
         if (ImportedManifest is null)
@@ -699,17 +694,38 @@ internal class DLLManager
         }
 
         var importedManifestFile = Storage.GetImportedManifestPath();
+
+        // Written to a temporary file and moved into place, for the same reason settings are: opening the
+        // real file with FileMode.Create truncates it to zero before anything is written, so a failure
+        // mid-serialize leaves a 0-byte manifest. LoadManifestsAsync swallows that error and leaves
+        // ImportedManifest null, which is read as "importing is disabled" - so every custom DLL the user
+        // had imported became untracked, silently. The files under dlls/imported stay on disk with nothing
+        // pointing at them.
+        var tempFile = importedManifestFile + ".tmp";
+
         try
         {
-            using (var stream = File.Open(importedManifestFile, FileMode.Create))
+            using (var stream = File.Open(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                await JsonSerializer.SerializeAsync(stream, ImportedManifest, SourceGenerationContext.Default.Manifest);
+                await JsonSerializer.SerializeAsync(stream, ImportedManifest, SourceGenerationContext.Default.Manifest).ConfigureAwait(false);
+                stream.Flush(flushToDisk: true);
             }
+
+            if (File.Exists(importedManifestFile))
+            {
+                File.Replace(tempFile, importedManifestFile, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            }
+            else
+            {
+                File.Move(tempFile, importedManifestFile);
+            }
+
             return true;
         }
         catch (Exception err)
         {
             Logger.Error(err);
+            Storage.TryDeleteFile(tempFile);
             return false;
         }
     }

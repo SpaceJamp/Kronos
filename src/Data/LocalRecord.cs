@@ -111,21 +111,14 @@ public partial class LocalRecord : ObservableObject, IEquatable<LocalRecord>
     }
     */
 
-    internal void UpdateFromNewLocalRecord(LocalRecord localRecord)
-    {
-        // First make sure expected path matches on both.
-        if (Equals(localRecord) == false)
-        {
-            return;
-        }
-
-        ExpectedPath = localRecord.ExpectedPath;
-        IsDownloaded = localRecord.IsDownloaded;
-        FileDownloader = localRecord.FileDownloader;
-        HasDownloadError = localRecord.HasDownloadError;
-        DownloadErrorMessage = localRecord.DownloadErrorMessage;
-        IsImported = localRecord.IsImported;
-    }
+    // UpdateFromNewLocalRecord used to sit here: copy IsDownloaded, FileDownloader, HasDownloadError,
+//    DownloadErrorMessage and IsImported across from another record for the same expected path. It had no
+//    callers. The live code assigns the properties directly, e.g. DLLManager swapping a record's
+//    LocalRecord for a new one once the file is in place.
+//
+//    Removed rather than left, because the name promises to keep the record in step with its file and it
+//    did not: it copied IsDownloaded without checking that the file existed, so calling it could mark a
+//    record downloaded when nothing was on disk.
 
     public bool Equals(LocalRecord? other)
     {

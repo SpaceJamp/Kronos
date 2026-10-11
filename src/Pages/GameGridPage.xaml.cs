@@ -72,6 +72,18 @@ public sealed partial class GameGridPage : Page
         //await LoadGames();
     }
 
+    void Page_Unloaded(object sender, RoutedEventArgs e)
+    {
+        // The timer is only ever disposed by the next scroll, so navigating away from this page left it
+        // armed with a 500ms callback that writes settings. It could then fire during shutdown, or after
+        // the page was gone, marshalling onto a UI thread that is tearing the window down.
+        if (_saveScrollSizeTimer is not null)
+        {
+            _saveScrollSizeTimer.Dispose();
+            _saveScrollSizeTimer = null;
+        }
+    }
+
 
     async Task LoadGamesAndDlls()
     {
@@ -179,7 +191,24 @@ public sealed partial class GameGridPage : Page
 
                     _saveScrollSizeTimer = new Timer((state) =>
                     {
-                        Settings.Instance.GridViewItemWidth = ViewModel.GridViewItemWidth;
+                        // Marshalled to the UI thread, and the width captured at schedule time.
+                        //
+                        // A Timer callback runs on a thread pool thread, and writing settings from there
+                        // races every other save. SaveSettingsJson opened settings.json with FileShare.None,
+                        // so two concurrent writes meant the second one threw and was swallowed by the catch
+                        // - the setting change was silently lost. Scrolling the grid and then changing
+                        // something in Settings was enough to lose it.
+                        //
+                        // The width is read inside the callback rather than captured, because a scroll
+                        // handler that queued the timer and returned has already had a later, larger width
+                        // set by a subsequent event; capturing would persist whichever value happened to be
+                        // current when the delegate was built.
+                        var width = ViewModel.GridViewItemWidth;
+
+                        UiDispatcher.Invoke(() =>
+                        {
+                            Settings.Instance.GridViewItemWidth = width;
+                        });
                     }, null, 500, Timeout.Infinite);
                 }
             }

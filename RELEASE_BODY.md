@@ -1,51 +1,76 @@
-v1.55 — the update that did not update
+v1.56 — three ways Kronos could lose your data
 
-**If you used "Check for updates" on 1.53 or 1.54, your update did not fully apply, and your game library and settings were overwritten with an empty database.** Read this before anything else.
+An audit of the code around settings, backups and the swap path found three bugs that destroy data. The first one can delete the only remaining copy of a game's original DLL.
 
-## What was wrong
+**If you have a game whose backup was already destroyed, the notes at the bottom tell you what is left. Nothing here can bring a deleted file back.**
 
-The portable update could not fail loudly. It failed quietly, and it did damage on the way.
+## 1. A swap that failed partway could delete your game's original DLL
 
-**It stopped at the first file it could not write.** The script that replaces the app ran with PowerShell's `Stop` error mode, so a single locked file — which is what a running database, or a file a virus scanner is holding, always looks like — turned the rest of the update into an error. It copied what it could, hit the locked file, put the old executable back, and gave up. The app then reopened on the **previous build**, reporting the **previous version, commit and build date**. Nothing on screen said the update had not worked.
+**This is the serious one.**
 
-**It overwrote your data.** The update copied the entire archive over your installation, and the archive contains a `StoredData` folder: the blank database and default settings created by the build's own startup test. `StoredData` is where Kronos keeps your game library and your settings — in the same folder. Every successful update replaced them with empty ones.
+A game's DLLs are overwritten one at a time, and the database was updated **after** all of them. The database is the only thing that records "Kronos wrote this file" as opposed to "something else did".
 
-That is the file most likely to be locked in the first place, so the two faults fed each other.
+So when a swap failed partway through — a second copy of a DLL in a folder you don't have permission to write, a locked database, the app closed mid-swap — you were left with:
 
-**It never checked its own work.** The executable was backed up and then trusted. The script reported success on the strength of having attempted the copy.
+- the game's DLL **already overwritten**
+- its backup file on disk
+- the database still describing the **original** version
 
-## What it does now
+On the next launch, Kronos compared the DLL on disk against the version it had recorded, concluded the file had been changed by something else, and did what it does to files it did not write: **deleted the backup chain**.
 
-- A file that will not write is recorded and the update **continues**. One locked DLL no longer cancels everything.
-- The executable is **compared against the archive by hash** before the update is called a success. If it does not match, the old one is restored, the rollback copy is deleted, and the update reports failure.
-- **`StoredData` is never touched.** Your library, your settings, your cached covers and logs all survive.
-- Anything that genuinely could not be written is listed in **`update-errors.log`** beside `Kronos.exe`, so a partial update is visible instead of silent.
-- The rollback copy is removed on both paths. Failed updates no longer leave a `Kronos.exe.updatebak` in your installation.
+That backup was the only surviving copy of the runtime your game shipped with. After that, "Reset" could only say *"Unable to reset to default. Please repair your game manually."*
 
-## Recovering your data
+**What changed:** the backup records are now written to the database *before* any game file is touched. An interrupted swap now leaves records that match what is on disk, so the chain is recognised as Kronos's and kept.
 
-If you ran an update on 1.53 or 1.54, your `StoredData` may have been reset. Kronos can rebuild most of it:
+## 2. A failed settings save reset every setting you had
 
-1. Start Kronos. It will show an empty library.
-2. **Settings → Check for updates** to fetch the current library, then add your games back — the installer paths are still on disk and can usually be detected again.
-3. **Settings** will be back at their defaults. Re-apply your preferences.
+Settings were saved by opening `settings.json` and writing over it — which truncates the file to zero bytes *before* anything is written. Anything that interrupted that (full disk, antivirus lock, closing the app) left a 0-byte file.
 
-Your games themselves are untouched. Only Kronos's record of them was replaced.
+On the next launch that file could not be parsed, Kronos treated it as a first run, and **wrote the defaults over it**. No warning, no prompt.
 
-## Also fixed
+Lost silently: theme, language, *Allow untrusted DLLs*, logging level, grid width, ignored paths, window position.
 
-- **The version in About now links to your actual release.** The build tag was never passed to the compiler, so the link always went to the releases index rather than the release you installed. The commit and branch are now stamped into the build too, and the "build commit" line appears on development builds rather than release ones.
-- **The release script no longer reports success with a failure code.** `git push` writes progress to stderr, which PowerShell treats as a terminating error; the 1.54 release completed correctly and the script still exited 1. Anything watching that exit code would have called a successful release a failure.
+Settings save on every change, so there were many chances to hit this.
+
+**What changed:** settings are written to a temporary file and moved into place, so the real file is either the old one or the new one and never half-written. A settings file that cannot be parsed is now **kept**, alongside a copy, instead of being replaced by defaults.
+
+## 3. "Reset" could report success while restoring nothing
+
+Restore only matched the newer `.kronosbakN` backup chain. For a game carried over from an older Kronos — which has only the legacy `.dlsss` backup — every backup was skipped, nothing was restored, and the method returned **success**. The dialog closed as though the DLL had been put back while the swapped file was still installed.
+
+**What changed:** a restore that matched nothing reports failure instead of success.
+
+## Also
+
+- **Imported DLLs no longer risk losing their manifest.** The same truncate-then-write bug meant a failed save left a 0-byte manifest, which Kronos read as "importing is disabled" — every custom DLL you had imported became untracked.
+- **The games grid no longer races your settings.** Changing the grid width with Ctrl+scroll saved settings from a background thread, and a concurrent save from anywhere else silently lost one of them. Saving is now on the UI thread, and the pending save is discarded when you navigate away rather than firing during shutdown.
+
+## Dead code removed
+
+- `GameAsset.GetBackup()` — only understood the legacy `.dlsss`, so it would have found no backup for anything swapped by a current version
+- `LocalRecord.UpdateFromNewLocalRecord` — copied `IsDownloaded` without checking the file existed
+- `SwapVersionAdvisor.GetShippedVersion`, `VersionExtensions.DescribeVersion`, `DLLManager.HasLoadedImportedManifest`
+- `FileStreamExtensions.GetSha256Hash` — **kept.** It looked unused; it is what verifies the downloaded update against GitHub's published digest. Nearly removed; the compiler caught it.
 
 ## Testing
 
-469 tests, up from 455.
+475 tests, up from 470. `Storage` had **no** tests at all before this, which is how settings loss went unnoticed.
 
-Every test on the update script read it as text and asserted it said the right things — which is how a script that copied the user's database, and one that PowerShell could not even parse, sat there looking fine. **Three tests now run the script** against a fake installation and a locked file. That is what caught the parse error, on the first run.
+The new settings tests were checked against the old code and do fail on it, so they are guarding the fix rather than merely passing alongside it.
+
+## If your backup was already destroyed
+
+Kronos cannot restore a file it deleted. What is usually left:
+
+1. **Other launcher versions.** Steam, Epic and Ubisoft keep older builds under ` depot` / `InstalledDepot` folders. The original DLL is almost always in one of those.
+2. **Verify the game files** in its launcher. That restores the shipped DLL without touching your save data.
+3. **Re-download** from Steam if the above fails.
+
+Do this before swapping anything else in that game.
 
 ## Downloading
 
-`Kronos-1.55.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
+`Kronos-1.56.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
 
 **It needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads).** If `Kronos.exe` exits without a window, install it.
 

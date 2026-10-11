@@ -825,6 +825,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         else
         {
             var dllHistory = new List<GameHistory>();
+            var matchedBackup = false;
             foreach (var existingBackupRecord in existingBackupRecords)
             {
                 var primaryRecordName = DllBackupStack.GetPrimaryPathFromBackup(existingBackupRecord.Path);
@@ -842,6 +843,16 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 {
                     continue;
                 }
+
+                // Stands in for the `continue` above actually having matched something. GetUndoPath only
+                // knows about the .kronosbakN chain, so an install carried over from before the chain
+                // existed has only the legacy .dlsss: every record was skipped, the loop body never ran,
+                // and the method returned success with an empty message. The dialog closed as if the
+                // restore had happened while the DLL on disk was still the swapped one.
+                //
+                // A restore that matched nothing has to say so rather than claim a success it did not
+                // perform.
+                matchedBackup = true;
 
                 var existingRecords = GetGameAssetsSnapshot().Where(x => x.AssetType == gameAssetType && x.Path.Equals(primaryRecordName)).ToList();
 
@@ -922,6 +933,14 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // Update game assets list by deleting and re-adding.
                 await Database.Instance.Connection.ExecuteAsync("DELETE FROM game_asset WHERE id = ?", ID).ConfigureAwait(false);
                 await Database.Instance.Connection.InsertAllAsync(GetGameAssetsSnapshot(), false).ConfigureAwait(false);
+            }
+
+            if (matchedBackup == false)
+            {
+                // Nothing was restored, so nothing may be reported as restored. This is the legacy-.dlsss
+                // case and the case where the newest file on disk has no matching record, both of which
+                // used to fall out of the loop above and return success.
+                return (false, "Unable to reset to default. Please repair your game manually.", false);
             }
 
             return (true, string.Empty, false);
@@ -1155,6 +1174,32 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         }
 
         var dllHistory = new List<GameHistory>();
+
+        // The backup records are committed to the database before a single game file is overwritten.
+        //
+        // This ordering is the whole fix. The database is the only thing that distinguishes "Kronos wrote
+        // this file" from "something else did", and ProcessGame reads that distinction to decide whether a
+        // backup chain is stale: a DLL whose on-disk version differs from the recorded one is classified as
+        // DLLChangedExternally and its entire backup chain is deleted, because it no longer describes the
+        // file the game shipped with.
+        //
+        // With the write left until after the loop, a failure partway through - a second DLL under
+        // Program Files that cannot be written without elevation, the database locked, the process killed
+        // - left the first file overwritten while the database still described the original version. The
+        // next scan read that as an external change and deleted the backup chain, which by then was the
+        // only remaining copy of the game's shipped runtime. The user was left with a swapped DLL and no
+        // way back, told only "please repair your game manually".
+        //
+        // Recording the backups first means an interrupted swap leaves records that match the files on
+        // disk, so the chain is recognised as ours and preserved. The asset rows for the new versions are
+        // still written after the loop, because a DLL that was not actually replaced must not be recorded
+        // as replaced.
+        using (await Database.Instance.Mutex.LockAsync())
+        {
+            await Database.Instance.Connection
+                .InsertAllAsync(newGameAssets.Where(x => x.AssetType == backupRecordType).ToList(), false)
+                .ConfigureAwait(false);
+        }
 
         foreach (var existingRecord in existingRecords)
         {

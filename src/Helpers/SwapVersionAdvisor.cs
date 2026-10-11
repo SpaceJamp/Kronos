@@ -101,24 +101,6 @@ public static class SwapVersionAdvisor
     }
 
     /// <summary>
-    /// Works out the baseline version for a game and asset type from its backup record.
-    /// </summary>
-    /// <remarks>
-    /// Returns an empty string when the game has no backup yet, which is the case before the first
-    /// swap. At that point whatever is on disk is the shipped file, so there is nothing to compare
-    /// against and no warning is warranted.
-    /// </remarks>
-    internal static string GetShippedVersion(Game game, GameAssetType assetType, GameAssetType backupAssetType)
-    {
-        // A snapshot, not the live list. See GetGameAssetsSnapshot: enumerating it while a swap is
-        // mutating it on a background thread can throw.
-        var backup = game.GetGameAssetsSnapshot()
-            .FirstOrDefault(x => x.AssetType == backupAssetType && string.IsNullOrWhiteSpace(x.Path) == false);
-
-        return backup?.Version ?? string.Empty;
-    }
-
-    /// <summary>
     /// The versions already installed in a game for an asset type, deduplicated and ordered.
     /// </summary>
     /// <remarks>

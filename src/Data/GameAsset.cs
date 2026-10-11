@@ -151,44 +151,14 @@ public class GameAsset : IEquatable<GameAsset>
     }
 
 
-    public GameAsset? GetBackup()
-    {
-        // NOTE: DLL type
-        var backypType = AssetType switch
-        {
-            GameAssetType.DLSS => GameAssetType.DLSS_BACKUP,
-            GameAssetType.DLSS_G => GameAssetType.DLSS_G_BACKUP,
-            GameAssetType.DLSS_D => GameAssetType.DLSS_D_BACKUP,
-            GameAssetType.FSR_31_DX12 => GameAssetType.FSR_31_DX12_BACKUP,
-            GameAssetType.FSR_31_VK => GameAssetType.FSR_31_VK_BACKUP,
-            GameAssetType.XeSS => GameAssetType.XeSS_BACKUP,
-            GameAssetType.XeLL => GameAssetType.XeLL_BACKUP,
-            GameAssetType.XeSS_FG => GameAssetType.XeSS_FG_BACKUP,
-            GameAssetType.XeSS_DX11 => GameAssetType.XeSS_DX11_BACKUP,
-            _ => GameAssetType.Unknown
-        };
-
-        if (backypType == GameAssetType.Unknown)
-        {
-            return null;
-        }
-
-        var backupPath = Path + ".dlsss";
-        if (File.Exists(backupPath) == false)
-        {
-            return null;
-        }
-
-        var backupGameAsset = new GameAsset()
-        {
-            Id = Id,
-            AssetType = backypType,
-            Path = backupPath,
-        };
-        backupGameAsset.LoadVersionAndHash();
-
-        return backupGameAsset;
-    }
+    // GetBackup() used to sit here: a switch mapping each asset type to its backup type, then a probe for the
+    // legacy "{path}.dlsss" file. It had no callers in src or tests.
+    //
+    // Removed deliberately rather than quietly, because it is a trap: it only knew about the legacy
+    // .dlsss and would have returned null for the .kronosbakN chain that DllBackupStack now writes, so
+    // anything wired up to it would find no backup for any game swapped by a current build. The code that
+    // actually resolves a backup goes through DLLManager.GetAssetBackupType and the tracked GameAsset
+    // records, which cover both.
 
     public bool Equals(GameAsset? other)
     {
