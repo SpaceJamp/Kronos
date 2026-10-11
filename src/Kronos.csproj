@@ -54,9 +54,9 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.57 for the remaining audit findings: DLLs are now written atomically, game_asset rows are
-      rewritten inside a transaction, and several failures that took down startup or the whole DLL list
-      without a message now fail quietly instead.
+      Bumped to 1.58 for tests and a comment only. No user-facing behaviour changes: the two DROP INDEX
+      statements in the database migration were reported as dead code, which was wrong, and this release
+      ships the tests that prove it so nobody repeats the mistake.
 
       This must match the git tag or the updater will compare against the wrong version: it reads the
       release title, and the comparison only offers a release strictly newer than this number.
@@ -64,7 +64,7 @@
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.57</Version>
+    <Version>1.58</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
