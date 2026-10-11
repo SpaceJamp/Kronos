@@ -10,6 +10,7 @@ namespace Kronos.Tests.Helpers;
 /// The two "real repack" cases point at actual folders on the machine when they exist, and are
 /// skipped otherwise, so the test suite still passes on a clean machine or in CI.
 /// </remarks>
+[Collection(StorageCollection.Name)]
 public class RepackDetectorTests : IDisposable
 {
     // The real repacks observed on the test machine. Both are FitGirl releases whose folder names

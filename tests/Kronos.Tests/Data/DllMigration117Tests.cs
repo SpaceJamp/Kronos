@@ -13,6 +13,7 @@ namespace Kronos.Tests.Data;
 /// Version/MD5Hash so it cannot collide with another test or with real data, and only ever creates
 /// files (never deletes anything it did not create).
 /// </remarks>
+[Collection(StorageCollection.Name)]
 public class DllMigration117Tests
 {
     // Two genuinely swappable types, so GetRecordSimpleType() and DllNameForGameAssetType() both

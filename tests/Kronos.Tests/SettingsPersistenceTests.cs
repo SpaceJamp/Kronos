@@ -23,7 +23,11 @@ namespace Kronos.Tests;
 ///
 /// Storage.StoragePath is redirected to a temporary directory for each test, because these tests must
 /// never touch a real installation's settings.
+///
+/// In the StorageCollection, because overriding that static while other test classes read it made
+/// DllMigration117Tests fail intermittently.
 /// </remarks>
+[Collection(StorageCollection.Name)]
 public class SettingsPersistenceTests : IDisposable
 {
     readonly string _root;

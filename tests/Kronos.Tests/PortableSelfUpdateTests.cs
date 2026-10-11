@@ -21,6 +21,7 @@ namespace Kronos.Tests;
 /// directly. The file-copying is done by that helper and cannot be asserted without launching one,
 /// so what is checked here is that the script it is given says the right things.
 /// </remarks>
+[Collection(StorageCollection.Name)]
 public class PortableSelfUpdateTests
 {
     static GitHubReleaseAsset Asset(string name, string digest = "sha256:abc123") => new()

@@ -11,6 +11,7 @@ namespace Kronos.Tests.Data;
 /// ".dlsss" backup file actually exists on disk, not just on what is recorded. Every dll gets a
 /// unique name so tests cannot interfere with each other.
 /// </remarks>
+[Collection(StorageCollection.Name)]
 public class BackupDecisionTests : IDisposable
 {
     readonly string _dir;
