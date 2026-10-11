@@ -80,7 +80,13 @@ function Invoke-NativeCommand {
     $previous = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        & $Command
+        # Out-Host, not bare output. A command that writes to stdout would otherwise put its output into
+        # this function's return value alongside the exit code, and the caller would get an array. That
+        # is not hypothetical: `gh release create` prints the release URL, so the function returned
+        # @('https://...', 0), the caller's `-ne 0` comparison was true because the array is non-empty,
+        # and a release that had been created successfully was reported as failed. Out-Host keeps the
+        # text on screen where the user can see it and out of the value.
+        & $Command | Out-Host
         return $LASTEXITCODE
     }
     finally {
