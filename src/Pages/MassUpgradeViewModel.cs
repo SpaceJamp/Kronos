@@ -14,39 +14,35 @@ using Microsoft.UI.Xaml.Controls;
 namespace Kronos.Pages;
 
 /// <summary>
-/// Selection and the mass upgrade flow for the games page.
+/// The mass update flow for the games page: preview, confirm, then apply.
 /// </summary>
 /// <remarks>
 /// Split out of <see cref="GameGridPageModel"/> because the flow is a self contained three step
-/// interaction, preview then confirm then run, and mixing it into a model that already owns
-/// filtering, sorting and view switching made both harder to follow.
+/// interaction, and mixing it into a model that already owns filtering, sorting and view switching
+/// made both harder to follow.
 ///
 /// The steps are deliberately three dialogs rather than one. A mass update writes to game folders
 /// spread across a disk, so the user sees what would change, confirms, and only then does anything
 /// happen. Collapsing that into a single "are you sure" would show them a count and not a plan.
+///
+/// This used to require ticking games one at a time. It no longer does: the button updates the whole
+/// library, so there is no selection state on <see cref="Game"/>, no checkbox over each tile, and
+/// nothing to get stuck. The confirmation dialog is what makes that safe, and it names every game it
+/// is about to write to.
 /// </remarks>
 public partial class MassUpgradeViewModel : ObservableObject
 {
     readonly GameGridPageModel _parent;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection))]
-    [NotifyPropertyChangedFor(nameof(SelectionSummary))]
-    public partial int SelectedCount { get; private set; }
-
-    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUpdate))]
     public partial bool IsRunning { get; private set; }
 
     /// <summary>Whether the mass update button can be pressed.</summary>
-    public bool HasSelection => SelectedCount > 0 && IsRunning == false;
+    public bool CanUpdate => IsRunning == false;
 
-    /// <summary>Short description of the current selection, for the button tooltip.</summary>
-    public string SelectionSummary => SelectedCount switch
-    {
-        0 => "Tick games to update",
-        1 => "1 game selected",
-        _ => $"{SelectedCount} games selected",
-    };
+    /// <summary>What the button will act on, for its tooltip.</summary>
+    public string TargetDescription => "Every game in your library";
 
     public MassUpgradeViewModel(GameGridPageModel parent)
     {
@@ -54,74 +50,28 @@ public partial class MassUpgradeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The games currently ticked.
+    /// Every game the mass update acts on.
     /// </summary>
     /// <remarks>
-    /// Read from the live collection rather than kept as a separate set, so a game removed by a
-    /// refresh cannot linger in the selection and be written to after it has gone.
+    /// The whole library, not whatever the search box or the current view is showing.
+    ///
+    /// A button labelled "Update all" that silently updated only the filtered subset would be the
+    /// worse of the two behaviours: the user narrows the list to three games to check something, hits
+    /// Update all, and three games change while two hundred others look untouched and un-updated. The
+    /// preview dialog names what will be written to, so the scope is visible before anything happens.
+    ///
+    /// Read live rather than cached, so a game removed by a refresh cannot be written to after it has
+    /// gone.
     /// </remarks>
-    internal List<Game> GetSelectedGames()
+    internal List<Game> GetTargetGames()
     {
-        var collection = _parent.CurrentCollectionView;
-
+        var collection = GameManager.Instance.GetGameCollection();
         if (collection is null)
         {
             return new List<Game>();
         }
 
-        return collection.Cast<Game>()
-            .Where(x => x.IsSelectedForMassUpdate)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Recomputes the selection count. Called whenever a checkbox changes.
-    /// </summary>
-    public void RefreshSelection()
-    {
-        SelectedCount = GetSelectedGames().Count;
-    }
-
-    /// <summary>
-    /// Ticks every game in the current view, or clears the ticks if all are already ticked.
-    /// </summary>
-    /// <remarks>
-    /// Toggling rather than only ever selecting, because "select all" with no way back short of
-    /// opening every dialog again is a trap when the list is two hundred games long.
-    /// </remarks>
-    [RelayCommand]
-    public void ToggleSelectAll()
-    {
-        var collection = _parent.CurrentCollectionView;
-        if (collection is null)
-        {
-            return;
-        }
-
-        var games = collection.Cast<Game>().ToList();
-        if (games.Count == 0)
-        {
-            return;
-        }
-
-        var shouldSelect = games.Any(x => x.IsSelectedForMassUpdate == false);
-
-        foreach (var game in games)
-        {
-            game.IsSelectedForMassUpdate = shouldSelect;
-        }
-
-        RefreshSelection();
-    }
-
-    /// <summary>
-    /// Clears every tick, including ones on games filtered out of the current view.
-    /// </summary>
-    [RelayCommand]
-    public void ClearSelection()
-    {
-        ClearAllTicks();
-        RefreshSelection();
+        return collection.Cast<Game>().ToList();
     }
 
     /// <summary>
@@ -140,9 +90,10 @@ public partial class MassUpgradeViewModel : ObservableObject
             return;
         }
 
-        var games = GetSelectedGames();
+        var games = GetTargetGames();
         if (games.Count == 0)
         {
+            await ShowInfoAsync(GetXamlRoot(), "Nothing to update", "No games were found.").ConfigureAwait(true);
             return;
         }
 
@@ -166,10 +117,10 @@ public partial class MassUpgradeViewModel : ObservableObject
         }
 
         // Stage one: the preview. This is the whole reason the flow is split, so it shows the plan
-        // rather than a count.
+        // rather than a count - and it is also what makes acting on the whole library safe.
         var preview = new EasyContentDialog(xamlRoot)
         {
-            Title = "Update selected games?",
+            Title = "Update every game?",
             CloseButtonText = "Cancel",
             PrimaryButtonText = "Update",
             DefaultButton = ContentDialogButton.Close,
@@ -186,14 +137,13 @@ public partial class MassUpgradeViewModel : ObservableObject
 
         // Stage two: do the work, reporting as it goes.
         IsRunning = true;
-        OnPropertyChanged(nameof(HasSelection));
 
         // Everything the executor needs is snapshotted here, on the UI thread, before it starts.
         // The executor runs its continuation on a thread pool thread, so it cannot read these itself:
         // the game collection is a WinRT ICollectionView and throws 0x8001010E, and the DLL records
         // are ObservableCollections that DLLManager mutates from the UI thread, so reading them
         // concurrently gives a torn or stale view.
-        var selectedGames = GetSelectedGames();
+        var targetGames = GetTargetGames();
         var librarySnapshot = GetLibraryRecords();
         var allowDevDlls = Settings.Instance.AllowDebugDlls;
 
@@ -211,7 +161,7 @@ public partial class MassUpgradeViewModel : ObservableObject
         {
             var results = await MassUpgradeExecutor.ExecuteAsync(
                 plan,
-                selectedGames,
+                targetGames,
                 item => targets.GetValueOrDefault(item.GameId + "|" + item.AssetType),
                 OnProgress).ConfigureAwait(true);
 
@@ -229,8 +179,6 @@ public partial class MassUpgradeViewModel : ObservableObject
         finally
         {
             IsRunning = false;
-            OnPropertyChanged(nameof(HasSelection));
-            RefreshSelection();
         }
     }
 
@@ -283,8 +231,13 @@ public partial class MassUpgradeViewModel : ObservableObject
         return all;
     }
 
-    async Task ShowInfoAsync(XamlRoot xamlRoot, string title, string message)
+    async Task ShowInfoAsync(XamlRoot? xamlRoot, string title, string message)
     {
+        if (xamlRoot is null)
+        {
+            return;
+        }
+
         var dialog = new EasyContentDialog(xamlRoot)
         {
             Title = title,
@@ -299,22 +252,5 @@ public partial class MassUpgradeViewModel : ObservableObject
     XamlRoot? GetXamlRoot()
     {
         return _parent.XamlRoot;
-    }
-
-    /// <summary>
-    /// Clears every tick across the whole library, not just the visible page.
-    /// </summary>
-    internal void ClearAllTicks()
-    {
-        var collection = GameManager.Instance.GetGameCollection();
-        if (collection is null)
-        {
-            return;
-        }
-
-        foreach (var game in collection.Cast<Game>())
-        {
-            game.IsSelectedForMassUpdate = false;
-        }
     }
 }

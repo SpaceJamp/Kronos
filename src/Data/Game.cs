@@ -35,22 +35,6 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     [Column("platform_id")]
     public string PlatformId { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether this game is ticked for a mass operation.
-    /// </summary>
-    /// <remarks>
-    /// A plain bool on the model rather than ListView selection, because the grid and list views
-    /// cannot both be the selection owner and the selection has to survive switching between them.
-    /// It is also what lets a checkbox column and an "is anything selected" button share one source
-    /// of truth, following the pattern NGXModelImporter already uses for its model import.
-    ///
-    /// Deliberately not persisted. Ticks are a per visit convenience, and restoring them across
-    /// launches would make a mass update act on games chosen in a session the user has forgotten.
-    /// </remarks>
-    [Ignore]
-    [ObservableProperty]
-    public partial bool IsSelectedForMassUpdate { get; set; } = false;
-
     [ObservableProperty]
     [Column("title")]
     public partial string Title { get; set; } = string.Empty;
