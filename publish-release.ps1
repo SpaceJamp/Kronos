@@ -45,11 +45,29 @@ if (-not $gh) {
     if (Test-Path $candidate) { $gh = $candidate } else { Fail "GitHub CLI not found. Install it with: winget install GitHub.cli" }
 }
 
-& $gh auth status *> $null
-if ($LASTEXITCODE -ne 0) {
-    Fail "Not logged in to GitHub. Run: gh auth login"
+# Runs a native command and returns its exit code, without its output.
+#
+# Needed because $ErrorActionPreference = 'Stop' turns a native command that writes to stderr into a
+# terminating error. Two of the checks here depend on that stderr: `gh auth status` says it is not
+# logged in that way, and `git rev-parse --verify` reports a missing ref that way. Both are ordinary
+# answers here rather than failures, so the preference is lowered for the call and restored after.
+function Test-NativeCommand {
+    param([scriptblock]$Command)
+
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Command *> $null
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
+if ((Test-NativeCommand { & $gh auth status }) -ne 0) {
+    Fail "Not logged in to GitHub. Run: gh auth login"
+}
 # Read the version out of the csproj, so the default can never disagree with the source of truth.
 $csproj = Join-Path $PSScriptRoot 'src\Kronos.csproj'
 $match = Select-String -Path $csproj -Pattern '<Version>([^<]+)</Version>' | Select-Object -First 1
@@ -72,8 +90,9 @@ if (-not (Test-Path $NotesFile)) { Fail "Release notes file not found: $NotesFil
 
 $tag = "v$Version"
 
-& git rev-parse --verify "refs/tags/$tag" *> $null
-if ($LASTEXITCODE -eq 0) { Fail "Tag $tag already exists locally. Move or delete it first." }
+if ((Test-NativeCommand { & git rev-parse --verify "refs/tags/$tag" }) -eq 0) {
+    Fail "Tag $tag already exists locally. Move or delete it first."
+}
 
 Write-Host "=== Publishing Kronos $Version ===" -ForegroundColor Green
 Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
