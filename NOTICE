@@ -15,16 +15,17 @@ Modifications include:
 - Linux build scripts (build.sh) and Windows cross-compile script (build.ps1)
 - GitHub Actions workflow for multi-platform releases
 - Platform abstractions for XDG paths, credentials, proxy settings
-- Avalonia GUI foundation (Work in Progress)
 - Multi-target csproj: net10.0 (Linux) + net10.0-windows10.0.26100.0 (Windows)
 - Removed Inno Setup installer scripts
+- Removed the Avalonia GUI project, which was unfinished and could overwrite the
+  real settings.json with an incompatible schema
 
 OWNERSHIP OF THE LINUX WORK
 ---------------------------
 The Linux port - the net10.0 target, its CLI entry point (src/Program.cs), the
 cross-platform core extracted to serve it (UiDispatcher, Http, the shared Storage
-and Database layers, the Linux Updater), build.sh, and the Avalonia GUI
-foundation - was written for this repository and is owned by its maintainer.
+and Database layers, the Linux Updater) and build.sh - was written for this
+repository and is owned by its maintainer.
 
 It is not upstream DLSS Swapper work. Upstream holds no rights over it and does
 not speak for it. Upstream's own copyright in the shared codebase is unaffected

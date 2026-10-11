@@ -33,11 +33,11 @@ internal partial class GameManager : ObservableObject
 
 // The collection views below exist only to drive the WinUI Games page. Every caller is a Windows
     // page model (GameGridPageModel, MassUpgradeViewModel), and nothing outside the UI layer
-    // consumes them. They were mirrored onto the Linux target against Avalonia's ICollectionView,
-    // which put a UI framework dependency into the core assembly purely so a collection of games
-    // could be enumerated - and the Linux CLI has no use for a filtered, sorted, grouped,
-    // observable view. It wants a list. QueryGames covers that without dragging a UI toolkit in,
-    // and it leaves the Avalonia GUI free to own whatever views it needs.
+    // consumes them. They were once mirrored onto the Linux target against a different UI toolkit's
+    // collection view, which put a UI framework dependency into the core assembly purely so a
+    // collection of games could be enumerated - and the Linux CLI has no use for a filtered, sorted,
+    // grouped, observable view. It wants a list. QueryGames covers that without dragging a UI toolkit
+    // in.
 
     [ObservableProperty]
     public partial bool UnknownAssetsFound { get; set; } = false;

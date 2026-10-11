@@ -52,8 +52,8 @@ This matters because the two projects are easy to confuse: they share a name, a 
 amount of shared code. Concretely:
 
 - The Linux CLI, its `Program.cs` entry point, the cross-platform core that was extracted to serve it
-  (`UiDispatcher`, `Http`, the shared `Storage` and `Database` layers, the Linux `Updater`), the
-  `build.sh` script, and the Avalonia GUI foundation were **written for this repository**.
+  (`UiDispatcher`, `Http`, the shared `Storage` and `Database` layers, the Linux `Updater`), and the
+  `build.sh` script were **written for this repository**.
 - `NOTICE` records the same thing formally: *Kronos modifications copyright (c) 2024-2026 SpaceJamp*,
   including Linux CLI support, with upstream's own copyright notices preserved untouched.
 - Anything here that traces back to DLSS Swapper is still beeradmoore's, and is credited as such under

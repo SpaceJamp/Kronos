@@ -7,15 +7,13 @@ internal class GameGroup
     public string Name { get; init; } = string.Empty;
     public GameLibrary? GameLibrary { get; init; }
 
-#if WINDOWS
+    // No #if here any more. This file is compiled only for the Windows target - the net10.0 group
+    // sets EnableDefaultCompileItems to false and does not list it - so the #else branch was
+    // unreachable, and it named Avalonia.Collections.ICollectionView, which no referenced package
+    // provides. Dead code that cannot compile is worse than no code.
     public CommunityToolkit.WinUI.Collections.AdvancedCollectionView? Games { get; init; }
 
     public GameGroup(string name, GameLibrary? gameLibrary, CommunityToolkit.WinUI.Collections.AdvancedCollectionView? games)
-#else
-    public Avalonia.Collections.ICollectionView? Games { get; init; }
-
-    public GameGroup(string name, GameLibrary? gameLibrary, Avalonia.Collections.ICollectionView? games)
-#endif
     {
         Name = name;
         GameLibrary = gameLibrary;

@@ -56,8 +56,10 @@
     <!--
       Bumped to 1.53 for the grid view selection fix and the working update check. This must match the
       git tag or the updater will compare against the wrong version: it reads the release title, and
-      the comparison only offers a release strictly newer than this number. Kept in step with
-      Kronos.Avalonia.csproj.
+      the comparison only offers a release strictly newer than this number.
+
+      This is now the single source of truth for the version. The Avalonia project, which used to have
+      to be kept in step with it, has been removed.
     -->
     <Version>1.53</Version>
     <Nullable>enable</Nullable>
@@ -131,7 +133,6 @@
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <Compile Remove="Program.cs" />
     <Compile Remove="Updater.cs" />
-    <Compile Remove="Kronos.Avalonia\**" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
