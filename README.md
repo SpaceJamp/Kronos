@@ -70,8 +70,7 @@ takes `Inline` children, where WinUI 3 also accepts a `UIElement`. All four `Hyp
 already wrap a `Run`, which works — so it cost nothing.
 
 Full detail, including what it does *not* solve, is in
-[`spike/SPIKE-FINDINGS.md`](https://github.com/SpaceJamp/Kronos/blob/uno-spike/spike/SPIKE-FINDINGS.md).
-The link is pinned to the branch because the file lives there and this section is read from both.
+[`spike/SPIKE-FINDINGS.md`](spike/SPIKE-FINDINGS.md).
 
 > [!WARNING]
 > **Uno migrates the UI, which is roughly 8% of `src/`.** It does nothing for the other 92% — 88 registry
