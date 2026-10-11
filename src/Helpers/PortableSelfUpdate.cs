@@ -197,6 +197,19 @@ public static class PortableSelfUpdate
             script.AppendLine("Start-Process -FilePath $entry");
         }
 
+        // The script removes its own staging folder once it is finished.
+        //
+        // The app cannot do it: it exits as soon as the handoff is handed off, and the folder holds the
+        // extracted payload the script is still copying from. Deleting it here - before starting the
+        // process - would delete it out from under the script.
+        //
+        // It is done by the script rather than left to a clean-up pass because that pass would have to run
+        // at startup, on every launch, to catch folders left by updates that ran on other machines. Doing
+        // it at the end of the update means the folder exists only for the length of the update.
+        script.AppendLine();
+        script.AppendLine("# Best effort: a leftover temp folder is untidy, not harmful.");
+        script.AppendLine("Remove-Item -LiteralPath $PSScriptRoot -Recurse -Force -ErrorAction SilentlyContinue");
+
         return script.ToString();
     }
 

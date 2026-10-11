@@ -334,6 +334,45 @@ internal class GitHubUpdater
     }
 
     /// <summary>
+    /// Extracts the hex hash from a GitHub asset digest, or null when it is not one we can check.
+    /// </summary>
+    /// <remarks>
+    /// GitHub publishes digests as <c>sha256:&lt;hex&gt;</c>. Anything else - an empty string, a different
+    /// algorithm, a bare hash with no prefix - returns null, which every caller treats as "cannot verify"
+    /// rather than "assume it matches".
+    ///
+    /// This exists because two call sites had grown two different answers. The installer path sliced
+    /// <c>digest["sha256:".Length..]</c> unconditionally, so a <c>sha512:</c> digest was compared as a
+    /// 64-character string against a 64-character hash and reported to the user as a checksum mismatch -
+    /// blaming the file for our inability to check it. The portable path did the same fallback. Neither
+    /// matched what <c>Updater.cs</c> already did on the Linux side.
+    ///
+    /// One place to parse it, so the two paths cannot drift apart again.
+    /// </remarks>
+    internal static string? TryParseSha256Digest(string? digest)
+    {
+        const string prefix = "sha256:";
+
+        if (string.IsNullOrWhiteSpace(digest))
+        {
+            return null;
+        }
+
+        var trimmed = digest.Trim();
+
+        if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == false)
+        {
+            return null;
+        }
+
+        var hash = trimmed[prefix.Length..];
+
+        // A SHA256 in hex is 64 characters. Anything else is not one, and treating it as the expected
+        // value would only ever produce a mismatch attributed to the wrong cause.
+        return hash.Length == 64 ? hash : null;
+    }
+
+    /// <summary>
     /// Tells the user an installer was not run, and offers to open the release instead.
     /// </summary>
     /// <remarks>
@@ -596,10 +635,17 @@ internal class GitHubUpdater
                 {
                     var downloaderTask = fileDownloader.DownloadFileToStreamAsync(fileStream, cancellationTokenSource.Token, progressCallback: (downloadedBytes, totalBytes, percent) =>
                     {
-                        var displayPercent = percent * 100;
-                        progressRun.Text = $"{ByteSize.FromBytes(downloadedBytes).MegaBytes.ToString("F2", CultureInfo.CurrentCulture)} / {totalSizeString} ({percent:F1}%)";
+                        // Clamped here as well as in the downloader. ProgressBar.Value throws on NaN and on
+                        // Infinity, and a throw inside this callback lands in the unhandled handler - which
+                        // since 1.59 means the crash window, in the middle of a download, over a cosmetic
+                        // progress bar.
+                        var safePercent = double.IsNaN(percent) || double.IsInfinity(percent)
+                            ? 0.0
+                            : Math.Clamp(percent, 0.0, 100.0);
+
+                        progressRun.Text = $"{ByteSize.FromBytes(downloadedBytes).MegaBytes.ToString("F2", CultureInfo.CurrentCulture)} / {totalSizeString} ({safePercent:F1}%)";
                         filesProgressBar.IsIndeterminate = false;
-                        filesProgressBar.Value = percent;
+                        filesProgressBar.Value = safePercent;
                     });
 
 
@@ -680,27 +726,29 @@ internal class GitHubUpdater
                 //
                 // This is the same gate the portable path already applied before it replaced the app, which
                 // is why that one was safe and this one was not.
-                if (string.IsNullOrWhiteSpace(gitHubAsset.Digest) == false)
-                {
-                    using (var stream = File.OpenRead(tempDownloadFile))
-                    {
-                        var actualHash = stream.GetSha256Hash();
+                // Parsed rather than sliced, so a digest we cannot check is reported as such instead of as a
+                // mismatch. See TryParseSha256Digest.
+                var expectedHash = TryParseSha256Digest(gitHubAsset.Digest);
 
-                        if (actualHash.Equals(gitHubAsset.Digest["sha256:".Length..], StringComparison.OrdinalIgnoreCase) == false)
-                        {
-                            File.Delete(tempDownloadFile);
-                            await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "The download did not match its published checksum, so it has not been run.");
-                            return;
-                        }
-                    }
-                }
-                else
+                if (expectedHash is null)
                 {
-                    // No digest means nothing to verify against. Refuse rather than run it unchecked: an
-                    // update mechanism that silently accepts unverified files is worse than none.
+                    // Nothing to verify against. Refuse rather than run it unchecked: an update mechanism
+                    // that silently accepts unverified files is worse than none.
                     File.Delete(tempDownloadFile);
-                    await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "This update has no published checksum, so it cannot be verified and will not be run.");
+                    await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "This update has no published SHA256 checksum, so it cannot be verified and will not be run.");
                     return;
+                }
+
+                using (var stream = File.OpenRead(tempDownloadFile))
+                {
+                    var actualHash = stream.GetSha256Hash();
+
+                    if (actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) == false)
+                    {
+                        File.Delete(tempDownloadFile);
+                        await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "The download did not match its published checksum, so it has not been run.");
+                        return;
+                    }
                 }
 
                 var processStartInfo = new ProcessStartInfo()
@@ -758,9 +806,11 @@ internal class GitHubUpdater
 #if PORTABLE
     async Task DownloadAndReplacePortableAsync(GitHubRelease gitHubRelease, GitHubReleaseAsset gitHubAsset, XamlRoot xamlRoot)
     {
-        if (string.IsNullOrWhiteSpace(gitHubAsset.Digest))
+        // Parsed up front, so an algorithm we cannot check is refused before the download rather than after it.
+        var expectedHash = TryParseSha256Digest(gitHubAsset.Digest);
+        if (expectedHash is null)
         {
-            await ReportPortableUpdateFailure(gitHubRelease, xamlRoot, "This update has no published checksum, so it cannot be verified and will not be installed.");
+            await ReportPortableUpdateFailure(gitHubRelease, xamlRoot, "This update has no published SHA256 checksum, so it cannot be verified and will not be installed.");
             return;
         }
 
@@ -807,9 +857,14 @@ internal class GitHubUpdater
                     cancellation.Token,
                     progressCallback: (downloadedBytes, totalBytes, percent) =>
                     {
+                        // Same clamp as the installer path above: ProgressBar.Value throws on NaN.
+                        var safePercent = double.IsNaN(percent) || double.IsInfinity(percent)
+                            ? 0.0
+                            : Math.Clamp(percent, 0.0, 100.0);
+
                         progressBar.IsIndeterminate = false;
-                        progressBar.Value = percent;
-                        progressRun.Text = $"{ByteSize.FromBytes(downloadedBytes).MegaBytes.ToString("F2", CultureInfo.CurrentCulture)} / {totalSizeString} ({percent:F1}%)";
+                        progressBar.Value = safePercent;
+                        progressRun.Text = $"{ByteSize.FromBytes(downloadedBytes).MegaBytes.ToString("F2", CultureInfo.CurrentCulture)} / {totalSizeString} ({safePercent:F1}%)";
                     });
 
                 if (downloaded == false)
@@ -827,11 +882,10 @@ internal class GitHubUpdater
                 actualHash = fileStream.GetSha256Hash();
             }
 
-            var expected = gitHubAsset.Digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
-                ? gitHubAsset.Digest["sha256:".Length..]
-                : gitHubAsset.Digest;
-
-            if (actualHash.Equals(expected, StringComparison.OrdinalIgnoreCase) == false)
+            // Parsed at the top of the method and already known good, so there is no fallback here: an algorithm
+            // we cannot check was refused before the download started rather than being compared as if it
+            // were hex.
+            if (actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) == false)
             {
                 File.Delete(archivePath);
                 await ReportPortableUpdateFailure(

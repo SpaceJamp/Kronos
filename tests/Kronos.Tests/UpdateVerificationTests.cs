@@ -63,7 +63,7 @@ public class UpdateVerificationTests
         // check was bypassed. Running it unchecked is worse than refusing.
         var source = Source("src", "Data", "GitHub", "GitHubUpdater.cs");
 
-        Assert.Contains("no published checksum", source, StringComparison.Ordinal);
+        Assert.Contains("no published SHA256 checksum", source, StringComparison.Ordinal);
         Assert.Contains("cannot be verified", source, StringComparison.Ordinal);
     }
 

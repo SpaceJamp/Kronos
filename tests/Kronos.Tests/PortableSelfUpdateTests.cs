@@ -329,7 +329,15 @@ public class PortableSelfUpdateTests
         /// <summary>Writes the generated script and runs it, returning its exit code.</summary>
         public int Run(bool relaunch = false)
         {
-            var scriptPath = Path.Combine(_root, "handoff.ps1");
+            // The script lives in its own staging folder, as it does in the app: PrepareHandoff writes
+            // apply-update.ps1 beside the extracted payload under %TEMP%\KronosUpdate-<guid>.
+            //
+            // This matters because the script now deletes $PSScriptRoot when it finishes. Writing it at
+            // the root of this test's directory would have it delete the fake installation along with
+            // itself, which is exactly what happened when this ran with the script one level up.
+            var staging = Path.Combine(_root, "staging");
+            Directory.CreateDirectory(staging);
+            var scriptPath = Path.Combine(staging, "handoff.ps1");
             File.WriteAllText(
                 scriptPath,
                 PortableSelfUpdate.BuildHandoffScript(Source, Target, processId: 0, relaunch));

@@ -21,6 +21,11 @@ namespace Kronos;
 /// </remarks>
 internal static class Http
 {
+    // A lock rather than a bare field. The client is read on every network call in the app and replaced
+    // when the proxy changes, and `??=` is a read-modify-write: two threads reaching for it at once could
+    // both build a client, and one of them would be discarded without being disposed while the other
+    // published a client nobody else would ever dispose.
+    static readonly object _clientLock = new();
     private static HttpClient? _client;
 
     /// <summary>
@@ -31,17 +36,39 @@ internal static class Http
     /// that constructor. Anything that reaches for this without calling <see cref="Initialise"/>
     /// still gets a working client.
     /// </remarks>
-    internal static HttpClient Client => _client ??= GenerateNewHttpClient();
+    internal static HttpClient Client
+    {
+        get
+        {
+            lock (_clientLock)
+            {
+                return _client ??= GenerateNewHttpClient();
+            }
+        }
+    }
 
     /// <summary>Discards the current client and builds a fresh one.</summary>
     /// <remarks>
     /// Called when proxy settings change, because a handler cannot have its proxy swapped after
     /// construction - the whole client has to go.
+    ///
+    /// The old client is deliberately *not* disposed here. It is not safe to: a download may be in the
+    /// middle of reading from it, and disposing out from under an active request produces an
+    /// ObjectDisposedException that surfaces to the user as "Update download failed" for a change they made
+    /// to their proxy settings some time earlier. The cost of not disposing is one socket per proxy change,
+    /// which is nothing; the cost of disposing is a failed download.
+    ///
+    /// It is left for the finaliser instead, which is the correct owner for a client that may still be in
+    /// use. HttpClient holds a handler whose connections close when the client is collected.
     /// </remarks>
     internal static void Regenerate()
     {
-        _client?.Dispose();
-        _client = GenerateNewHttpClient();
+        lock (_clientLock)
+        {
+            // Published before the old one is abandoned, so a caller that arrives mid-swap gets the new
+            // client rather than a disposed one.
+            _client = GenerateNewHttpClient();
+        }
     }
 
     static HttpClient GenerateNewHttpClient()

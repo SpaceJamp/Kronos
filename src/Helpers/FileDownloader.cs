@@ -85,7 +85,26 @@ public partial class FileDownloader : ObservableObject
                 }
                 else
                 {
-                    newPercent = (totalBytesRead / (double)TotalBytesToDownload) * 100.0;
+                    // Guarded against a zero total.
+                //
+                // This read TotalBytesToDownload, which is assigned on the UI thread by the UiDispatcher.Invoke
+                // below - and that is a non-blocking TryEnqueue, so it may not have run yet when the first
+                // tick fires. Zero divided into anything is Infinity, and bytes over Infinity is NaN, which
+                // then reaches ProgressBar.Value and throws ArgumentException on the UI thread mid-download.
+                //
+                // Dividing by the captured contentLength rather than the property is both correct and free: it is
+                // the same value, it is assigned on this thread before the timer starts, and it cannot be
+                // observed half-written from another thread.
+                newPercent = contentLength > 0
+                    ? (totalBytesRead / (double)contentLength) * 100.0
+                    : 0.0;
+
+                // A NaN or Infinity can still arrive from a caller that computed its own percentage, and
+                // ProgressBar.Value throws on both. Clamped rather than trusted.
+                if (double.IsNaN(newPercent) || double.IsInfinity(newPercent))
+                {
+                    newPercent = 0.0;
+                }
                     if (lastReportedPercent != newPercent)
                     {
                         lastReportedPercent = newPercent;
