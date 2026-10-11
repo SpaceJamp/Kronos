@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AsyncAwaitBestPractices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kronos.Builders;
@@ -51,11 +52,19 @@ public partial class GameGridPageModel : ObservableObject
     public partial Game? SelectedGame { get; set; } = null;
 
     [ObservableProperty]
+    // CanRefresh is listed as well as IsLoading because the Refresh button binds to it, and it depends
+    // on IsLoading. Without this the button is evaluated once - disabled, since both flags start true -
+    // and never re-enabled: the initial load clears the flags, IsLoading fires, CanRefresh does not, and
+    // the button stays dead for the rest of the session. Introduced in 1.58.1 when the binding was
+    // changed from IsLoading to CanRefresh, and it is the reason this class follows MassUpgradeViewModel's
+    // pattern of notifying every dependent property rather than only the immediate one.
     [NotifyPropertyChangedFor(nameof(IsLoading))]
+    [NotifyPropertyChangedFor(nameof(CanRefresh))]
     public partial bool IsGameListLoading { get; set; } = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLoading))]
+    [NotifyPropertyChangedFor(nameof(CanRefresh))]
     public partial bool IsDLSSLoading { get; set; } = true;
 
     public bool IsLoading => (IsGameListLoading || IsDLSSLoading);
@@ -85,10 +94,18 @@ public partial class GameGridPageModel : ObservableObject
 
     public GameGridPageModel(GameGridPage gameGridPage)
     {
-        WeakReferenceMessenger.Default.Register<GameLibrariesStateChangedMessage>(this, async (sender, message) =>
+        // Not an async lambda. Two parameters makes it bind to Register<TMessage>(object,
+        // Action<object, TMessage>), which the messenger invokes as async void - so an exception from
+        // RemoveAllGames or InitialLoadAsync escaped to the SynchronizationContext and became an
+        // unhandled exception, which since 1.59 means the user gets the crash window for what is a routine
+        // background rescan. Logged instead, and the guard makes a second message a no-op rather than a
+        // second concurrent reload.
+        WeakReferenceMessenger.Default.Register<GameLibrariesStateChangedMessage>(this, (sender, message) =>
         {
-            GameManager.Instance.RemoveAllGames();
-            await InitialLoadAsync();
+            ReloadAfterLibraryChange().SafeFireAndForget((err) =>
+            {
+                Logger.Error(err, "Unable to reload games after a library change.");
+            });
         });
 
         this.gameGridPage = gameGridPage;
@@ -117,6 +134,40 @@ public partial class GameGridPageModel : ObservableObject
             IsDLSSLoading = false;
         }
     }
+
+    /// <summary>
+    /// Reloads the library after a store was enabled or disabled.
+    /// </summary>
+    /// <remarks>
+    /// Guarded, because this can arrive while a load is already running. Toggling a library switch sends
+    /// the message; the first load at startup is still adding games; and RemoveAllGames clears both lists
+    /// while that load is mid-flight. The result is a list that never finishes repopulating, and whichever
+    /// run's finally finishes first clears the loading flags for both - so the UI stops showing a spinner
+    /// while the library is still empty.
+    ///
+    /// Same hazard, same remedy as RefreshGamesButtonAsync: claim before doing anything, and release in a
+    /// finally so one failure does not leave the guard set.
+    /// </remarks>
+    async Task ReloadAfterLibraryChange()
+    {
+        if (Interlocked.CompareExchange(ref _reloading, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            GameManager.Instance.RemoveAllGames();
+            await InitialLoadAsync();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _reloading, 0);
+        }
+    }
+
+    /// <summary>Guards against a library-change reload running on top of another one.</summary>
+    int _reloading;
 
     public void SearchForGameEvent(object sender, TextChangedEventArgs e)
     {

@@ -102,7 +102,11 @@ public class ThemeWatcher
     {
         if (_themeWatcher is not null)
         {
-            _themeWatcher.EventArrived -= ContrastWatcher_EventArrived;
+            // ThemeWatcher_EventArrived, not ContrastWatcher_EventArrived. Start() subscribes the former at
+            // line 76, so this removed a handler that was never added: the subscription survived, the
+            // watcher was still referenced by the event, and Stop() freed the local without stopping
+            // anything. The two look alike at a glance and only the correct one is present on this object.
+            _themeWatcher.EventArrived -= ThemeWatcher_EventArrived;
             _themeWatcher.Stop();
             _themeWatcher = null;
             IsWatchingTheme = false;

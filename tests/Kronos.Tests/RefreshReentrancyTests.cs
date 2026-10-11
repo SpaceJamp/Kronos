@@ -66,10 +66,13 @@ public class RefreshReentrancyTests
     {
         var source = Source("src", "Pages", "GameGridPageModel.cs");
 
-        var command = source.Substring(source.IndexOf("RefreshGamesButtonAsync", StringComparison.Ordinal));
-        var body = command.Substring(0, Math.Min(600, command.Length));
+        // Sliced from the method's declaration, not the first mention of its name - the doc comment above it
+        // mentions RefreshGamesButtonAsync and would otherwise start the slice in the wrong place.
+        var start = source.IndexOf("async Task RefreshGamesButtonAsync", StringComparison.Ordinal);
+        Assert.True(start > 0, "the refresh command should be found");
+        var body = source.Substring(start, Math.Min(1200, source.Length - start));
 
-        // The guard is an Interlocked claim on the backing field, not a read of the IsRefreshing property -
+        // The guard is an Interlocked claim on the backing field, not a read of the IsRefreshing property:
         // reading a bool and then writing it is exactly the check-then-set this fix exists to remove. So
         // what is asserted here is that the claim is atomic and that it happens first.
         var claim = body.IndexOf("Interlocked.CompareExchange", StringComparison.Ordinal);
@@ -77,6 +80,9 @@ public class RefreshReentrancyTests
 
         Assert.True(claim >= 0, "the command must claim the refresh slot before doing anything");
         Assert.True(load > claim, "the claim must come before the load, not after it");
+
+        Assert.Contains("finally", body, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _refreshing, 0)", body, StringComparison.Ordinal);
     }
 
     [Fact]

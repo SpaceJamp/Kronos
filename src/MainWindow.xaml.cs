@@ -370,6 +370,18 @@ public sealed partial class MainWindow : Window
                 await dialog.ShowAsync();
 
                 Close();
+
+                // Returned, and this is load-bearing rather than tidiness.
+                //
+                // This handler is async void, so a missing return does not stop it - the next await
+                // resumes normally and carries on building dialogs against MainNavigationView.XamlRoot on a
+                // window that has been closed. That throws out of an async void, which lands in
+                // App_UnhandledException, which shows the crash window while the app is shutting down. So a
+                // user whose manifest failed to load got a crash report on top of a deliberate exit.
+                //
+                // Everything past this point needs a live window: the imported-manifest dialog, hiding the
+                // loading panel, GoToPage, and the update prompt.
+                return;
             }
         }
 
