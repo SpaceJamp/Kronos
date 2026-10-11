@@ -30,7 +30,8 @@ param(
     [string]$Version = '',
     [string]$NotesFile = '',
     [switch]$SkipBuild,
-    [switch]$ReplaceArtifactOnly
+    [switch]$ReplaceArtifactOnly,
+    [switch]$SkipTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -145,6 +146,68 @@ Write-Host "=== Publishing Kronos $Version ===" -ForegroundColor Green
 Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
 Write-Host ""
 
+# Preflight: the tests must pass, before anything is created on GitHub.
+#
+# This is here because of a repeated mistake rather than a hypothetical one. Three times in one session a
+# release was committed and pushed with a failing test, because the version bump, the release notes and the
+# commit were chained into a single command and the test output was read afterwards rather than before.
+# Twice the failure was a version guard written minutes earlier: one demanded exactly two version parts and
+# rejected 1.58.1, the next demanded a patch number that 1.59 did not need.
+#
+# The guards were fine to fix. The workflow was not - nothing stopped a red suite reaching main, and a
+# release cut from it ships a known-broken build to everyone who downloads it.
+#
+# Verified by injecting a failing test and running this script: it stopped with no release and no tag
+# created. -SkipTests exists for the case where a release genuinely has to go out anyway, which should be a
+# deliberate decision rather than the default outcome of a command that chained everything together.
+if (-not $SkipTests) {
+    Write-Host "Running tests before publishing..." -ForegroundColor Yellow
+
+    & dotnet test "$PSScriptRoot\Kronos.sln" -c Release | Write-Host
+    if ($LASTEXITCODE -ne 0) {
+        Fail @"
+The test suite failed, so nothing has been published.
+
+A release cut from a failing suite ships a build that is known to be broken, and by the time it is cut the
+tag and release for it already exist and cannot be un-published cleanly.
+
+Fix the failure, or pass -SkipTests if this has to go out regardless - which is a decision worth making
+deliberately rather than by accident.
+"@
+    }
+
+    Write-Host "Tests passed." -ForegroundColor Green
+    Write-Host ""
+}
+
+# Preflight: the ImageSharp key the build needs.
+#
+# Passed to build.ps1 as -LicenseKey $env:IMAGESHARP_LICENSE_KEY. When that variable is empty the argument
+# expands to nothing at all, so the child process is launched as `... -File build.ps1 -Target Windows
+# -LicenseKey ` and PowerShell rejects it: "Missing an argument for parameter 'LicenseKey'".
+#
+# That error is harmless; where it arrived was not. The tag had been pushed and the release created, so
+# v1.59 was published with correct notes and no artifact - the worst state to hand someone, because the
+# release page looks complete and a download simply 404s. Checked here so the run stops before creating
+# anything. -SkipBuild is exempt because it builds nothing.
+if (-not $SkipBuild) {
+    if ([string]::IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY)) {
+        Fail @"
+IMAGESHARP_LICENSE_KEY is not set, so the build would fail - and it would fail only after the tag was
+pushed and the release created, leaving a release with no artifact.
+
+Set it before publishing, for this session only:
+
+    `$env:IMAGESHARP_LICENSE_KEY = '<your ImageSharp community key>'
+
+Nothing has been created on GitHub. Re-run once the key is set.
+
+To rebuild the artifact for a release that already exists, use -ReplaceArtifactOnly, which skips the tag
+and release creation entirely.
+"@
+    }
+}
+
 if ($ReplaceArtifactOnly) {
     # Fall through to the build and upload below, skipping tag creation, push and release creation.
 }
@@ -179,7 +242,20 @@ if (-not $SkipBuild) {
     # were true of the build that shipped, and neither appeared anywhere in the build output.
     $buildOutput = & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
         -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY
-    if ($LASTEXITCODE -ne 0) { Fail "The Windows build failed; the release exists without an artifact." }
+    if ($LASTEXITCODE -ne 0) {
+        # Pointed at -ReplaceArtifactOnly rather than leaving the caller to work it out. At this point the
+        # tag, release and notes are correct; only the artifact is missing. Deleting the release to start
+        # over would throw away good work and lose the tag the updater reads.
+        Fail @"
+The Windows build failed, so the release exists but has no artifact.
+
+The tag, the release and its notes are correct and should be left alone. To finish the job:
+
+    publish-release.ps1 -ReplaceArtifactOnly
+
+That skips the tag and release creation and only rebuilds and uploads the artifact.
+"@
+    }
 
     # Parsed from the tagged line build.ps1 writes, not from the last line of its output. The summary
     # it prints ends with "Note: Copy the entire output folder to target machine to run.", and taking
