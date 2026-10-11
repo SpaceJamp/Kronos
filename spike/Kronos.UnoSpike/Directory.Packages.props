@@ -1,0 +1,23 @@
+<Project ToolsVersion="1.0">
+  <!--
+    Spike only. The real Kronos package list is in src/Kronos.csproj; this file carries just the
+    packages this spike needs to answer one question - does the XAML dialect Kronos is written in
+    compile and run on Uno.
+
+    Uno's own version comes from the Sdk in global.json, not from here. See
+    https://aka.platform.uno/using-uno-sdk
+  -->
+
+  <ItemGroup>
+    <!--
+    The decisive one. Every Kronos page binds through these: BoolToVisibilityConverter,
+    BoolNegationConverter and StringVisibilityConverter are declared in each page's resources and
+    used throughout the grid and settings. If this package does not work on Uno then every page is
+    a rewrite, and the answer to the whole migration is no.
+
+    It is the Windows-only WinUI Community Toolkit, not the cross-platform one, so this genuinely
+    has to be tested rather than assumed.
+    -->
+    <PackageVersion Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
+  </ItemGroup>
+</Project>
