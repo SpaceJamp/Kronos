@@ -1,37 +1,46 @@
-v1.58.1 — Refresh button fix
+v1.59 — Kronos now tells you when something went wrong
 
-A patch release for one user-facing bug: **clicking Refresh could start the same scan several times at once**, which looks like a refresh that never finishes.
+Two changes with the same theme: **problems Kronos used to swallow now say so.**
 
-## What was happening
+## If an update didn't finish, you'll be told which files
 
-**Refresh had no guard against being clicked twice.** The only thing stopping a second click was the button being greyed out while a refresh ran — and that was a UI convenience, not a lock.
+Since 1.55, an update that couldn't replace every file has written a log naming the ones it couldn't. That was supposed to stop a partial update being silent.
 
-The button disabled itself based on a "loading" flag, but that flag is shared with the initial page load, so whenever the two disagreed the button stayed clickable. Each click that got through started another full pass over your library, and each pass queues every game for a fresh DLL scan: a recursive walk of the install folder plus a cover-image fetch, for every game you have.
+**It was still silent.** Nothing ever read that log. It was written to be seen, and no one saw it.
 
-Two of those running at once looks, from the outside, like a refresh that keeps going.
+Now, on the next launch, Kronos says how many files were left alone, names them, and offers to open the file. The usual cause is something holding a file open — closing Kronos fully and updating again usually clears it.
 
-**The per-game scan had the same flaw one level down.** Before starting a game's scan it checked "am I already scanning this?" and only set the flag two UI-thread hops later. Two callers arriving in that gap both passed the check, and both scanned the same game.
+The log is not deleted when you dismiss it. If you're reporting the problem, you'll want it, and the next update overwrites it anyway.
 
-## What's fixed
+## When Kronos crashes, it now explains itself
 
-- Refresh now claims a lock before doing anything. A second click while one is running does nothing rather than starting another pass.
-- The lock is released in a `finally`, so if a scan throws, the button still comes back. Previously a single failure could have left Refresh permanently dead until you restarted the app.
-- The button's enabled state now reads that same lock, so what you see is exactly what the command enforces.
-- Each game claims its scan slot atomically, so one game can only ever be scanned by one caller.
+It used to log the exception and close. Which means: the app vanished, you had no idea whether anything was saved, and the log it had just written was somewhere you'd never think to look.
+
+**Kronos now keeps running and shows you what happened.** It explains what failed, tells you that anything already saved is safe, gives you the full error to copy, and offers a button to open the log folder.
+
+### Why the app stays open
+
+This is the significant change, so it's worth being blunt about the trade-off: the operation that was running is stopped, but the window survives.
+
+Losing an operation mid-way is recoverable. Losing the app means losing your window and re-scanning your whole library on the way back in. A crash that leaves you with a usable app and a log beats a clean exit that shows nothing.
+
+If you'd rather it exited, that's a reasonable preference — say so and I'll change it.
+
+### Three things it won't report
+
+- **Cancelling something.** Closing a dialog mid-download isn't a crash, and telling you it was would be worse than silence.
+- **Running out of memory.** Logged, but by then the process is usually in no state to build a window.
+- **The log path itself**, if Kronos is installed somewhere unwritable. The buttons are simply inert rather than pointing somewhere that doesn't exist.
 
 ## Testing
 
-515 tests, up from 497. Six cover this fix.
+534 tests, up from 516.
 
-They were checked against the unfixed code: with the guard removed, they fail. Three consecutive full runs green.
-
-## Note
-
-This release also carries `UpdateErrorLog`, a tested reader for the partial-update log introduced in 1.55. It is not shown in the UI yet — that wiring is still to come — so this release changes no update behaviour.
+One test here exists purely to stop a repeat of something that cost me real time: **the XAML compiler reports a translation property that's bound but never declared as an opaque internal error, with no file or line.** The new tests check both directions — every key the windows use exists in the resources, and every property the XAML binds to is actually declared.
 
 ## Downloading
 
-`Kronos-1.58.1.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
+`Kronos-1.59.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
 
 **It needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads).** If `Kronos.exe` exits without a window, install it.
 

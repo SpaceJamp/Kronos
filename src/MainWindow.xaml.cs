@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Windows.System;
 
 namespace Kronos;
@@ -292,6 +293,14 @@ public sealed partial class MainWindow : Window
         await DLLManager.Instance.LoadManifestsAsync();
 
 
+        // A partial update leaves update-errors.log naming the files it could not replace. Surfacing it here
+        // is the whole point of the file: it was introduced in 1.55 so a partial update would not be
+        // silent, and it was, because nothing ever read it back.
+        //
+        // Before the other startup prompts, because a half-applied update is the thing most likely to
+        // explain whatever the user is about to be told next.
+        await ShowUpdateErrorReportIfPresentAsync();
+
         if (Settings.Instance.HasShownMultiplayerWarning == false)
         {
             var dialog = new EasyContentDialog(MainNavigationView.XamlRoot)
@@ -406,6 +415,74 @@ public sealed partial class MainWindow : Window
             {
                 await gitHubUpdater.DisplayNewUpdateDialog(newUpdateTask.Result, MainNavigationView.XamlRoot);
             }
+        }
+    }
+
+    /// <summary>
+    /// Tells the user when the last update did not fully apply, and offers to show them which files.
+    /// </summary>
+    /// <remarks>
+    /// Reads update-errors.log, which the portable update writes when it cannot replace every file. It was
+    /// added in 1.55 so a partial update would not be silent, and it was - nothing read it back, so the log
+    /// existed to be seen and no one saw it.
+    ///
+    /// The log is not deleted afterwards. A user who wants to report the problem should still be able to
+    /// open it, and the next update overwrites it anyway, so removing it would only make the report harder
+    /// to reproduce. The user can delete it themselves from the folder this opens.
+    ///
+    /// Every failure path here is swallowed. A startup dialog is the last thing that should be able to stop
+    /// the app opening, and the file this reads is written by a PowerShell script after the app has exited -
+    /// it can be absent, truncated, or locked by something.
+    /// </remarks>
+    private async Task ShowUpdateErrorReportIfPresentAsync()
+    {
+        try
+        {
+            var report = UpdateErrorLog.TryRead();
+            if (report is null)
+            {
+                return;
+            }
+
+            var description = UpdateErrorLog.Describe(report.Value);
+
+            var dialog = new EasyContentDialog(MainNavigationView.XamlRoot)
+            {
+                Title = ResourceHelper.GetString("MainWindow_UpdateIncomplete_Title"),
+                Content = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = description,
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        new TextBlock
+                        {
+                            // The path, verbatim. If someone is going to send this in a bug report - and
+                            // this is the sort of thing they will - the exact location matters.
+                            Text = report.Value.Path,
+                            TextWrapping = TextWrapping.Wrap,
+                            Opacity = 0.7,
+                            FontSize = 12,
+                        },
+                    },
+                },
+                PrimaryButtonText = ResourceHelper.GetString("MainWindow_UpdateIncomplete_ShowLog"),
+                CloseButtonText = ResourceHelper.GetString("General_Close"),
+                DefaultButton = ContentDialogButton.Primary,
+            };
+
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                FileSystemHelper.OpenFolderInExplorerSelectFile(report.Value.Path);
+            }
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err, "Could not report a partial update.");
         }
     }
 

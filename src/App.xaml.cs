@@ -85,10 +85,80 @@ public sealed partial class App : Application
     internal void RegenerateHttpClient()
         => Http.Regenerate();
 
+    /// <summary>
+    /// Reports an unhandled exception, and keeps the app alive.
+    /// </summary>
+    /// <remarks>
+    /// This used to log the exception, close Serilog, and let the process die. Honest, and useless: the app
+    /// vanishes with no explanation, the user cannot tell whether anything was saved, and the log it just
+    /// wrote is somewhere they will never think to look.
+    ///
+    /// e.Handled is now set to true, which means WinUI stops propagating the exception. That is the
+    /// significant behavioural change: losing the operation that was running is recoverable, whereas closing
+    /// the whole app because something in a background task threw costs the user their window and forces a
+    /// full library re-scan. A crash that leaves the app usable and shows the log beats a clean exit that
+    /// shows nothing.
+    ///
+    /// The exception is still logged first, before anything that could itself fail. Everything after that
+    /// is best effort - showing a window during a crash is exactly the kind of code that throws, and a
+    /// second exception here would hide the first.
+    ///
+    /// Cancellation is deliberately not reported: closing a dialog mid-download throws
+    /// TaskCanceledException, and telling someone they had a crash because they cancelled something would
+    /// be worse than saying nothing. See CrashReport.ShouldReport.
+    /// </remarks>
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        Serilog.Log.Error(e.Exception, "UnhandledException");
-        Serilog.Log.CloseAndFlush();
+        try
+        {
+            Serilog.Log.Error(e.Exception, "UnhandledException");
+        }
+        catch (Exception)
+        {
+            // Nothing above this point is guaranteed to work. A Serilog failure must not replace the real
+            // error with a logging error.
+        }
+
+        if (CrashReport.ShouldReport(e.Exception) == false)
+        {
+            e.Handled = true;
+            FlushLogQuietly();
+            return;
+        }
+
+        try
+        {
+            WindowManager.ShowWindow(new CrashWindow(e.Exception));
+            e.Handled = true;
+        }
+        catch (Exception windowError)
+        {
+            // No window could be shown - most likely because the app is already tearing down. Fall back to
+            // the old behaviour of terminating, which at least is unambiguous, rather than pretending the
+            // app is fine while its state is unknown.
+            System.Diagnostics.Debug.WriteLine($"Could not show the crash window: {windowError.Message}");
+        }
+        finally
+        {
+            // Flushed last. CloseAndFlush blocks briefly, and doing it after the window exists means the
+            // user is already looking at the explanation while it happens.
+            FlushLogQuietly();
+        }
+    }
+
+    /// <summary>
+    /// Flushes and closes Serilog, ignoring any failure.
+    /// </summary>
+    static void FlushLogQuietly()
+    {
+        try
+        {
+            Serilog.Log.CloseAndFlush();
+        }
+        catch (Exception)
+        {
+            // If the log cannot be closed cleanly there is nothing useful left to do about it.
+        }
     }
 
     /// <summary>

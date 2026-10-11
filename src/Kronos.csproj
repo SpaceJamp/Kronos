@@ -54,8 +54,8 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.58.1 for the Refresh button fix: repeated clicks could start concurrent game scans,
-      which looked like a refresh that never settled.
+      Bumped to 1.59 for two things that turn silent failures into visible ones: a partial update now tells
+      the user which files it could not replace, and a crash now explains itself instead of closing the app.
 
       This must match the git tag or the updater will compare against the wrong version: it reads the
       release title, and the comparison only offers a release strictly newer than this number.
@@ -63,7 +63,7 @@
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.58.1</Version>
+    <Version>1.59</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>

@@ -1221,4 +1221,22 @@ Because of this we recommend using caution for multiplayer games.</value>
   <data name="TranslationToolboxPage_WindowTitle" xml:space="preserve">
     <value>Translation Toolbox</value>
   </data>
+  <data name="MainWindow_UpdateIncomplete_Title" xml:space="preserve">
+    <value>Last update did not finish</value>
+  </data>
+  <data name="MainWindow_UpdateIncomplete_ShowLog" xml:space="preserve">
+    <value>Show me the file</value>
+  </data>
+  <data name="CrashWindow_WindowTitle" xml:space="preserve">
+    <value>Something went wrong</value>
+  </data>
+  <data name="CrashWindow_ExplanationText" xml:space="preserve">
+    <value>Kronos hit a problem it could not recover from. The operation that was running has been stopped, and anything already saved is safe. The details below and the log file are worth including if you report this.</value>
+  </data>
+  <data name="CrashWindow_OpenLogFolder" xml:space="preserve">
+    <value>Open log folder</value>
+  </data>
+  <data name="CrashWindow_CopyLogPath" xml:space="preserve">
+    <value>Copy log path</value>
+  </data>
 </root>

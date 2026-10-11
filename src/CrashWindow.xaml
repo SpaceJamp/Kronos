@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Kronos.CrashWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Kronos"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="{x:Bind ViewModel.Title, Mode=OneWay}">
+
+    <Grid Margin="16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Style="{ThemeResource TitleTextBlockStyle}"
+            Text="{x:Bind ViewModel.TranslationProperties.CrashWindowTitleText, Mode=OneWay}" />
+
+        <TextBlock
+            Grid.Row="1"
+            TextWrapping="Wrap"
+            Text="{x:Bind ViewModel.TranslationProperties.CrashWindowExplanationText, Mode=OneWay}" />
+
+        <!-- The buttons a user actually wants after a crash: get the details out, and get to the log. -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+            <Button Content="{x:Bind ViewModel.TranslationProperties.CopyDetailsText, Mode=OneWay}" Command="{x:Bind ViewModel.CopyTextCommand}" />
+            <Button Content="{x:Bind ViewModel.TranslationProperties.OpenLogFolderText, Mode=OneWay}" Command="{x:Bind ViewModel.OpenLogFolderCommand}" />
+            <Button Content="{x:Bind ViewModel.TranslationProperties.CopyLogPathText, Mode=OneWay}" Command="{x:Bind ViewModel.CopyLogPathCommand}" />
+            <Button Content="{x:Bind ViewModel.TranslationProperties.CloseText, Mode=OneWay}" />
+        </StackPanel>
+
+        <!-- The log path. Shown rather than hidden when absent: a missing path is itself information, and
+             the copy-path button is simply inert when there is nothing to copy. -->
+        <TextBlock
+            Grid.Row="3"
+            TextWrapping="Wrap"
+            FontSize="12"
+            Opacity="0.7"
+            Text="{x:Bind ViewModel.LogPath}" />
+
+        <TextBox
+            Grid.Row="4"
+            IsReadOnly="True"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            AcceptsReturn="True"
+            TextWrapping="Wrap"
+            Text="{x:Bind ViewModel.ReportText}" />
+    </Grid>
+</Window>
