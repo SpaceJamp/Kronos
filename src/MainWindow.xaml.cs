@@ -6,6 +6,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -60,6 +61,8 @@ public sealed partial class MainWindow : Window
 
         this.InitializeComponent();
         ViewModel = new MainWindowModel();
+
+        RegisterSettingsAccelerator();
 
         if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
         {
@@ -198,6 +201,52 @@ public sealed partial class MainWindow : Window
         {
             Logger.Error($"MainNavigationView_ItemInvoked for a page that was not found. ({args.InvokedItemContainer?.Tag}, {args.InvokedItem})");
         }
+    }
+
+    /// <summary>
+    /// VK_OEM_COMMA - the physical comma key.
+    /// </summary>
+    /// <remarks>
+    /// Named from the Win32 virtual-key code rather than from a <see cref="VirtualKey"/> member, because
+    /// there is no member for it: the projection in this SDK has no Oem-prefixed names at all, so both
+    /// <c>VirtualKey.OemComma</c> and <c>Key="OemComma"</c> in XAML fail to compile. The numeric value
+    /// is stable and is what every Windows app means by it.
+    ///
+    /// The physical key, rather than the comma character, is the point: the shortcut is Ctrl plus the key
+    /// the user's layout puts there - a comma on a US layout and something else entirely on several
+    /// others - which is what every other Windows app does.
+    /// </remarks>
+    const VirtualKey CommaKey = (VirtualKey)0xBE;
+
+    /// <summary>Ctrl+, - the platform convention for Settings, from any page.</summary>
+    /// <remarks>
+    /// Registered in code rather than declared in XAML, for the reason above: there is no markup spelling
+    /// of this accelerator that compiles.
+    ///
+    /// Attached to the root grid rather than to a games page toolbar, because navigation is the
+    /// window's business and the shortcut has to work from every page.
+    /// </remarks>
+    void RegisterSettingsAccelerator()
+    {
+        var settingsAccelerator = new KeyboardAccelerator
+        {
+            Key = CommaKey,
+            Modifiers = VirtualKeyModifiers.Control,
+        };
+
+        settingsAccelerator.Invoked += SettingsAccelerator_Invoked;
+
+        RootGrid.KeyboardAccelerators.Add(settingsAccelerator);
+    }
+
+    void SettingsAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        // Handled rather than left to bubble. Without this the accelerator fires once here and once again
+        // for anything further up the tree that also handles it, which is how a single keypress ends up
+        // navigating twice.
+        args.Handled = true;
+
+        GoToPage(SettingsPage.PageTag);
     }
 
 

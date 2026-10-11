@@ -207,6 +207,56 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     [Ignore]
     public partial bool Processing { get; set; } = false;
 
+    // ------------------------------------------------------------------ library-wide scan progress
+    //
+    // Two counters, so the games page can say how far along a scan is rather than only spinning.
+    //
+    // The grid already shows a per-game spinner and already refuses to open a game being processed, so a
+    // large library looked like an unexplained wait with no way to tell a nearly-finished load from a
+    // stuck one. "Scanning 12 of 340" answers that. "Scanning 4 of 340" would not, which is why this is
+    // cumulative rather than in-flight: the semaphore caps concurrent scans at four, so an in-flight count
+    // would sit at four and stay there.
+    //
+    // They live on Game rather than on a manager because ProcessGame is the single funnel every library
+    // goes through - Steam, GOG, Epic, Xbox, BattleNet, Ubisoft, EA and manual all call it - so counting
+    // here cannot miss a library that a manager-side count would have had to be taught about separately.
+    //
+    // Static, and Interlocked, because they are written from up to eight library loads running in parallel
+    // on the thread pool and read from the UI thread.
+    static int _scansQueued;
+
+    static int _scansFinished;
+
+    /// <summary>How many games have been handed to a scan since the last reset.</summary>
+    public static int ScansQueued => Volatile.Read(ref _scansQueued);
+
+    /// <summary>How many of those scans have finished.</summary>
+    public static int ScansFinished => Volatile.Read(ref _scansFinished);
+
+    /// <summary>
+    /// Starts a new count, at the beginning of a library load.
+    /// </summary>
+    /// <remarks>
+    /// Called from GameManager before any game is queued. It is a reset rather than a pair of baselines
+    /// because a refresh re-queues games that already have a count, and without it the second refresh
+    /// would start reporting "Scanning 341 of 680".
+    ///
+    /// A reset can land while an earlier scan is still running - a refresh while a load is still finishing -
+    /// so the finished count is clamped against the queued count wherever it is displayed. Over-counting
+    /// is the one thing the caller must never see, since "Scanning 400 of 340" reads as a fault.
+    /// </remarks>
+    internal static void ResetScanCounters()
+    {
+        Interlocked.Exchange(ref _scansQueued, 0);
+        Interlocked.Exchange(ref _scansFinished, 0);
+    }
+
+    /// <summary>Records that a scan is about to be queued.</summary>
+    internal static void CountScanQueued() => Interlocked.Increment(ref _scansQueued);
+
+    /// <summary>Records that a queued scan has run to completion, successfully or not.</summary>
+    internal static void CountScanFinished() => Interlocked.Increment(ref _scansFinished);
+
     [Ignore]
     public abstract GameLibrary GameLibrary { get; }
 
@@ -554,6 +604,12 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         // WaitCallback and therefore runs it as `async void`. Anything thrown from the finally block
         // below escaped to the thread pool as an unhandled exception and terminated the process.
         // Task.Run gives us a real Task, so the finally is covered and nothing can crash the app.
+        //
+        // Counted here, after the two early returns above, so a game with a missing or empty install path
+        // does not join the queue. It was never going to be scanned, and counting it would leave the games
+        // page reporting a scan that could never complete.
+        CountScanQueued();
+
         _ = Task.Run(async () =>
         {
             await processGameSemaphore.WaitAsync().ConfigureAwait(false);
@@ -880,6 +936,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 // Processing has to be reset unconditionally. If it is left true the game
                 // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
                 ExitProcessing();
+
+                // Alongside it, so the two cannot drift: anything that stops calling ExitProcessing is
+                // exactly the change that would also stop the scan progress advancing. The game is
+                // finished either way - this is not a success signal.
+                CountScanFinished();
             }
         });
     }

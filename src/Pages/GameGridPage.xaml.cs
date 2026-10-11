@@ -82,6 +82,11 @@ public sealed partial class GameGridPage : Page
             _saveScrollSizeTimer.Dispose();
             _saveScrollSizeTimer = null;
         }
+
+        // Same reason, for the scan progress timer: it fires on the UI thread, and a page the user has
+        // navigated away from has no business still being asked to update its text. It is stopped rather
+        // than disposed so that coming back to this page reuses it.
+        ViewModel?.StopScanProgressTimer();
     }
 
 
@@ -220,5 +225,25 @@ public sealed partial class GameGridPage : Page
     private void ClearSearchBox_Click(object sender, RoutedEventArgs e)
     {
         SearchBox.Text = string.Empty;
+    }
+
+    /// <summary>Ctrl+F - put the caret in the search box.</summary>
+    void SearchAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+
+        // Disabled while the library is loading, and focusing a disabled box does nothing - so the
+        // shortcut would appear broken rather than unavailable. Checked here rather than left to
+        // Focus() failing silently.
+        if (SearchBox.IsEnabled == false)
+        {
+            return;
+        }
+
+        SearchBox.Focus(FocusState.Programmatic);
+
+        // The box is 300px wide and the user may be replacing a previous search. Selecting what is there
+        // means typing overwrites it, which is what pressing Ctrl+F in any other search field does.
+        SearchBox.SelectAll();
     }
 }

@@ -15,7 +15,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Windows.System;
-
 namespace Kronos.Pages;
 
 public enum GameGridViewType
@@ -118,6 +117,12 @@ public partial class GameGridPageModel : ObservableObject
         IsGameListLoading = true;
         IsDLSSLoading = true;
 
+        // Armed here rather than from a property-changed hook on those flags, because they both start
+        // true. The source generator's setter returns early when the new value equals the old one, so
+        // assigning true to a flag that is already true raises nothing - and a hook on IsGameListLoading
+        // would never have fired on the first load, which is the one load where the text is wanted most.
+        StartScanProgressTimer();
+
         try
         {
             await GameManager.Instance.LoadGamesFromCacheAsync();
@@ -132,6 +137,7 @@ public partial class GameGridPageModel : ObservableObject
             // GameGridPage.xaml.cs's SafeFireAndForget call already logs the exception.
             IsGameListLoading = false;
             IsDLSSLoading = false;
+            FinishScanProgress();
         }
     }
 
@@ -398,6 +404,10 @@ public partial class GameGridPageModel : ObservableObject
             IsDLSSLoading = true;
             OnPropertyChanged(nameof(CanRefresh));
 
+            // A refresh re-queues every game, so it is a scan run and needs the same counter as the first
+            // load. Started after the flags, for the same reason InitialLoadAsync does it there.
+            StartScanProgressTimer();
+
             await GameManager.Instance.LoadGamesAsync(true);
         }
         finally
@@ -407,6 +417,7 @@ public partial class GameGridPageModel : ObservableObject
             IsDLSSLoading = false;
             Interlocked.Exchange(ref _refreshing, 0);
             OnPropertyChanged(nameof(CanRefresh));
+            FinishScanProgress();
         }
     }
 
@@ -476,5 +487,151 @@ public partial class GameGridPageModel : ObservableObject
         GameGridViewType = gameGridView;
         gameGridPage.ReloadMainContentControl();
         Settings.Instance.GameGridViewType = gameGridView;
+    }
+
+    // ------------------------------------------------------------------ scan progress
+
+    /// <summary>How often the scan progress is re-read while something is loading.</summary>
+    /// <remarks>
+    /// Fast enough to feel live, slow enough that a library of several hundred games does not spend its
+    /// time formatting a string. The text is three digits wide; nobody can read a number that updates
+    /// faster than the eye.
+    /// </remarks>
+    static readonly TimeSpan ScanProgressInterval = TimeSpan.FromMilliseconds(400);
+
+    // A System.Threading.Timer rather than Microsoft.UI.Dispatching.DispatcherQueueTimer.
+    //
+    // The WinUI timer takes its queue through a constructor overload that this SDK's projection does not
+    // offer in the two obvious shapes, and this page already has a working timer of the other kind - the
+    // one that persists the grid width - using exactly this pattern. Matching it keeps one idiom for
+    // "do this again shortly" rather than two.
+    //
+    // Marshalled to the UI thread rather than written from the timer thread: ScanStatusText is an
+    // ObservableProperty and setting a bound property off-thread is the same hazard the scroll timer
+    // documents at length.
+    Timer? _scanProgressTimer;
+
+    /// <summary>
+    /// Whether the progress timer should keep going.
+    /// </summary>
+    /// <remarks>
+    /// A flag rather than just cancelling the timer, because a cancel cannot recall a callback that has
+    /// already started. Without it, a load that finished while a tick was mid-flight would have that tick
+    /// re-arm the timer afterwards, leaving it running against a page with nothing to report - and, on the
+    /// games page, forever, since the timer stops only when something ends a load.
+    ///
+    /// Volatile because the callback runs on a pool thread while the flag is written from the UI thread.
+    /// </remarks>
+    volatile bool _scanProgressWanted;
+
+    [ObservableProperty]
+    public partial string ScanStatusText { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Recomputes "Scanning 12 of 340", or nothing when nothing is being scanned.
+    /// </summary>
+    /// <remarks>
+    /// Must run on the UI thread; it writes a bound property. The formatting itself is
+    /// <see cref="FormatScanStatus"/>, which is pure and separately tested - the rule that finished can
+    /// never be reported above queued is the one worth pinning down, and it cannot be checked from a
+    /// property that needs a loaded page to read.
+    /// </remarks>
+    void UpdateScanStatus()
+    {
+        ScanStatusText = FormatScanStatus(IsLoading, Game.ScansQueued, Game.ScansFinished);
+
+        // Nothing left to report, so stop asking. Covers a load whose game list never queued anything -
+        // an empty library, or every library disabled - where the timer would otherwise poll forever
+        // against a page that has nothing to say.
+        if (IsLoading == false || Game.ScansQueued == 0)
+        {
+            StopScanProgressTimer();
+        }
+    }
+
+    /// <summary>
+    /// Renders the scan counter. Pure, so it can be tested without a page.
+    /// </summary>
+    /// <param name="isLoading">Whether a load is in progress.</param>
+    /// <param name="queued">Scans handed to a worker since the last reset.</param>
+    /// <param name="finished">Of those, how many have run to completion.</param>
+    /// <remarks>
+    /// <paramref name="finished"/> is clamped down to <paramref name="queued"/>, never the other way
+    /// round. The two counters are reset at the start of each library load, and a refresh can begin while
+    /// the previous load's scans are still running, so finished can legitimately exceed queued. "Scanning
+    /// 400 of 340" reads as a fault in the app rather than as a refresh that overtook a load.
+    ///
+    /// Empty unless there is a load in progress and something was queued, which is what lets the page
+    /// bind it straight to visibility: no converter, and no empty label left behind between operations.
+    /// </remarks>
+    internal static string FormatScanStatus(bool isLoading, int queued, int finished)
+    {
+        if (isLoading == false || queued <= 0)
+        {
+            return string.Empty;
+        }
+
+        return $"Scanning {Math.Min(finished, queued)} of {queued}";
+    }
+
+    /// <summary>The timer callback. Marshals to the UI thread, then decides whether to run again.</summary>
+    void OnScanProgressTick()
+    {
+        UiDispatcher.Invoke(UpdateScanStatus);
+
+        // Re-armed only while still wanted, and re-armed from inside the callback rather than by
+        // UpdateScanStatus. The one-shot design means the only thing that can restart a stopped timer is
+        // a fresh StartScanProgressTimer, which is what makes "stop" mean stopped.
+        if (_scanProgressWanted && IsLoading)
+        {
+            _scanProgressTimer?.Change(ScanProgressInterval, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    void StartScanProgressTimer()
+    {
+        _scanProgressWanted = true;
+
+        if (_scanProgressTimer is null)
+        {
+            _scanProgressTimer = new Timer(
+                _ => OnScanProgressTick(),
+                null,
+                Timeout.InfiniteTimeSpan,
+                Timeout.InfiniteTimeSpan);
+        }
+
+        _scanProgressTimer.Change(ScanProgressInterval, Timeout.InfiniteTimeSpan);
+
+        // Once, immediately, rather than waiting out the first interval. The queued count is usually
+        // already non-zero by the time a load begins, so waiting 400ms to draw it makes the page look
+        // like nothing is happening for the first fraction of a second of every load.
+        UpdateScanStatus();
+    }
+
+    /// <summary>Stops the progress timer, leaving it usable for the next load.</summary>
+    /// <remarks>
+    /// Not disposed, so navigating back to the page reuses it rather than building another. Clearing the
+    /// flag before cancelling is what stops an in-flight callback from re-arming it - see
+    /// <see cref="_scanProgressWanted"/>.
+    /// </remarks>
+    public void StopScanProgressTimer()
+    {
+        _scanProgressWanted = false;
+        _scanProgressTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Clears the text and stops the timer, for the end of a load.
+    /// </summary>
+    /// <remarks>
+    /// Called from the same <c>finally</c> that clears the loading flags, rather than left to the timer's
+    /// next tick. Waiting out an interval to clear a string that is no longer true leaves a stale count on
+    /// screen during the gap, which is exactly the confusion this was added to remove.
+    /// </remarks>
+    void FinishScanProgress()
+    {
+        StopScanProgressTimer();
+        ScanStatusText = string.Empty;
     }
 }

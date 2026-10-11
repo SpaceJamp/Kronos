@@ -298,6 +298,11 @@ internal partial class GameManager : ObservableObject
 
     public async Task LoadGamesAsync(bool forceNeedsProcessing = false)
     {
+        // Before any library is asked for its games, because every library queues its scans from inside
+        // ListGamesAsync and the first one can do so on another thread while this method is still
+        // enumerating the rest. Resetting afterwards would discard the count of scans already under way.
+        Game.ResetScanCounters();
+
         var tasks = new List<Task<List<Game>>>();
         if (forceNeedsProcessing == true)
         {

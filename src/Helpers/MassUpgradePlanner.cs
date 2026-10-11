@@ -310,8 +310,45 @@ public static class MassUpgradePlanner
             parts.Add($"{plan.NotDownloadedCount} cannot be updated because the file is not downloaded yet");
         }
 
+        // The blocked games, named.
+        //
+        // The counts above said how many and the plan already carried every game's title, but nothing
+        // between the two connected them. So a library with twenty games told the user "3 cannot be
+        // updated" and left them to work out which three, with no way to tell from the dialog whether the
+        // three were the ones they cared about. The blocked ones are exactly the games that will be left
+        // untouched, which is what someone confirming a whole-library write most needs to check.
+        var blocked = plan.Items
+            .Where(x => x.Kind == MassUpgradePlanner.ActionKind.NotDownloaded)
+            .Select(x => x.GameTitle)
+            .Where(title => string.IsNullOrWhiteSpace(title) == false)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (blocked.Count > 0)
+        {
+            parts.Add(
+                "Left unchanged: " +
+                string.Join(", ", blocked.Take(MaxNamedGames)) +
+                (blocked.Count > MaxNamedGames ? $", and {blocked.Count - MaxNamedGames} more" : string.Empty) +
+                ".");
+        }
+
         parts.Add("Kronos backs up every file it replaces, so each change can be undone from the game's history.");
 
         return string.Join("\n\n", parts) + "\n\nContinue?";
     }
+
+    /// <summary>
+    /// How many game titles the summary names before it falls back to a count.
+    /// </summary>
+    /// <remarks>
+    /// Bounded because this is a confirmation, not a report. The dialog scrolls, so the limit is not about
+    /// the buttons being pushed off the bottom any more - it is that a list of three hundred game titles is
+    /// something nobody reads before pressing the key that acts on all of them. At this length the names are
+    /// skimmable and the rest is a number.
+    ///
+    /// Twelve is chosen to fit the dialog's width on two or three short lines, so what is listed can be
+    /// taken in at a glance rather than scrolled past.
+    /// </remarks>
+    internal const int MaxNamedGames = 12;
 }

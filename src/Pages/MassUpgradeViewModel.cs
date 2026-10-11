@@ -123,8 +123,24 @@ public partial class MassUpgradeViewModel : ObservableObject
             Title = "Update every game?",
             CloseButtonText = "Cancel",
             PrimaryButtonText = "Update",
+            // Cancel, not Update. This is the confirmation for a whole-library write, and the safe
+            // default for that is the way out. A destructive action that starts focused invites the
+            // wrong Enter keypress.
             DefaultButton = ContentDialogButton.Close,
-            Content = MassUpgradePlanner.Summarise(plan),
+            // Scrollable and bounded. The summary names the games that will be left alone, and a library
+            // with many blocked entries would otherwise render taller than the dialog, pushing "Continue?"
+            // and both buttons off the bottom with nothing to scroll them into view.
+            Content = new ScrollViewer
+            {
+                MaxHeight = 320,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = new TextBlock
+                {
+                    Text = MassUpgradePlanner.Summarise(plan),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                },
+            },
         };
 
         // No ConfigureAwait here. ContentDialog.ShowAsync returns a WinRT IAsyncOperation, not a Task,
