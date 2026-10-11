@@ -39,9 +39,52 @@
 |---|---|---|
 | **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection, DLL swapping and self-update. |
 | **Linux x64** | `net10.0` | 🟡 **Under active development.** The game model, DLL management and the database compile and are reachable, and the CLI has `update`, `version` and `self-update`. `list`, `swap` and `reset` are not wired up yet, and game detection is registry-based so no store is discovered automatically. |
+| **Linux x64 (GUI)** | `net10.0-desktop` | 🟡 **Evaluated, not built.** A spike confirmed [Uno Platform](#uno-platform-evaluation-for-a-linux-gui) can carry this app's existing XAML to Linux unchanged. Not started — and on its own it would build a GUI around a product that cannot yet swap a DLL. |
 
 The Windows GUI is the finished product. The Linux port is real work in progress by this
 repository's maintainer — see [Ownership of the Linux work](#ownership-of-the-linux-work).
+
+## Uno Platform evaluation for a Linux GUI
+
+> [!IMPORTANT]
+> **This is an evaluation, not a plan in progress.** The spike lives on the `uno-spike` branch and has
+> changed nothing that ships. `main` still carries the WinUI 3 app, and it still builds, tests and
+> releases exactly as before.
+
+The Linux CLI is updater-only, so the first question is what a Linux GUI would even be a front end for.
+Uno Platform was chosen to evaluate because it runs **WinUI XAML** on Linux — meaning Kronos's ~2,980
+lines of XAML would survive a port rather than being rewritten. That was worth proving rather than
+assuming, since a previous Avalonia attempt was abandoned after 141 compile errors.
+
+A spike was built on the `uno-spike` branch: one page exercising every construct this app actually
+uses, in the shape it actually uses them, on Uno.Sdk 6.7.30.
+
+| Question | Answer |
+|---|---|
+| Does the XAML dialect carry over? | ✅ **Yes.** Every construct this app uses compiles unchanged — including `CommunityToolkit.WinUI.Converters` (declared in every page's resources), `x:Bind` two levels deep through the generated `TranslationProperties` object (how every string in the app is bound), and the WinUI system brushes and styles behind `ThemeResource` and `StaticResource`. |
+| Does it build for Linux? | ✅ **Yes**, from this Windows machine — it publishes a genuine ELF binary, so no Linux build runner is needed. |
+| Does it run? | 🟡 **Partly.** It starts and loads ICU, Skia, HarfBuzz, X11, fontconfig and Mesa GL. **Rendering is unproven** — it did not open a window in the environment available, which had no Wayland compositor running. |
+
+The one construct that failed is `Hyperlink` wrapping a `TextBlock`: Uno's derives from `Inline` and
+takes `Inline` children, where WinUI 3 also accepts a `UIElement`. All four `Hyperlink`s in this repo
+already wrap a `Run`, which works — so it cost nothing.
+
+Full detail, including what it does *not* solve, is in
+[`spike/SPIKE-FINDINGS.md`](https://github.com/SpaceJamp/Kronos/blob/uno-spike/spike/SPIKE-FINDINGS.md).
+The link is pinned to the branch because the file lives there and this section is read from both.
+
+> [!WARNING]
+> **Uno migrates the UI, which is roughly 8% of `src/`.** It does nothing for the other 92% — 88 registry
+> references, 53 P/Invoke sites, and eight store-discovery libraries. A completed Uno migration would
+> leave a Linux GUI attached to a product that still cannot swap a DLL.
+>
+> **The blocking work is the data layer, not the UI.** Store discovery and DLL management on Linux is
+> the next piece, and it is a different kind of job entirely.
+
+One deployment consequence is already known: Uno's text engine loads ICU directly, so
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` does **not** work — unlike in a plain .NET app. Any Linux
+distro targeted needs `libicu`. Conversely, Uno drops the Windows App Runtime, which would remove the
+"install the App Runtime or Kronos exits silently" problem described under [Getting it](#getting-it).
 
 ## Ownership of the Linux work
 
@@ -142,7 +185,7 @@ The Linux port has no store detection yet — see [Platform support](#platform-s
 # Build
 dotnet build ".\src\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c Release
 
-# Test (426 tests)
+# Test (614 tests)
 dotnet test ".\Kronos.sln" -c Release
 
 # Self-contained portable build → Output/win-x64-portable-<timestamp>/
@@ -211,8 +254,16 @@ compiled and reachable in the Linux build — `QueryGames`, `UpdateDllAsync`, `R
 planner — but nothing wires them to command-line arguments or output formatting. Game detection is
 the other gap: Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all discovered through the
 Windows registry, so `IGameLibrary.GetGameLibrary` returns `null` for those stores on Linux and the
-load loop skips them. Steam is the easiest to port — `libraryfolders.vdf` and `appmanifest_*.acf` are
-plain file parsing rather than a registry key.
+load loop skips them.
+
+Steam is the easiest to port, and more so than when this was first written: `libraryfolders.vdf` and
+`appmanifest_*.acf` are plain file parsing rather than a registry key, parsers for both already exist
+in [`src/Data/Steam/Manifest/`](src/Data/Steam/Manifest/), and `DLLManager` is already shared across
+platforms. What is missing is the Linux library roots those paths are resolved against, and the
+`IGameLibrary` implementation that walks them.
+
+This is the blocking work for Linux, and it is not a UI task — see
+[Uno Platform evaluation](#uno-platform-evaluation-for-a-linux-gui).
 
 ### Prerequisites at a glance
 
@@ -351,7 +402,7 @@ cleared on failure instead of leaving buttons permanently disabled.
 
 **Maintainability.** Per-DLL-type logic is driven from one table
 ([`src/Data/DLLAssetTypeInfo.cs`](src/Data/DLLAssetTypeInfo.cs)) instead of nine parallel if/else
-chains. There is an xUnit suite in [`tests/`](tests/) — 426 tests covering backup decisions, swap
+chains. There is an xUnit suite in [`tests/`](tests/) — 614 tests covering backup decisions, swap
 versioning, mass-update scope, release parsing, the games page markup and the build scripts. There is
 no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release`.
 
@@ -360,6 +411,10 @@ no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release
 The Linux work in this repository is the maintainer's own — see
 [Ownership of the Linux work](#ownership-of-the-linux-work). It is described here because it changed
 the shape of the Windows app too.
+
+A [Uno Platform spike](#uno-platform-evaluation-for-a-linux-gui) was also run, to establish whether the
+Windows UI could reach Linux without a rewrite. It can — but that is the small half of the problem, and
+it is not the half currently blocking anything.
 
 The `net10.0` target had stopped compiling the game model: a change during the original port removed
 `Game.cs`, `GameManager.cs`, `DLLManager.cs`, `DLLRecord.cs`, `Manifest.cs`, `GameHistory.cs`,
