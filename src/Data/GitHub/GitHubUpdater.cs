@@ -117,13 +117,31 @@ internal class GitHubUpdater
                 // If we are not downloading and we are not forced to check then return the existing object.
                 if (forceCheck == false)
                 {
-                    using (var fileStream = File.OpenRead(releasesFile))
+                    // Guarded, and treated as a cache miss rather than a failure.
+                    //
+                    // This read was unguarded and sat outside every try in the method. A startup check
+                    // and a forced check from Settings can both touch this file, so an IOException from a
+                    // sharing violation - or a JsonException from a file another thread was mid-write on -
+                    // escaped FetchLatestRelease entirely and surfaced as an unhandled exception during
+                    // startup. CheckForNewGitHubRelease does not catch it.
+                    //
+                    // A cache miss is the right answer to "the cached file is unusable": the code below
+                    // downloads it anyway. There is nothing here worth crashing over.
+                    try
                     {
-                        var githubRelease = JsonSerializer.Deserialize(fileStream, SourceGenerationContext.Default.GitHubRelease);
-                        if (githubRelease is not null)
+                        using (var fileStream = File.OpenRead(releasesFile))
                         {
-                            return githubRelease;
+                            var githubRelease = JsonSerializer.Deserialize(fileStream, SourceGenerationContext.Default.GitHubRelease);
+                            if (githubRelease is not null)
+                            {
+                                return githubRelease;
+                            }
                         }
+                    }
+                    catch (Exception err)
+                    {
+                        Logger.Error(err, "Could not read the cached release information; fetching it again.");
+                        shouldDownload = true;
                     }
                 }
             }
@@ -149,10 +167,13 @@ internal class GitHubUpdater
                     memoryStream.Position = 0;
 
                     // If we did load the json, save it to disk.
-                    using (var fileStream = File.Create(releasesFile))
-                    {
-                        await memoryStream.CopyToAsync(fileStream).ConfigureAwait(false);
-                    }
+                    //
+                    // Written through AtomicFile rather than File.Create, which truncates to zero on open:
+                    // a failure mid-copy left a truncated releases.json, which then failed to parse on the
+                    // next read - the same truncate-then-write fault that used to reset every setting. This
+                    // is a cache, so the stakes are low, but it is read on the startup path and it was being
+                    // written unguarded from two directions at once.
+                    SaveCacheAtomically(releasesFile, memoryStream);
 
                     return githubRelease;
                 }
@@ -271,6 +292,72 @@ internal class GitHubUpdater
     /// a test, where App.CurrentApp is null because there is no Application, so it takes the version as
     /// a parameter rather than fetching it.
     /// </remarks>
+    /// <summary>
+    /// Writes a cache file without ever leaving it half-written.
+    /// </summary>
+    /// <remarks>
+    /// Copies to a temporary file beside the destination and renames it into place, so a concurrent reader
+    /// sees either the old file or the new one. The same treatment AtomicFile gives the game's DLLs.
+    ///
+    /// Synchronous on purpose: this runs at most once per startup check, it is a few kilobytes, and making
+    /// it async would put another await between opening the temp file and renaming it, which is the very
+    /// window this closes.
+    /// </remarks>
+    static void SaveCacheAtomically(string path, Stream contents)
+    {
+        var temp = $"{path}.tmp";
+
+        try
+        {
+            contents.Position = 0;
+
+            using (var fileStream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                contents.CopyTo(fileStream);
+                fileStream.Flush(flushToDisk: true);
+            }
+
+            if (File.Exists(path))
+            {
+                File.Replace(temp, path, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            }
+            else
+            {
+                File.Move(temp, path);
+            }
+        }
+        catch
+        {
+            Storage.TryDeleteFile(temp);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Tells the user an installer was not run, and offers to open the release instead.
+    /// </summary>
+    /// <remarks>
+    /// The installer path's equivalent of ReportPortableUpdateFailure, which lives behind #if PORTABLE and
+    /// so cannot be called from here. Both hide the updating dialog first, because leaving a spinner on
+    /// screen over a dialog that is about to close looks like a hang.
+    /// </remarks>
+    static async Task ShowInstallerFailureAsync(XamlRoot xamlRoot, GitHubRelease gitHubRelease, string reason)
+    {
+        var errorDialog = new EasyContentDialog(xamlRoot)
+        {
+            Title = ResourceHelper.GetString("General_Error"),
+            Content = reason,
+            PrimaryButtonText = ResourceHelper.GetString("GitHubUpdater_ViewUpdate"),
+            CloseButtonText = ResourceHelper.GetString("General_Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await errorDialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await Launcher.LaunchUriAsync(new Uri(gitHubRelease.HtmlUrl));
+        }
+    }
+
     internal static ulong GetCurrentVersionNumber(System.Version? version = null)
     {
         version ??= App.CurrentApp.GetVersion();
@@ -582,6 +669,40 @@ internal class GitHubUpdater
 
             try
             {
+                // Verified before it is launched, and launched with administrator rights.
+                //
+                // This path did not verify at all. The hash below is only consulted to decide whether an
+                // already-cached file needs re-downloading; once downloaded == true, control fell straight
+                // through to Process.Start with UseShellExecute, which is what triggers the UAC prompt. So
+                // anything that came back from the network - a truncating proxy, a substituted body - was
+                // executed as administrator. The digest is not optional at that point: an asset is only
+                // selected at all if it has one, so having none here means the caller bypassed the check.
+                //
+                // This is the same gate the portable path already applied before it replaced the app, which
+                // is why that one was safe and this one was not.
+                if (string.IsNullOrWhiteSpace(gitHubAsset.Digest) == false)
+                {
+                    using (var stream = File.OpenRead(tempDownloadFile))
+                    {
+                        var actualHash = stream.GetSha256Hash();
+
+                        if (actualHash.Equals(gitHubAsset.Digest["sha256:".Length..], StringComparison.OrdinalIgnoreCase) == false)
+                        {
+                            File.Delete(tempDownloadFile);
+                            await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "The download did not match its published checksum, so it has not been run.");
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    // No digest means nothing to verify against. Refuse rather than run it unchecked: an
+                    // update mechanism that silently accepts unverified files is worse than none.
+                    File.Delete(tempDownloadFile);
+                    await ShowInstallerFailureAsync(xamlRoot, gitHubRelease, "This update has no published checksum, so it cannot be verified and will not be run.");
+                    return;
+                }
+
                 var processStartInfo = new ProcessStartInfo()
                 {
                     FileName = tempDownloadFile,

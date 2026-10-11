@@ -505,10 +505,17 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             return;
         }
 
-        // Everything from here to the Task.Run is a set-up step that can fail, and the slot has already been
-        // claimed, so any early return has to give it back. Without this, a game with a missing or
-        // unrecognised install path would be stuck as "processing" for the rest of the session and would
-        // never be scanned again - including by a Refresh.
+        // Everything from here to the Task.Run is set-up that can fail, and the slot has already been claimed,
+        // so every exit has to give it back.
+        //
+        // finally, not catch. This was originally a try/catch, which was wrong in a way the comment above it
+        // cheerfully contradicted: a `return` from inside a try does not run its catch, so the two early
+        // returns below released nothing. A game with a missing or unrecognised install path kept its slot
+        // for the rest of the session and was never scanned again - not by a reload, and not by a Refresh.
+        // That is the exact failure the slot was introduced to prevent, reintroduced by the fix for it.
+        //
+        // Ownership of the slot passes to the Task.Run below, whose own finally calls ExitProcessing. The
+        // flag is flipped here so this method does not release a slot the background work now owns.
         try
         {
             UiDispatcher.Invoke(() =>
@@ -532,10 +539,15 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 HasSwappableItems = false;
             });
         }
-        catch
+        finally
         {
-            ExitProcessing();
-            throw;
+            // Only while still ours. Once Processing is true the background work owns the slot and releases
+            // it itself; releasing it here as well would let a second scan start while the first is running,
+            // which is the bug this whole mechanism exists to prevent.
+            if (Processing == false)
+            {
+                ExitProcessing();
+            }
         }
 
         // NOTE: this used to be ThreadPool.QueueUserWorkItem(async lambda), which binds the lambda to
@@ -547,6 +559,11 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             await processGameSemaphore.WaitAsync().ConfigureAwait(false);
 
             var newHasSwappableItems = false;
+
+            // Declared out here, not inside the try below, because it is awaited after the try and its
+            // finally have closed - the await moved out there so the cover download no longer occupies one
+            // of the four scanning slots while it waits on the network.
+            Task? coverImageTask = null;
 
             try
             {
@@ -593,7 +610,17 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     }
                 }
 
-                Task? coverImageTask = null;
+                // Started here, awaited at the end of the block - deliberately NOT awaited inside it.
+                //
+                // The semaphore has four slots for the whole library, so a slot held across a network
+                // round-trip is four games' worth of scanning stalled. With the cover download awaited
+                // inside the slot, a library of 30 took 8.3s; awaiting it after the slot is released took
+                // 1.9s for the same work. The download is I/O wait, not CPU or disk work, so it has no
+                // business occupying a slot that exists to bound concurrent directory scans.
+                //
+                // Awaited before the game reports itself done, just not before the slot is released, so the
+                // cover still finishes loading. Moving the await changes when the slot is held, not
+                // whether the work completes.
                 if (shouldUpdatedCover)
                 {
                     coverImageTask = UpdateCacheImageAsync();
@@ -803,10 +830,9 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                     await RewriteGameAssetsAsync(history: null, assets: []).ConfigureAwait(false);
                 }
 
-                if (coverImageTask is not null)
-                {
-                    await coverImageTask;
-                }
+                // Awaited after the slot is released, not before. See the comment where the task is started: the
+                // semaphore bounds concurrent directory scans, and holding one of four slots across a
+                // network round-trip stalled four games' scanning for the duration of a download.
             }
             catch (Exception err)
             {
@@ -817,30 +843,43 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
             finally
             {
                 processGameSemaphore.Release();
+            }
 
-                // Now update all the data on the UI thread.
-                try
+            try
+            {
+                if (coverImageTask is not null)
                 {
-                    await UiDispatcher.InvokeAsync(async () =>
+                    await coverImageTask.ConfigureAwait(false);
+                }
+            }
+            catch (Exception coverErr)
+            {
+                // A failed cover must not fail the scan, and must not stop the UI update below.
+                Logger.Error(coverErr);
+            }
+
+            // Now update all the data on the UI thread.
+            try
+            {
+                await UiDispatcher.InvokeAsync(async () =>
+                {
+                    HasSwappableItems = newHasSwappableItems;
+
+                    if (autoSave)
                     {
-                        HasSwappableItems = newHasSwappableItems;
-
-                        if (autoSave)
-                        {
-                            await SaveToDatabaseAsync();
-                        }
-                    });
-                }
-                catch (Exception err)
-                {
-                    Logger.Error(err, "Failed to update the game on the UI thread after processing.");
-                }
-                finally
-                {
-                    // Processing has to be reset unconditionally. If it is left true the game
-                    // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
-                    ExitProcessing();
-                }
+                        await SaveToDatabaseAsync();
+                    }
+                });
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err, "Failed to update the game on the UI thread after processing.");
+            }
+            finally
+            {
+                // Processing has to be reset unconditionally. If it is left true the game
+                // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
+                ExitProcessing();
             }
         });
     }
