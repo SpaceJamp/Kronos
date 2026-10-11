@@ -155,7 +155,23 @@ internal class Database
         // a repack borrow the artwork of the game it is a copy of.
         AddColumn(syncConnection, "manually_added_game", "linked_app_id", "TEXT NOT NULL DEFAULT ''");
 
-        // Delete old indexes if they exist.
+        // Drop the indexes that predate the snake_case migration. DO NOT DELETE - they are load-bearing.
+//
+// An audit of this repository reported these two statements as dead code, reasoning that sqlite-net names
+// its indexes {table}_{hash} rather than {table}_{column}, so the names could never match. That is not
+// how sqlite-net-e 1.11.0 works, and these names are exactly right:
+//
+//   1. An install from before the migration has indexes named GameAsset_id and GameHistory_game_id,
+//      because sqlite-net builds an index name from the table name and the column name.
+//   2. RenameTable above has by now run ALTER TABLE ... RENAME TO for both tables. SQLite retargets an
+//      index at the renamed table but leaves the index's own name alone, so the schema now has a table
+//      called game_asset carrying an index still called GameAsset_id.
+//   3. CreateTable<GameAsset>() further down then creates its own game_asset_id, which succeeds either
+//      way - leaving two indexes on the same column, one of them stale.
+//
+// Dropping them here is what prevents that. DatabaseIndexMigrationTests demonstrates each step against a
+// real SQLite file, and pins these two lines: deleting either one fails a test rather than quietly
+// leaving every user's database carrying a duplicate index.
         syncConnection.Execute("DROP INDEX IF EXISTS GameAsset_id");
         syncConnection.Execute("DROP INDEX IF EXISTS GameHistory_game_id");
 
