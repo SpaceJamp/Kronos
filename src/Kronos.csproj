@@ -54,14 +54,15 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.53 for the grid view selection fix and the working update check. This must match the
-      git tag or the updater will compare against the wrong version: it reads the release title, and
-      the comparison only offers a release strictly newer than this number.
+      Bumped to 1.54 for the Windows 10 22H2 launch floor, the "Update all" change, and the removal of
+      the Avalonia project. This must match the git tag or the updater will compare against the wrong
+      version: it reads the release title, and the comparison only offers a release strictly newer than
+      this number.
 
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.53</Version>
+    <Version>1.54</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
