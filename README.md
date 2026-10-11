@@ -37,7 +37,7 @@
 
 | Platform | Target framework | Status |
 |---|---|---|
-| **Windows x64** | `net10.0-windows10.0.26100.0` | âœ… **Working.** WinUI 3 GUI with game detection, DLL swapping and self-update. |
+| **Windows x64** | `net10.0-windows10.0.26100.0` | **Working.** WinUI 3 GUI with game detection, DLL swapping and self-update. |
 | **Linux x64** | `net10.0` | ðŸŸ¡ **Under active development.** The game model, DLL management and the database compile and are reachable, and the CLI has `update`, `version` and `self-update`. `list`, `swap` and `reset` are not wired up yet, and game detection is registry-based so no store is discovered automatically. |
 | **Linux x64 (GUI)** | `net10.0-desktop` | ðŸŸ¡ **Evaluated, not built.** A spike confirmed [Uno Platform](#uno-platform-evaluation-for-a-linux-gui) can carry this app's existing XAML to Linux unchanged. Not started â€” and on its own it would build a GUI around a product that cannot yet swap a DLL. |
 
