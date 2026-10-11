@@ -88,6 +88,23 @@ public class BuildMetadataTests
     }
 
     [Fact]
+    public void TheTagIsReadWithoutBreakingThePipeOnGit()
+    {
+    // v1.55 shipped with an empty tag, so IsFromTagBuild was false and the About section's version link
+        // went to the releases index instead of the release it belongs to - the very thing the tag exists
+        // to fix. The cause: `git tag --points-at HEAD | Select-Object -First 1` closes the pipe before git
+        // finishes writing, git takes a broken pipe, and $LASTEXITCODE comes back as -1. The script then
+        // read that as failure and discarded a tag that was there all along.
+        //
+        // So: no Select-Object in the middle of the git call, and no exit code guarding the tag.
+        var buildScript = RepositoryFile("build.ps1");
+
+        Assert.DoesNotContain("git tag --points-at HEAD 2>$null | Select-Object -First 1", buildScript, StringComparison.Ordinal);
+        Assert.Contains("@(& git tag --points-at HEAD 2>$null)", buildScript, StringComparison.Ordinal);
+        Assert.Contains("if (-not [string]::IsNullOrWhiteSpace($tagName))", buildScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildInfoTreatsAnAbsentTagAsNotAReleaseBuildRatherThanFailing()
     {
         // A build from an exported archive has no git at all. That has to read as "no tag", not as an error.

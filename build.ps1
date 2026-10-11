@@ -85,8 +85,16 @@ try {
 
     # Only a tag that is actually on this commit counts. An old tag left lying around would otherwise be
     # baked into a build made weeks later, and the About section would link to a release it is not.
-    $tagName = (& git tag --points-at HEAD 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($tagName)) {
+    #
+    # Collected with @() rather than piped into Select-Object -First 1, and the exit code deliberately not
+    # checked. Selecting the first item closes the pipe before git has finished writing, so git takes a
+    # broken pipe, and PowerShell reports that as $LASTEXITCODE = -1. Reading the output and then asking
+    # whether it was empty is the honest test: if git printed nothing, there is no tag, and if git
+    # printed something the exit code is beside the point. That bug shipped once - v1.55 was published
+    # with an empty tag because of exactly this.
+    $tagLines = @(& git tag --points-at HEAD 2>$null)
+    $tagName = $tagLines | Select-Object -First 1
+    if (-not [string]::IsNullOrWhiteSpace($tagName)) {
         $gitMetadataArgs += "-p:KronosGitTag=$tagName"
     }
 }
