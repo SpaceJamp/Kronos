@@ -200,46 +200,6 @@ Kronos is a derivative of upstream DLSS Swapper. The substantive differences:
 - The Inno Setup installer and its `package\*.cmd` scripts were removed. Releases now carry a
   self-contained portable archive instead.
 
-### Bugs fixed
-
-**The Games page rendered empty.** A refactor rebuilt the collection views with `Source = _allGames`
-— a list of `Game` — while leaving `IsSourceGrouped = true`, and gave each library's view a
-throwaway `ObservableCollection` instead of the real one. WinUI tried to group individual games by a
-property they do not have and produced nothing, so the Games page showed no games on any build, even
-though detection was working and the database was full. The original design — a list of `GameGroup`
-objects over filtered views of the shared collection — has been restored.
-
-**"Reset to default" never worked.** When backups were changed from one `.dlsss` file to a numbered
-chain (`.kronosbak1`, `.kronosbak2`, …), the write paths were updated but the read paths were not.
-Reset looked for the literal string `".dlsss"` in a path that does not contain it, matched no primary
-record, and reported *"repair your game manually"* for every DLL swapped by the current build. The
-same omission meant a rescan found no backups, dropped those records from memory and deleted them from
-the database — leaving the files on disk untracked, which made reset permanently impossible and made
-each later swap append yet another chain entry.
-
-**One unreadable registry key could delete a user's game data.** The Ubisoft Connect library used
-`break` where `continue` was meant, so a single permission-denied install subkey abandoned the rest of
-the enumeration — and the cleanup pass deletes cached games that were not rediscovered, taking their
-assets, history and notes with them.
-
-**A corrupt cover file hid the game entirely.** The GOG library used `continue` on a cover-art
-failure, which skipped the calls that save and process the game, so a missing or corrupt
-`webcache.zip` made an installed, working game never appear at all.
-
-**Five thread-safety holes in the game scanner.** Several call sites handed the live game-assets list
-to the database or to a `Where`/`Select` while running on a thread pool thread. `ProcessGame` runs up
-to four scans concurrently and clears that list to replace it, so any interleaving threw "collection
-was modified" — which a catch-all converted into "this game has no DLLs", permanently.
-
-**A single failed cover fetch broke cover art for the whole library.** The in-progress flag guarding
-cover loading was cleared by a trailing statement rather than a `finally`, so one network failure left
-it stuck and every subsequent call returned immediately.
-
-**The selection checkbox could not be reached in grid view.** The tile's cover art was declared after
-the checkbox, and a Grid draws later children on top; with no size or alignment it stretched over the
-whole tile, so every click on the tick opened the game instead. List view was unaffected because its
-cover sits in its own column, which made it look grid-specific.
-
 **The update check read a repository that does not exist.** `DefaultRepository` was
 `SpaceJamp/kronos-dlss-swapper`, and GitHub answers 404 for a name that is not there — which the
 check reported as *failed*, so the symptom was never a wrong version offered, just a check that did
