@@ -146,13 +146,13 @@ function Restore-Dependencies {
             # next one instead of ending the build - which is the whole point of having several.
             $restoreExitCode = 1
             if ($i -eq 0) {
-                dotnet restore $project
+                dotnet restore $project | Write-Host
                 $restoreExitCode = $LASTEXITCODE
             } elseif ($i -eq 1) {
-                dotnet restore $project -p:TargetFramework=net10.0
+                dotnet restore $project -p:TargetFramework=net10.0 | Write-Host
                 $restoreExitCode = $LASTEXITCODE
             } else {
-                dotnet restore $project -p:TargetFramework=net10.0 -r $Runtime
+                dotnet restore $project -p:TargetFramework=net10.0 -r $Runtime | Write-Host
                 $restoreExitCode = $LASTEXITCODE
             }
 
@@ -188,7 +188,7 @@ function Build-Linux {
     }
     
     Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --no-restore
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --no-restore | Write-Host
     Assert-DotnetSucceeded "Build (Linux CLI)"
 
     Write-Host "Publishing Linux CLI for $Runtime..." -ForegroundColor Yellow
@@ -203,7 +203,7 @@ function Build-Linux {
     # Linux - the thing the restore passes exist to avoid - and rewriting the committed lock file
     # outside the protection in Restore-Dependencies. The restore above covered this framework and
     # this RID, which is exactly what the build step then consumed.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained --no-restore -o $outputDir
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained --no-restore -o $outputDir | Write-Host
     Assert-DotnetSucceeded "Publish (Linux CLI)"
     
     Write-Host "Linux CLI published to: $outputDir" -ForegroundColor Green
@@ -222,7 +222,7 @@ function Build-Windows {
     
     
     Write-Host "Building Windows GUI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore | Write-Host
     Assert-DotnetSucceeded "Build (Windows GUI)"
 
     # The published configuration is Release_Portable, whatever -Configuration asked for.
@@ -260,7 +260,7 @@ function Build-Windows {
     # Deliberately NOT -p:WindowsAppSDKSelfContained=true either. It reads like it would remove the
     # runtime prerequisite, but measured it crashes Release_Portable where it otherwise runs. The
     # artifact therefore needs the Windows App Runtime installed, which the README states.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir | Write-Host
     Assert-DotnetSucceeded "Publish (Windows GUI)"
 
     if (-not (Test-Path (Join-Path $outputDir 'Kronos.exe'))) { Fail "No Kronos.exe in $outputDir." }
