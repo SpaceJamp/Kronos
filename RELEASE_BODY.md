@@ -112,24 +112,28 @@ No action required. The database schema is unchanged, so 1.52 reads your existin
 
 ## Downloading
 
-`Kronos-1.52.0-portable.zip` is attached to this release — 48 MB, self-contained, no .NET runtime
-needed. Unzip it anywhere and run `Kronos.exe`.
+`Kronos-1.52.0-portable.zip` is attached to this release — 52 MB, self-contained, no console window.
+Unzip it anywhere and run `Kronos.exe`.
 
-It is **not** signed, so SmartScreen will warn. That is expected: the only signed build of this
-software is upstream's, at [beeradmoore/dlss-swapper](https://github.com/beeradmoore/dlss-swapper).
-Verify the download before running it:
+Verify before running:
 
 ```
-sha256  b89b874f074948ec4ec75d8eabdcc7e385a32ff18dcbbf976f4eed474b95ff40
+sha256  9e0836ba070f952ee89aa4be468f4b87f3af0403714f1de2b79da551e431c915
 ```
 
-GitHub shows the same digest next to the asset, and Kronos verifies it on any in-app update it
-performs.
+GitHub shows the same digest beside the asset, and Kronos verifies it on any in-app update.
 
-**Kronos will not offer to auto-update this portable build.** The in-app updater looks for an
-installer-style executable and deliberately ignores a portable zip, because replacing a running
-portable copy with a fresh one is not something it should do unasked. Download new versions from the
-Releases page.
+**If `Kronos.exe` exits without showing a window**, the
+[Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) is not
+installed. This is an unpackaged WinUI application, so it loads `Microsoft.UI.Xaml.dll` from that
+runtime rather than carrying a copy — bundling it was tried and makes the crash worse, not better.
+Upstream's signed installer installs the runtime as part of setup.
 
-Building from source is still supported and gives you the same binary — see the README's Building
-section. It does need your own ImageSharp licence key.
+The build is **unsigned**, so SmartScreen will warn. That is expected.
+
+**Kronos will not offer to auto-update this build.** The in-app updater looks for an installer-style
+executable and deliberately ignores a portable zip, because replacing a running portable copy with a
+fresh one unasked is not something it should do. Take new versions from the Releases page.
+
+Building from source produces the same binary and needs your own ImageSharp licence key — see the
+README's Building section.

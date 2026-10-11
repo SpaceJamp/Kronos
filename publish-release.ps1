@@ -105,6 +105,10 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not $SkipBuild) {
     Write-Host "Building the Windows portable artifact..." -ForegroundColor Yellow
+    # Release_Portable, not the -Configuration this script was given. build.ps1 decides this itself.
+    # The artifact first published crashed on startup; build.ps1 now smoke tests the binary it is
+    # about to hand over, and fails if it exits immediately or if Kronos.pri is missing. Both of those
+    # were true of the build that shipped, and neither appeared anywhere in the build output.
     $outputDir = & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
         -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY | Select-Object -Last 1
     if ($LASTEXITCODE -ne 0) { Fail "The Windows build failed; the release exists without an artifact." }
@@ -113,9 +117,6 @@ if (-not $SkipBuild) {
         Fail "The build reported success but $outputDir has no Kronos.exe."
     }
 
-    # Named to match what the Linux updater's asset matching expects for a Windows portable build,
-    # even though the Windows GUI's own auto-update only looks for an -installer.exe and will skip
-    # this. That is deliberate: the GUI must not offer to auto-install a portable zip over itself.
     $artifactName = "Kronos-$Version.0-portable.zip"
     $staging = Join-Path ([System.IO.Path]::GetTempPath()) ("kronos-release-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $staging | Out-Null

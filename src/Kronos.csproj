@@ -257,7 +257,18 @@
 
   <PropertyGroup Condition="'$(Configuration)'=='Release_Portable'">
     <DefineConstants>$(DefineConstants);RELEASE;PORTABLE</DefineConstants>
-    <OutputType>Exe</OutputType>
+    <!--
+      WinExe, not Exe. The portable configuration used to override the output type to Exe, which is the
+      *console* subsystem: launching Kronos then opened a black command prompt window behind the app and
+      left it there for as long as the app ran. The Windows target framework already sets WinExe at the
+      top of this file, and this group was silently undoing it for the one configuration that gets
+      shipped to users.
+
+      Console output is not wanted here anyway. Serilog.Sinks.Console is referenced and its writes
+      simply go nowhere without an attached console, which is the right outcome - the app logs to its
+      own log file under the storage folder.
+    -->
+    <OutputType>WinExe</OutputType>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">

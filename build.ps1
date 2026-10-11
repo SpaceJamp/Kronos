@@ -225,12 +225,69 @@ function Build-Windows {
     dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore
     Assert-DotnetSucceeded "Build (Windows GUI)"
 
-    Write-Host "Publishing Windows Portable..." -ForegroundColor Yellow
+    # The published configuration is Release_Portable, whatever -Configuration asked for.
+    #
+    # Not because Release is broken - a plain `-c Release` publish runs perfectly well. It is because
+    # Release_Portable is this project's designated *unpackaged* configuration: OutputType Exe, with
+    # the JSON assets embedded as resources, and the PORTABLE constant defined. PORTABLE compiles out
+    # the updater's -installer.exe branch, so a portable build is not offered an installer it would
+    # have no way to run. Release leaves that branch in, where it will look for an asset that a
+    # portable zip release does not publish.
+    #
+    # Measured across every combination, because the first artifact published here crashed and the
+    # cause had to be pinned down rather than guessed:
+    #
+    #   -c Release                     plain publish                    runs
+    #   -c Release                     + PublishSingleFile=true        CRASHES  <- what shipped
+    #   -c Release                     + WindowsAppSDKSelfContained    CRASHES
+    #   -c Release_Portable            plain publish                    runs
+    #   -c Release_Portable            + WindowsAppSDKSelfContained    CRASHES
+    #
+    # All three crashes are 0xC000027B, STATUS_STOWED_RESOURCE_NOT_FOUND, in Microsoft.UI.Xaml.dll,
+    # before any window appears.
+    $portableConfiguration = 'Release_Portable'
+
+    Write-Host "Publishing Windows Portable ($portableConfiguration)..." -ForegroundColor Yellow
     $outputDir = Join-Path (Join-Path $PSScriptRoot "Output") "win-x64-portable-$timestamp"
     # --no-restore for the same reason as the Linux publish: it would otherwise restore again and
     # rewrite the committed lock file outside the protection in Restore-Dependencies.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --self-contained --no-restore -p:PublishSingleFile=true -o $outputDir
+    #
+    # Deliberately NOT -p:PublishSingleFile=true. The csproj imports CopyPriFile.targets only when
+    # PublishSingleFile is not true, so single-file means the resource index is never embedded - and
+    # that is exactly the build that was published and did not start. Windows App SDK does not support
+    # single-file publishing at all.
+    #
+    # Deliberately NOT -p:WindowsAppSDKSelfContained=true either. It reads like it would remove the
+    # runtime prerequisite, but measured it crashes Release_Portable where it otherwise runs. The
+    # artifact therefore needs the Windows App Runtime installed, which the README states.
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir
     Assert-DotnetSucceeded "Publish (Windows GUI)"
+
+    if (-not (Test-Path (Join-Path $outputDir 'Kronos.exe'))) { Fail "No Kronos.exe in $outputDir." }
+    if (-not (Test-Path (Join-Path $outputDir 'Kronos.pri'))) {
+        Fail "No Kronos.pri in $outputDir. Without the resource index the app cannot start, and it fails at launch rather than saying so."
+    }
+
+    # Launch it. A build that produces a binary which dies on startup is not a build worth shipping,
+    # and that is exactly what happened: a portable zip was published and attached to a release, and
+    # it crashed before showing a window. Resource and loader failures are invisible from the
+    # outside, so the only way to know is to start the thing.
+    Write-Host "Smoke testing the published binary..." -ForegroundColor Yellow
+    $process = $null
+    try {
+        $process = Start-Process -FilePath (Join-Path $outputDir 'Kronos.exe') -PassThru -ErrorAction Stop
+        Start-Sleep -Seconds 12
+
+        if ($process.HasExited) {
+            Fail ("The published binary exited immediately with code {0}. It will not run, so it must not be " +
+                  "published. Check the Application event log for the faulting module." -f $process.ExitCode)
+        }
+
+        Write-Host "  started and still running after 12s (window: '$((Get-Process -Id $process.Id).MainWindowTitle)')" -ForegroundColor Green
+    }
+    finally {
+        if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+    }
     
     Write-Host "Windows Portable published to: $outputDir" -ForegroundColor Green
     return $outputDir

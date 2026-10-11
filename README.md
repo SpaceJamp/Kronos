@@ -106,8 +106,14 @@ described above rather than the broken state an earlier change left it in — se
 `winget install --id=beeradmoore.dlss-swapper -e`. Those are the only signed builds of this software.
 
 **Kronos:** download `Kronos-<version>.0-portable.zip` from the
-[Releases page](https://github.com/SpaceJamp/Kronos/releases). It is self-contained — unzip anywhere and
-run `Kronos.exe`. No installer, no .NET runtime, no registry.
+[Releases page](https://github.com/SpaceJamp/Kronos/releases). Unzip anywhere and run `Kronos.exe`.
+No installer, no console window, and no .NET runtime required.
+
+> **Needs the Windows App Runtime.** This is an unpackaged WinUI application, so it resolves
+> `Microsoft.UI.Xaml.dll` from the Windows App Runtime rather than carrying it. If `Kronos.exe` exits
+> immediately without showing a window, install the
+> [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) — upstream's
+> signed installer installs it as part of setup.
 
 > **These builds are unsigned.** Expect SmartScreen to warn; that is inherent to distributing binaries
 > without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for every asset, shown

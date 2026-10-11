@@ -306,4 +306,104 @@ public class BuildScriptTests
         Assert.Contains("-SkipBuild", source, StringComparison.Ordinal);
         Assert.Contains("Kronos.exe", source, StringComparison.Ordinal);
     }
+
+    // ------------------------------------------------------------------ Windows portable packaging
+
+    [Fact]
+    public void TheWindowsPortableBuildPublishesThePortableConfiguration()
+    {
+        // The project has a Release_Portable configuration, and a portable zip should be built from
+        // it. Not because Release is broken - a plain `-c Release` publish runs fine, which was
+        // measured rather than assumed - but because Release_Portable defines PORTABLE, which compiles
+        // out the updater's -installer.exe branch. Leaving that branch in would have a portable build
+        // looking for an installer asset that a portable release never publishes.
+        //
+        // The variable, not the caller's -Configuration, is what reaches dotnet publish.
+        var source = ReadRepoFile("build.ps1");
+
+        Assert.True(
+            source.Contains("'Release_Portable'", StringComparison.Ordinal),
+            "build.ps1 no longer names Release_Portable, so it may be publishing the packaged Release "
+                + "configuration, which leaves the installer auto-update branch compiled into a "
+                + "portable build.");
+
+        var publish = CodeLines("build.ps1")
+            .FirstOrDefault(line => Regex.IsMatch(line, @"dotnet\s+publish.*windows10\.0", RegexOptions.IgnoreCase));
+
+        Assert.NotNull(publish);
+        Assert.True(
+            publish!.Contains("$portableConfiguration", StringComparison.Ordinal),
+            $"The Windows publish must use the portable configuration, not the caller's -Configuration. Offending line: {publish}");
+    }
+
+    [Theory]
+    [InlineData("PublishSingleFile")]
+    [InlineData("WindowsAppSDKSelfContained")]
+    public void TheWindowsPortableBuildAvoidsThePropertiesThatBreakStartup(string property)
+    {
+        // Both were tried on a hunch, and both produce a binary that dies before showing a window.
+        // Every combination was measured rather than reasoned about:
+        //
+        //   -c Release                  plain publish                   runs
+        //   -c Release                  + PublishSingleFile=true       CRASHES   <- what shipped
+        //   -c Release                  + WindowsAppSDKSelfContained   CRASHES
+        //   -c Release_Portable         plain publish                   runs
+        //   -c Release_Portable         + WindowsAppSDKSelfContained   CRASHES
+        //
+        // All the crashes are 0xC000027B, STATUS_STOWED_RESOURCE_NOT_FOUND, in Microsoft.UI.Xaml.dll.
+        // PublishSingleFile is the clear mechanism: the csproj imports CopyPriFile.targets only when
+        // it is not true, so the resource index is never embedded. WindowsAppSDKSelfContained is the
+        // less obvious one - it looks like it would remove the runtime prerequisite and does the
+        // opposite.
+        var lines = CodeLines("build.ps1");
+        var offending = lines.Where(line => line.Contains(property, StringComparison.Ordinal)).ToList();
+
+        Assert.True(
+            offending.TrueForAll(line => line.TrimStart().StartsWith("#", StringComparison.Ordinal)),
+            $"build.ps1 sets {property} on the Windows publish, which produces a binary that crashes on "
+                + $"startup. Offending line(s): {string.Join(" | ", offending)}");
+    }
+
+    [Fact]
+    public void TheWindowsBuildSmokeTestsTheBinaryItIsAboutToPublish()
+    {
+        // The first artifact published exited immediately with 0xC000027B and nothing in the build
+        // output said so. A configuration test cannot catch that class of fault on its own - it
+        // encodes a belief about what breaks, and the belief was wrong twice - so the build starts
+        // the binary and looks at it.
+        var source = ReadRepoFile("build.ps1");
+
+        Assert.Contains("Start-Process", source, StringComparison.Ordinal);
+        Assert.Contains("HasExited", source, StringComparison.Ordinal);
+        Assert.Contains("Kronos.pri", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePortableConfigurationIsAWindowedApplicationAndNotAConsoleOne()
+    {
+        // Release_Portable overrode the output type to Exe, which is the *console* subsystem, undoing
+        // the WinExe the Windows target framework sets. Launching the shipped build then opened a
+        // command prompt behind the app and left it there for as long as the app ran.
+        //
+        // Checked against the element rather than the absence of one, because a later group could
+        // reintroduce it without this noticing.
+        var csproj = ReadRepoFile(Path.Combine("src", "Kronos.csproj"));
+
+        // Matched on the whole opening tag, because the condition has to be exactly this. There is
+        // also a group conditioned on 'Release' OR 'Release_Portable', whose condition text contains
+        // the same substring, and it carries Optimize and nothing else.
+        const string opening = "<PropertyGroup Condition=\"'$(Configuration)'=='Release_Portable'\">";
+
+        var start = csproj.IndexOf(opening, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"No {opening} found in src/Kronos.csproj.");
+
+        var bodyStart = csproj.IndexOf('>', start) + 1;
+        var bodyEnd = csproj.IndexOf("</PropertyGroup>", bodyStart, StringComparison.Ordinal);
+        Assert.True(bodyEnd > bodyStart, "The Release_Portable PropertyGroup is not closed.");
+
+        Assert.Contains(
+            "<OutputType>WinExe</OutputType>",
+            csproj.Substring(bodyStart, bodyEnd - bodyStart),
+            StringComparison.Ordinal);
+    }
 }
