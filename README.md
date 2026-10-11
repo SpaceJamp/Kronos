@@ -38,9 +38,34 @@
 | Platform | Target framework | Status |
 |---|---|---|
 | **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection, DLL swapping and self-update. |
+| **Linux x64** | `net10.0` | 🟡 **Under active development.** The game model, DLL management and the database compile and are reachable, and the CLI has `update`, `version` and `self-update`. `list`, `swap` and `reset` are not wired up yet, and game detection is registry-based so no store is discovered automatically. |
 
-Kronos is a Windows application. The GUI, the store integrations and the DLL management are all
-Windows-only by design, and the project builds and ships for Windows only.
+The Windows GUI is the finished product. The Linux port is real work in progress by this
+repository's maintainer — see [Ownership of the Linux work](#ownership-of-the-linux-work).
+
+## Ownership of the Linux work
+
+**The Linux port is authored, owned and maintained by this repository's maintainer. It is not
+upstream's work, and upstream DLSS Swapper holds no rights over it.**
+
+This matters because the two projects are easy to confuse: they share a name, a licence and a large
+amount of shared code. Concretely:
+
+- The Linux CLI, its `Program.cs` entry point, the cross-platform core that was extracted to serve it
+  (`UiDispatcher`, `Http`, the shared `Storage` and `Database` layers, the Linux `Updater`), the
+  `build.sh` script, and the Avalonia GUI foundation were **written for this repository**.
+- `NOTICE` records the same thing formally: *Kronos modifications copyright (c) 2024-2026 SpaceJamp*,
+  including Linux CLI support, with upstream's own copyright notices preserved untouched.
+- Anything here that traces back to DLSS Swapper is still beeradmoore's, and is credited as such under
+  [Credits](#credits).
+
+> [!NOTE]
+> This is a statement of **authorship and ownership**, not a restriction. Everything in this repository
+> is licensed under [GPL-3.0](LICENSE), which is what makes those contributions possible in the first
+> place. Copyright in a GPL project identifies who wrote and may relicense a given piece of work; it
+> does not withdraw the licence, and GPL-3.0 §5(a) requires only that the modifications be stated —
+> which [What changed](#what-changed) and `NOTICE` both do. This section exists so the Linux work is
+> not mistaken for something upstream shipped or could speak for.
 
 ## Requirements
 
@@ -51,6 +76,19 @@ Windows-only by design, and the project builds and ships for Windows only.
 | **GPU** | Any |
 | **To run** | [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0), or the self-contained build |
 | **To build** | .NET 10 SDK, Windows SDK 10.0.26100 |
+
+### Linux (building only)
+
+| | |
+|---|---|
+| **OS** | Any modern Linux (glibc 2.31+) |
+| **CPU** | x64 |
+| **To build** | .NET 10 SDK — `build.sh` installs it if missing |
+| **Runtime** | Self-contained (no system .NET required) |
+
+The Linux target is a work in progress. See
+[Ownership of the Linux work](#ownership-of-the-linux-work) and
+[Platform support](#platform-support) for what it does and does not do today.
 
 ## Getting it
 
@@ -86,10 +124,12 @@ improve performance, reduce artifacts, or avoid crashes. Downgrading a runtime b
 game shipped with can disable Frame Generation, so Kronos warns before it does that. Originals are
 always restorable.
 
-## Supported game libraries
+## Supported game libraries (Windows)
 
 Steam · GOG · Epic Games Store · Ubisoft Connect · Xbox App · Battle.net · EA App · games added
 manually via **Add Game**
+
+The Linux port has no store detection yet — see [Platform support](#platform-support).
 
 ## Building
 
@@ -118,13 +158,73 @@ package identity. It then **launches the binary it just published** and fails if
 first twelve seconds, or if `Kronos.pri` is missing — a build that produces something which dies on
 startup is not a build worth shipping, and neither failure is visible from the exit codes alone.
 
+### Linux
+
+```bash
+# CLI
+./build.sh
+# → Output/linux-x64-<timestamp>/Kronos
+
+# Cross-compile from Windows
+.\build.ps1 -Target Linux
+```
+
+Output is self-contained — no .NET runtime needed on the target machine.
+
+**The .NET 10 SDK is installed for you if it is missing.** The project targets `net10.0`, which
+needs the .NET 10 SDK specifically — an installed .NET 8 or 9 will not build it. `build.sh` checks
+for the right major version and, if it is not there, downloads Microsoft's official
+[`dotnet-install.sh`](https://dot.net/v1/dotnet-install.sh) and installs into `~/.dotnet`. That is a
+per-user install, so it does not need `sudo` and does not touch a system-wide installation.
+
+It also appends `~/.dotnet` to `PATH` in your `~/.profile`, so later shells find it too. That
+applies to **new** shells — run `source ~/.profile`, or open a new terminal, before building again by
+hand.
+
+To install somewhere else, or to skip the auto-install entirely:
+
+```bash
+DOTNET_INSTALL_DIR=/opt/dotnet ./build.sh     # different location
+```
+
+If the automatic install fails, it prints the manual instructions and exits rather than carrying on
+with a missing SDK. You can also install it yourself from
+[dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+#### CLI commands
+
+```bash
+./Kronos version                               # Show version information
+./Kronos update --check                        # Check for updates, do not apply
+./Kronos update                                # Apply an available update
+./Kronos update --force                        # Re-check the feed even if already current
+./Kronos self-update --path ./update.tar.gz     # Internal: apply a downloaded update
+```
+
+`list`, `swap`, `reset` and `import` are **not implemented yet**. The code they would call is
+compiled and reachable in the Linux build — `QueryGames`, `UpdateDllAsync`, `ResetDllAsync` and the
+planner — but nothing wires them to command-line arguments or output formatting. Game detection is
+the other gap: Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all discovered through the
+Windows registry, so `IGameLibrary.GetGameLibrary` returns `null` for those stores on Linux and the
+load loop skips them. Steam is the easiest to port — `libraryfolders.vdf` and `appmanifest_*.acf` are
+plain file parsing rather than a registry key.
+
+### Prerequisites at a glance
+
+| Building | Needs |
+|---|---|
+| Windows | .NET 10 SDK, Windows SDK 10.0.26100 |
+| Linux | .NET 10 SDK — or just run `build.sh`, which installs it |
+
 ### Build script options
 
 | Script | Option | Values |
 |---|---|---|
-| `build.ps1` | `-Target` | `Windows` (default) |
+| `build.ps1` | `-Target` | `Windows`, `Linux`, `All` (default: detected from the host OS) |
 | `build.ps1` | `-Configuration` | `Release`, `Debug` |
 | `build.ps1` | `-LicenseKey` | SixLabors ImageSharp key, if not already in the environment |
+| `build.sh` | `$1` | `Windows`, `Linux`, `All` |
+| `build.sh` | `$2` | `Release`, `Debug` |
 
 ### The ImageSharp licence key
 
@@ -249,6 +349,44 @@ cleared on failure instead of leaving buttons permanently disabled.
 chains. There is an xUnit suite in [`tests/`](tests/) — 426 tests covering backup decisions, swap
 versioning, mass-update scope, release parsing, the games page markup and the build scripts. There is
 no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release`.
+
+### The Linux port
+
+The Linux work in this repository is the maintainer's own — see
+[Ownership of the Linux work](#ownership-of-the-linux-work). It is described here because it changed
+the shape of the Windows app too.
+
+The `net10.0` target had stopped compiling the game model: a change during the original port removed
+`Game.cs`, `GameManager.cs`, `DLLManager.cs`, `DLLRecord.cs`, `Manifest.cs`, `GameHistory.cs`,
+`GameAsset.cs` and the manually-added library from its compile list without touching their
+cross-platform branches, so those branches were never compiled. Those files are back in the list, and
+getting them to compile surfaced three pieces of coupling that were worth removing regardless:
+
+- **`App.CurrentApp.RunOnUIThread` was called from the game model.** Marshalling bound-property
+  updates is a concern of the UI layer, so calling into a WinUI `Application` from `Game.cs` put the
+  whole file out of reach of the CLI. It now goes through `UiDispatcher.Invoke`, which forwards to
+  the WinUI dispatcher on Windows and runs inline elsewhere. **Windows behaviour is unchanged.**
+- **The shared `HttpClient` lived on `App`.** It was reachable only as `App.CurrentApp.HttpClient`,
+  so the file downloader and the Steam cover URL resolver could not compile outside the UI. It moved to
+  a standalone `Http` holder that `App` delegates to.
+- **`ResourceHelper` was built entirely on WinUI's `ResourceManager`.** It now parses the `.resw` XML
+  directly when that is what is available, which is the same data WinUI would have compiled into a
+  PRI, so the CLI is genuinely localised rather than printing resource keys. A missing string falls
+  back to en-US and then to the key, because a missing label is not a reason to abort whatever wanted
+  it.
+
+Three things were also needlessly Windows-only and are now shared: `DLLAssetTypes`, a pure data table,
+was behind `#if WINDOWS` despite having no Windows types; `IsInKnownGameAsset` existed twice behind
+`#if WINDOWS` with **different signatures** and otherwise identical bodies, so its only two call sites
+could not compile elsewhere; and `Game.ResizeCoverAsync` and `AddCustomCover` are plain ImageSharp
+work.
+
+The genuinely Windows-only parts stayed Windows-only: `IsInstalled`, the registry-backed store
+libraries, and the `PromptTo*` methods that drive a `ContentDialog` and a WinRT file picker.
+
+`build.sh` also installs the .NET 10 SDK when it is absent, and the release scripts were corrected:
+`dotnet restore` was being given `-f net10.0`, which it parses as `--force` and forwards as a second
+project name, failing with `MSB1008`.
 
 ### Signature verification is honest about what it checked
 

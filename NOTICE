@@ -19,6 +19,22 @@ Modifications include:
 - Multi-target csproj: net10.0 (Linux) + net10.0-windows10.0.26100.0 (Windows)
 - Removed Inno Setup installer scripts
 
+OWNERSHIP OF THE LINUX WORK
+---------------------------
+The Linux port - the net10.0 target, its CLI entry point (src/Program.cs), the
+cross-platform core extracted to serve it (UiDispatcher, Http, the shared Storage
+and Database layers, the Linux Updater), build.sh, and the Avalonia GUI
+foundation - was written for this repository and is owned by its maintainer.
+
+It is not upstream DLSS Swapper work. Upstream holds no rights over it and does
+not speak for it. Upstream's own copyright in the shared codebase is unaffected
+and remains attributed to beeradmoore and contributors throughout.
+
+This statement establishes authorship and ownership only. All modifications -
+Linux included - are licensed under GPL-3.0, and copyright does not withdraw that
+licence. Per GPL-3.0 section 5(a) the modifications are stated in the README's
+"What changed" section and in this file.
+
 All modifications are licensed under GPL-3.0, same as upstream.
 This is an independent project, not affiliated with or endorsed by DLSS Swapper or NVIDIA.
 Bug reports for Linux builds should be filed in this repository (https://github.com/SpaceJamp/Kronos).
