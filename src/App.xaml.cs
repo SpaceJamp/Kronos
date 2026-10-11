@@ -114,6 +114,20 @@ public sealed partial class App : Application
             return;
         }
 
+        // The floor is Windows 10 22H2. Checked here, before anything touches the disk, the database or
+        // the network, and before the architecture check below - an out-of-date Windows is worth
+        // explaining whether or not it is also 32-bit.
+        //
+        // Fails closed via WindowsVersionSupport: an unreadable version is refused, not allowed. A
+        // check that can be defeated by making the version report as something unexpected is not a
+        // check, and the alternative to failing closed is a launch path with a hole in it.
+        if (WindowsVersionSupport.IsSupportedCurrentMachine() == false)
+        {
+            Logger.Error(WindowsVersionSupport.DescribeRefusal(Environment.OSVersion.Version));
+            WindowManager.ShowWindow(new UnsupportedWindowsVersionWindow());
+            return;
+        }
+
         // This build is x64 only. A 32-bit Windows cannot load it, and the failure it produces is
         // an unhelpful loader error before any of our code runs, so say something useful instead of
         // letting the user stare at "This app can't run on your PC". Checked before anything else

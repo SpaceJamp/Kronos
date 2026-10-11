@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Kronos.UnsupportedWindowsVersionWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Kronos"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Kronos cannot run on this version of Windows">
+
+    <StackPanel Margin="24" Spacing="16" MaxWidth="560">
+        <TextBlock Style="{ThemeResource TitleTextBlockStyle}" Text="This version of Windows is too old" />
+        <TextBlock TextWrapping="Wrap"
+                   x:Name="RequirementText" />
+        <TextBlock TextWrapping="Wrap"
+                   Opacity="0.8"
+                   Text="Kronos is built on the Windows App SDK and hosts the WebView2 runtime. Neither is serviced on out-of-support Windows, so running here would mean running with unpatched components rather than merely an old copy of Kronos." />
+        <TextBlock TextWrapping="Wrap"
+                   Opacity="0.8"
+                   Text="Nothing has been changed on this machine, and no setting can change the outcome. Updating Windows is the only fix, and Windows Update will offer it if this machine is still supported by Microsoft." />
+    </StackPanel>
+</Window>

@@ -71,11 +71,16 @@ amount of shared code. Concretely:
 
 | | |
 |---|---|
-| **OS** | Windows 10 (20H1, build 19041) or newer, **x64** |
+| **OS** | **Windows 10 version 22H2 (build 19045) or newer**, x64 |
 | **CPU** | **64-bit** (x64 or ARM64) — 32-bit is not supported |
 | **GPU** | Any |
 | **To run** | [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0), or the self-contained build |
 | **To build** | .NET 10 SDK, Windows SDK 10.0.26100 |
+
+Older Windows is refused at launch with an explanation, before anything touches the disk, database or
+network. The floor is not arbitrary: the Windows App SDK and the WebView2 runtime Kronos hosts are only
+serviced on current Windows, so running on an out-of-support build would mean running with neither
+patched. There is no setting to override it, and no flag that turns it off.
 
 ### Linux (building only)
 

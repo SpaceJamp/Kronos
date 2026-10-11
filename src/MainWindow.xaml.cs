@@ -31,6 +31,20 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        // Backstop for the same check App.OnLaunched performs. Deliberately duplicated rather than
+        // left as a single check: the launch gate is one `if` in one method, and a requirement meant to
+        // be hard to get past should not be defeatable by deleting one line from one file. If this ever
+        // fires, the launch gate was bypassed - which is exactly when a second gate is worth having.
+        //
+        // Not a substitute for the launch gate, which still runs first, before the disk, database and
+        // network are touched at all.
+        if (WindowsVersionSupport.IsSupportedCurrentMachine() == false)
+        {
+            Logger.Error("MainWindow constructed on an unsupported Windows despite the launch check: " +
+                         WindowsVersionSupport.DescribeRefusal(Environment.OSVersion.Version));
+            return;
+        }
+
         this.InitializeComponent();
         ViewModel = new MainWindowModel();
 
