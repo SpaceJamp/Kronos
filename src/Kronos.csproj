@@ -649,6 +649,23 @@
     <PackageReference Include="CommunityToolkit.WinUI.Extensions" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.WinUI.Helpers" Version="8.2.251219" />
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <!--
+    WebView2 is referenced but used by nothing. There is no WebView2 control, no CoreWebView2, no XAML
+    element and no call site anywhere in src/. Kronos does not host a browser.
+
+    It is here because Microsoft.WindowsAppSDK.WinUI depends on Microsoft.Web.WebView2 >= 1.0.3179.45,
+    and 1.0.3179.45 is unlisted on nuget.org. NuGet will not use an unlisted version to satisfy a
+    transitive *range* from a remote source, so with this line removed the restore fails outright:
+
+      error NU1102: Unable to find package Microsoft.Web.WebView2 with version (>= 1.0.3179.45)
+
+    A direct reference at a listed version lifts the resolved version above the unlisted one. That is
+    the whole reason for it. PrivateAssets stops it flowing to consumers, but it is still restored and
+    still ships - WinAppSDK needs the assembly present.
+
+    Do not "clean this up" without checking that. A test in WindowsVersionSupportTests fails if the
+    reference is removed, and explains why it has to stay.
+    -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.298">
       <PrivateAssets>all</PrivateAssets>

@@ -148,6 +148,99 @@ public class WindowsVersionSupportTests
         Assert.DoesNotContain("Settings.Instance", source, StringComparison.Ordinal);
     }
 
+    // ------------------------------------------------------------------ WebView2
+
+    [Fact]
+    public void TheWebView2ReferenceIsThereOnlyBecauseWinAppSdkNeedsIt()
+    {
+        // Kronos does not use WebView2 - see the next test - but the reference cannot be removed, and the
+        // reason is not obvious enough to be left to memory.
+        //
+        // Microsoft.WindowsAppSDK.WinUI depends on Microsoft.Web.WebView2 >= 1.0.3179.45, and that exact
+        // version is unlisted on nuget.org. NuGet will not use an unlisted version to satisfy a transitive
+        // *range* from a remote source. With the direct reference removed, restore fails outright with
+        // NU1102 - so anyone tidying it away meets a hard build break rather than a warning.
+        //
+        // This was tried, on the reasonable grounds that an unused reference is dead weight. It is dead
+        // weight that cannot be deleted until WinAppSDK stops asking for it.
+        var project = File.ReadAllText(ReadRepoFile("src", "Kronos.csproj"));
+
+        Assert.Contains("Microsoft.Web.WebView2", project, StringComparison.Ordinal);
+
+        // And the reason has to be written down, because the reference looks like a bug and is not.
+        Assert.Contains("NU1102", project, StringComparison.Ordinal);
+        Assert.Contains("unlisted", project, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NothingInTheAppActuallyUsesWebView2()
+    {
+        // Why the reference above cannot simply be deleted, and why the claims below are false.
+        //
+        // If a future feature genuinely needs a browser, this fails and says why - which is the point. It
+        // should fail, because at that point the dependency is deliberate and the honest response is to
+        // delete this test and say so in it.
+        var src = Path.GetDirectoryName(ReadRepoFile("src", "Kronos.csproj"))!;
+
+        var offenders = new[] { "CoreWebView2", "WebView2Control", "EnsureCoreWebView2Async", "WebMessageReceived" };
+
+        foreach (var file in Directory.EnumerateFiles(src, "*.*", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (Path.GetExtension(file) is not (".cs" or ".xaml"))
+            {
+                continue;
+            }
+
+            var text = File.ReadAllText(file);
+
+            foreach (var offender in offenders)
+            {
+                Assert.False(
+                    text.Contains(offender, StringComparison.Ordinal),
+                    $"{Path.GetFileName(file)} uses {offender}, so the WebView2 removal was wrong. " +
+                    "Re-add the package reference and delete this test deliberately.");
+            }
+        }
+    }
+
+    [Fact]
+    public void TheRefusalDoesNotClaimToHostTheWebView2Runtime()
+    {
+        // It did. The refusal told users Kronos was carrying a runtime it does not carry, and used it as
+        // half the reason they were being blocked.
+        //
+        // Asserted on the returned value rather than on the source, because this is the string that
+        // reaches a user. The file also carries a comment recording that the claim was once made, and
+        // scanning the file for the word would fail on that - which is the test being wrong, not the
+        // code, since the comment is what stops the next person re-adding it.
+        var message = WindowsVersionSupport.DescribeRefusal(new Version(10, 0, 19042, 0));
+
+        Assert.DoesNotContain("WebView", message, StringComparison.OrdinalIgnoreCase);
+
+        // And it should still say why, rather than quietly losing the explanation.
+        Assert.Contains("Windows App SDK", message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("src", "UnsupportedWindowsVersionWindow.xaml")]
+    [InlineData("README.md")]
+    public void NoDocumentShownToUsersClaimsKronosHostsTheWebView2Runtime(params string[] segments)
+    {
+        // The refusal window is the worst of them: it is shown to someone whose Windows has just been
+        // refused, and it told them Kronos was carrying a runtime it does not carry. The window is also
+        // the one nobody reads the source of, so the false statement had no way of being noticed from
+        // the code - only by grepping for a word that appeared nowhere else.
+        var text = File.ReadAllText(ReadRepoFile(segments));
+
+        Assert.DoesNotContain("WebView", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     static string ReadRepoFile(params string[] segments)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

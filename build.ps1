@@ -35,6 +35,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Reports a fatal problem and stops the build.
+#
+# This existed in publish-release.ps1 the whole time and was never copied here, so build.ps1 called
+# Fail(...) at its most important line - the one that reports a published binary which dies on startup -
+# and PowerShell threw CommandNotFoundException instead. The script's own safety net was the one thing
+# guaranteed not to work.
+#
+# It mattered. A KeyboardAccelerator registered from MainWindow's constructor fail-fasts inside
+# Microsoft.UI.Xaml.dll, so the app died during startup with no exception, no log and no window. The
+# smoke test detected exactly that, called Fail, and the detection vanished into a missing-function
+# error that nobody read, because the build had already printed a green "Kronos -> ..." line.
+#
+# Defined before anything can call it, which is the whole point of defining it.
+function Fail($message) {
+    Write-Host "Error: $message" -ForegroundColor Red
+    exit 1
+}
+
 # Auto-detect target if not specified.
 # [System.Runtime.InteropServices.RuntimeInformation] rather than the bare [RuntimeInformation]: the
 # bare form only resolves once some other code has loaded that assembly, which is true under pwsh 7 but

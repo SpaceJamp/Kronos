@@ -225,9 +225,30 @@ public sealed partial class MainWindow : Window
     ///
     /// Attached to the root grid rather than to a games page toolbar, because navigation is the
     /// window's business and the shortcut has to work from every page.
+    ///
+    /// Deferred to the grid's Loaded rather than done here. Adding to
+    /// <see cref="UIElement.KeyboardAccelerators"/> from the window constructor - after
+    /// InitializeComponent but before the tree is live - is a hard fail-fast inside
+    /// Microsoft.UI.Xaml.dll (0xC0000409, faulting module Microsoft.UI.Xaml.dll, exception
+    /// 0xC000027B). The app dies during startup with no exception, no log and no window, which is
+    /// exactly the shape of failure the build script's smoke test exists to catch.
+    ///
+    /// That smoke test could not report it: it calls a Fail function that was never defined in
+    /// build.ps1, so the detection was silently swallowed and a broken build looked like a passing one.
+    /// Both are fixed - see RegisterSettingsAccelerator and build.ps1.
     /// </remarks>
     void RegisterSettingsAccelerator()
     {
+        // Once. Loaded can fire more than once if the grid is re-parented, and each registration would
+        // otherwise add another accelerator - so one Ctrl+, would navigate twice.
+        RootGrid.Loaded -= OnRootGridLoaded;
+        RootGrid.Loaded += OnRootGridLoaded;
+    }
+
+    void OnRootGridLoaded(object sender, RoutedEventArgs e)
+    {
+        RootGrid.Loaded -= OnRootGridLoaded;
+
         var settingsAccelerator = new KeyboardAccelerator
         {
             Key = CommaKey,

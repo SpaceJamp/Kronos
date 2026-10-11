@@ -155,6 +155,88 @@ public class BuildScriptTests
     // ------------------------------------------------------------------ error reporting
 
     [Fact]
+    public void TheReadmeTestCountIsNotStale()
+    {
+        // The README said 426 for a long time while the suite was well past 600. Nothing failed when it
+        // drifted, because a number in prose is not compiled - it is just a number that was true once.
+        //
+        // Checked as a floor rather than an equality, deliberately. An exact count would have to invoke
+        // MemberData sources to learn their row counts, which is fragile and would break the next time
+        // someone adds one - a test that fails for the wrong reason is worse than no test. Facts plus the
+        // declared theory methods is a lower bound that cannot be inflated, so a stale-low README number
+        // is caught while a correct one never is.
+        var readme = ReadRepoFile("README.md");
+
+        var claimed = Regex.Matches(readme, @"(\d{3,4})\s+tests")
+            .Select(m => int.Parse(m.Groups[1].Value))
+            .Distinct()
+            .ToList();
+
+        Assert.NotEmpty(claimed);
+        Assert.Equal(1, claimed.Count);
+
+        var lowerBound = typeof(BuildScriptTests).Assembly
+            .GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Namespace == "Kronos.Tests")
+            .SelectMany(t => t.GetMethods())
+            .Count(m => m.GetCustomAttributes(typeof(FactAttribute), false).Length > 0
+                     || m.GetCustomAttributes(typeof(TheoryAttribute), false).Length > 0);
+
+        Assert.True(
+            claimed[0] >= lowerBound,
+            $"README claims {claimed[0]} tests, but the suite declares at least {lowerBound} test methods. "
+                + "The number in the README is stale.");
+    }
+
+    [Fact]
+    public void EveryFailCallInABuildScriptResolvesToADefinedFunction()
+    {
+        // build.ps1 called Fail(...) at the line that reports a published binary which dies on startup,
+        // and never defined it. The function existed in publish-release.ps1 the whole time, one file
+        // over, and nobody copied it across.
+        //
+        // It mattered more than a missing function usually does. The smoke test caught a real startup
+        // crash - a KeyboardAccelerator registered from MainWindow's constructor, which fail-fasts inside
+        // Microsoft.UI.Xaml.dll with no exception, no log and no window - and then died trying to report
+        // it. The build had already printed a green "Kronos -> ..." line, so the failure looked like a
+        // pass. A safety net that cannot report a failure is not a safety net.
+        var lines = CodeLines("build.ps1");
+
+        var defined = lines
+            .Select((line, index) => (Line: line, Index: index))
+            .Where(entry => Regex.IsMatch(entry.Line, @"^\s*function\s+Fail\b"))
+            .ToList();
+
+        var called = lines
+            .Select((line, index) => (Line: line, Index: index))
+            .Where(entry => Regex.IsMatch(entry.Line, @"^\s*Fail\s+\("))
+            .ToList();
+
+        Assert.NotEmpty(called);
+
+        foreach (var (line, index) in called)
+        {
+            Assert.True(
+                defined.Any(d => d.Index < index),
+                $"build.ps1 calls Fail at '{line.Trim()}' but never defines it. PowerShell throws "
+                    + "CommandNotFoundException instead of the intended message, so the failure is "
+                    + "swallowed rather than reported.");
+        }
+    }
+
+    [Fact]
+    public void TheSmokeTestFailurePathIsNotSilencedByAnythingAboveIt()
+    {
+        // Belt to the braces above. If Fail is defined, it must actually stop the script - otherwise the
+        // build prints an error and carries on to a successful exit code, which is the same invisibility
+        // with extra steps.
+        var source = ReadRepoFile("build.ps1");
+
+        Assert.Contains("function Fail($message)", source, StringComparison.Ordinal);
+        Assert.Matches(@"function Fail\(\$message\)\s*\{[^}]*exit 1", source);
+    }
+
+    [Fact]
     public void EveryDotnetCommandInThePowerShellScriptIsFollowedByAnExitCodeCheck()
     {
         // $ErrorActionPreference = 'Stop' does not apply to native executables. Without an explicit

@@ -17,11 +17,15 @@ public static class WindowsVersionSupport
     /// Windows 10 22H2, build 19045 — the final Windows 10 release.
     /// </summary>
     /// <remarks>
-    /// Not 19041, which is what <c>TargetPlatformMinVersion</c> declares. That is 21H2. The floor is
-    /// 19045 because anything older has been out of support for years, and the reason to enforce a
-    /// floor at all rather than merely target one is that the APIs this app calls - the WebView2
-    /// runtime, and the WinAppSDK behaviour behind unpackaged XAML - are only maintained on current
-    /// servicing. A user on a long-dead build gets security fixes for neither.
+    /// Not 19041, which is what <c>TargetPlatformMinVersion</c> declares. That is 21H2. 19045 is the
+    /// final Windows 10 release, and everything below it has been out of support for years — so the
+    /// reason to enforce a floor rather than merely target one is that a user on one of those builds
+    /// gets security fixes for nothing, not even for Kronos.
+    ///
+    /// This used to be justified partly by the WebView2 runtime, on the claim that Kronos hosts one.
+    /// It does not, and never did — there was no WebView2 control anywhere in the app, only a package
+    /// reference carried over from upstream. The floor did not move, because it stands on its own, but
+    /// the reasoning was carrying a false statement to anyone who read it.
     ///
     /// Windows 11 reports 10.0.22000 and above, so it passes on the Major==10 path without needing a
     /// separate case. Its builds are all higher than 19045.
@@ -83,7 +87,8 @@ public static class WindowsVersionSupport
             : $"{osVersion.Major}.{osVersion.Minor}.{osVersion.Build}";
 
         return $"Refusing to launch: Windows {reported} is older than the required {MinimumSupportedDisplay}. " +
-               "The Windows App SDK and the WebView2 runtime it hosts are only serviced on current " +
-               "Windows, so running on an out-of-support build would mean running with neither patched.";
+               "Kronos needs the Windows App SDK, which is only serviced on current Windows, so running " +
+               "on an out-of-support build would mean running against an unpatched component rather than " +
+               "merely an old copy of Kronos.";
     }
 }

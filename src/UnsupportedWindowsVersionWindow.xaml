@@ -15,7 +15,7 @@
                    x:Name="RequirementText" />
         <TextBlock TextWrapping="Wrap"
                    Opacity="0.8"
-                   Text="Kronos is built on the Windows App SDK and hosts the WebView2 runtime. Neither is serviced on out-of-support Windows, so running here would mean running with unpatched components rather than merely an old copy of Kronos." />
+                   Text="Kronos needs the Windows App SDK, which is only serviced on current Windows. Running on an out-of-support build would mean running against an unpatched component rather than merely an old copy of Kronos." />
         <TextBlock TextWrapping="Wrap"
                    Opacity="0.8"
                    Text="Nothing has been changed on this machine, and no setting can change the outcome. Updating Windows is the only fix, and Windows Update will offer it if this machine is still supported by Microsoft." />

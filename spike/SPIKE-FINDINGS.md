@@ -97,7 +97,7 @@ Not yet tested — each is a small, bounded substitution rather than a rewrite:
 |---|---|---|
 | `CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock` | update notes | needs a replacement |
 | `WinUI.TableView` / `CommunityToolkit.WinUI.UI.Controls.DataGrid` | DLL lists | needs a replacement |
-| `Microsoft.Web.WebView2` | — | needs a replacement |
+| `Microsoft.Web.WebView2` | — | **unused** — no call sites anywhere in `src/`. Cannot be removed while WinAppSDK is in use: it depends on an unlisted version, so the direct reference is what makes restore succeed. Uno drops the requirement entirely. |
 | `SixLabors.ImageSharp` | cover images | works on Linux; licensing unchanged |
 | `Microsoft.WindowsAppSDK` | WinAppSDK runtime | **dropped** — Uno replaces it |
 
