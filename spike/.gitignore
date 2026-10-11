@@ -1,0 +1,11 @@
+# Spike build output.
+#
+# The spike is throwaway work on its own branch, but it is still a .NET project, and bin/obj from a
+# 147 MB self-contained Linux publish would otherwise be very easy to commit by accident with `git add
+# -A`. Binaries in git are unrecoverable and slow to notice.
+bin/
+obj/
+
+# Uno template extras that are per-machine, not per-project.
+.vs/
+*.user
