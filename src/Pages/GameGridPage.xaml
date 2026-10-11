@@ -275,7 +275,11 @@
                         <FontIcon Glyph="&#xE710;" />
                     </AppBarButton.Content>
                 </AppBarButton>
-                <AppBarButton Label="{x:Bind ViewModel.TranslationProperties.RefreshText, Mode=OneWay}" Command="{x:Bind ViewModel.RefreshGamesButtonCommand}" IsEnabled="{x:Bind ViewModel.IsLoading, Converter={StaticResource BoolNegationConverter}, Mode=OneWay}">
+                <!-- IsEnabled binds to CanRefresh, not to the negation of IsLoading. CanRefresh adds the
+                     command's own re-entrancy guard, so the button is disabled by the same condition
+                     that makes a second refresh a no-op. Binding to IsLoading alone left the button
+                     enabled whenever that flag disagreed with the guard. -->
+                <AppBarButton Label="{x:Bind ViewModel.TranslationProperties.RefreshText, Mode=OneWay}" Command="{x:Bind ViewModel.RefreshGamesButtonCommand}" IsEnabled="{x:Bind ViewModel.CanRefresh, Mode=OneWay}">
                     <AppBarButton.Content>
                         <FontIcon Glyph="&#xE72C;" />
                     </AppBarButton.Content>

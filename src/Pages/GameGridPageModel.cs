@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -310,14 +311,52 @@ public partial class GameGridPageModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Guards against two refreshes running at once.
+    /// </summary>
+    /// <remarks>
+    /// A counter rather than a bool, read and written with Interlocked, because the guard is consulted from
+    /// the UI thread and the command can be invoked from anywhere - a keyboard shortcut, or a caller that
+    /// does not go through the button's IsEnabled binding.
+    ///
+    /// The disabled button is a UI affordance, not a guarantee. It used to bind to the negation of
+    /// IsLoading, which is derived from two flags that both the initial load and this command write, so any
+    /// disagreement between them left a window in which a second click reached the command. Two concurrent
+    /// runs then each queued every game for ProcessGame - a recursive directory walk and a cover fetch per
+    /// game - which reads from the outside as a refresh that never settles.
+    /// </remarks>
+    int _refreshing;
+
+    /// <summary>Whether a refresh is running right now.</summary>
+    public bool IsRefreshing => Volatile.Read(ref _refreshing) > 0;
+
+    /// <summary>Whether the refresh command can run, for the button's enabled state.</summary>
+    public bool CanRefresh => IsLoading == false && IsRefreshing == false;
+
     [RelayCommand]
     async Task RefreshGamesButtonAsync()
     {
-        IsDLSSLoading = true;
+        // Claim the slot before doing anything else, so two callers cannot both get past this point.
+        if (Interlocked.CompareExchange(ref _refreshing, 1, 0) != 0)
+        {
+            return;
+        }
 
-        await GameManager.Instance.LoadGamesAsync(true);
+        try
+        {
+            IsDLSSLoading = true;
+            OnPropertyChanged(nameof(CanRefresh));
 
-        IsDLSSLoading = false;
+            await GameManager.Instance.LoadGamesAsync(true);
+        }
+        finally
+        {
+            // The finally matters: without it, one thrown exception leaves IsRefreshing set and the button
+            // permanently dead, and the user cannot refresh again without restarting the app.
+            IsDLSSLoading = false;
+            Interlocked.Exchange(ref _refreshing, 0);
+            OnPropertyChanged(nameof(CanRefresh));
+        }
     }
 
     [RelayCommand]

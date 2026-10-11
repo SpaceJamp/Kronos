@@ -439,36 +439,104 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     static readonly SemaphoreSlim processGameSemaphore = new SemaphoreSlim(4);
 
     /// <summary>
+    /// The authoritative "this game is being scanned" flag, separate from the bindable
+    /// <see cref="Processing"/> property.
+    /// </summary>
+    /// <remarks>
+    /// The bindable property is written on the UI thread so the grid can show a spinner, and it is read by
+    /// other code to decide whether a game is still busy. Neither of those makes it a lock: a property
+    /// assignment is a read-modify-write that two threads can interleave, and the marshalling to the UI
+    /// thread means the read and the write are not even adjacent.
+    ///
+    /// Interlocked.CompareAndSet makes claiming the slot a single atomic step, so two callers racing to scan
+    /// the same game cannot both believe they won.
+    /// </remarks>
+    int _processingFlag;
+
+    /// <summary>
+    /// Claims the right to scan this game. Returns false when another caller already holds it.
+    /// </summary>
+    internal bool TryEnterProcessing() => Interlocked.CompareExchange(ref _processingFlag, 1, 0) == 0;
+
+    /// <summary>
+    /// Releases the claim taken by <see cref="TryEnterProcessing"/>, and updates the bindable property.
+    /// </summary>
+    /// <remarks>
+    /// Always called, including on the early-return and exception paths out of ProcessGame, because a game
+    /// left marked as processing never gets scanned again - by a reload, or by Refresh.
+    /// </remarks>
+    internal void ExitProcessing()
+    {
+        Interlocked.Exchange(ref _processingFlag, 0);
+
+        // Best effort: the property write needs a UI thread, and a failure to reach one must not strand the
+        // claim. The flag above is what actually gates the work.
+        try
+        {
+            UiDispatcher.Invoke(() =>
+            {
+                Processing = false;
+            });
+        }
+        catch (Exception err)
+        {
+            Logger.Error(err);
+        }
+    }
+
+    /// <summary>
     /// Detects DLSS and updates cover image.
     /// </summary>
     public void ProcessGame(bool autoSave = true, bool forceNeedsProcessing = false)
     {
-        // If we are alreayd procssing we don't need to process again
-        if (Processing == true)
+        // Claim the slot in one indivisible step.
+        //
+        // This used to read Processing, return if it was set, and only set it two UiDispatcher.Invoke calls
+        // later. Between those points a second caller - a Refresh click landing while a scan was still
+        // running, or the per-game reload command - could read the same false and start a second scan of the
+        // same game. Both would then walk the install directory, fetch covers, and rewrite the game's rows.
+        // Two scans of one game look, from the outside, like a refresh that never settles.
+        //
+        // CompareAndSet makes the check and the claim a single atomic operation, so exactly one caller can
+        // ever win. The flag is still set on the UI thread below for binding purposes, but it is no longer
+        // the thing deciding who gets to run.
+        if (TryEnterProcessing() == false)
         {
             return;
         }
 
-        UiDispatcher.Invoke(() =>
+        // Everything from here to the Task.Run is a set-up step that can fail, and the slot has already been
+        // claimed, so any early return has to give it back. Without this, a game with a missing or
+        // unrecognised install path would be stuck as "processing" for the rest of the session and would
+        // never be scanned again - including by a Refresh.
+        try
         {
-            NeedsProcessing = false;
-        });
+            UiDispatcher.Invoke(() =>
+            {
+                NeedsProcessing = false;
+            });
 
-        if (string.IsNullOrEmpty(InstallPath))
-        {
-            return;
+            if (string.IsNullOrEmpty(InstallPath))
+            {
+                return;
+            }
+
+            if (Directory.Exists(InstallPath) == false)
+            {
+                return;
+            }
+
+            UiDispatcher.Invoke(() =>
+            {
+                Processing = true;
+                HasSwappableItems = false;
+            });
         }
-
-        if (Directory.Exists(InstallPath) == false)
+        catch
         {
-            return;
+            ExitProcessing();
+            throw;
         }
-
-        UiDispatcher.Invoke(() =>
-        {
-            Processing = true;
-            HasSwappableItems = false;
-        });
 
         // NOTE: this used to be ThreadPool.QueueUserWorkItem(async lambda), which binds the lambda to
         // WaitCallback and therefore runs it as `async void`. Anything thrown from the finally block
@@ -771,10 +839,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
                 {
                     // Processing has to be reset unconditionally. If it is left true the game
                     // refuses to open (see GameGridPage.GridAndListView_ItemClick) forever.
-                    UiDispatcher.Invoke(() =>
-                    {
-                        Processing = false;
-                    });
+                    ExitProcessing();
                 }
             }
         });

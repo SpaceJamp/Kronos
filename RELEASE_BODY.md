@@ -1,41 +1,37 @@
-v1.58 — no changes; a guard against deleting working code
+v1.58.1 — Refresh button fix
 
-**Nothing in this release changes what Kronos does.** 1.57 is correct and stays correct. This exists to stop a mistake that has not been made yet.
+A patch release for one user-facing bug: **clicking Refresh could start the same scan several times at once**, which looks like a refresh that never finishes.
 
-## What happened
+## What was happening
 
-The audit of 1.57's fixes reported two statements in the database migration as dead code:
+**Refresh had no guard against being clicked twice.** The only thing stopping a second click was the button being greyed out while a refresh ran — and that was a UI convenience, not a lock.
 
-```sql
-DROP INDEX IF EXISTS GameAsset_id
-DROP INDEX IF EXISTS GameHistory_game_id
-```
+The button disabled itself based on a "loading" flag, but that flag is shared with the initial page load, so whenever the two disagreed the button stayed clickable. Each click that got through started another full pass over your library, and each pass queues every game for a fresh DLL scan: a recursive walk of the install folder plus a cover-image fetch, for every game you have.
 
-Its reasoning was that `sqlite-net` names its indexes `{table}_{hash}` rather than `{table}_{column}` — so those names could never match, and the statements could be deleted.
+Two of those running at once looks, from the outside, like a refresh that keeps going.
 
-**They are load-bearing.** Acting on that report would have removed working migration code on the strength of a grep.
+**The per-game scan had the same flaw one level down.** Before starting a game's scan it checked "am I already scanning this?" and only set the flag two UI-thread hops later. Two callers arriving in that gap both passed the check, and both scanned the same game.
 
-- `sqlite-net-e` 1.11.0 builds index names from the table and column name, so an install from before the snake_case migration really does have indexes called `GameAsset_id` and `GameHistory_game_id`.
-- `ALTER TABLE ... RENAME TO` retargets an index at the renamed table but **leaves the index's own name alone**. By that point in the migration, `game_asset` carries an index still called `GameAsset_id`.
-- `CreateTable` then adds `game_asset_id` alongside it. That succeeds either way.
+## What's fixed
 
-So without those two statements, every upgraded database ends up with two indexes on the same column, one of them stale.
-
-## What this release adds
-
-Six tests that build a real legacy schema in a real SQLite file and demonstrate each of those steps, rather than trusting anyone's reading of the source. Both statements are pinned, so deleting either now fails a test.
-
-The comment above them said only *"Delete old indexes if they exist"* — which is exactly why the audit concluded they were removable. It now explains the mechanism and points at the tests.
-
-Verified by deleting one statement and watching the test fail.
+- Refresh now claims a lock before doing anything. A second click while one is running does nothing rather than starting another pass.
+- The lock is released in a `finally`, so if a scan throws, the button still comes back. Previously a single failure could have left Refresh permanently dead until you restarted the app.
+- The button's enabled state now reads that same lock, so what you see is exactly what the command enforces.
+- Each game claims its scan slot atomically, so one game can only ever be scanned by one caller.
 
 ## Testing
 
-497 tests, up from 491. Three consecutive runs green.
+515 tests, up from 497. Six cover this fix.
+
+They were checked against the unfixed code: with the guard removed, they fail. Three consecutive full runs green.
+
+## Note
+
+This release also carries `UpdateErrorLog`, a tested reader for the partial-update log introduced in 1.55. It is not shown in the UI yet — that wiring is still to come — so this release changes no update behaviour.
 
 ## Downloading
 
-`Kronos-1.58.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
+`Kronos-1.58.1.0-portable.zip` is attached. Unzip anywhere and run `Kronos.exe`.
 
 **It needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads).** If `Kronos.exe` exits without a window, install it.
 
