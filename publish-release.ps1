@@ -65,6 +65,29 @@ function Test-NativeCommand {
     }
 }
 
+# Runs a native command, letting its output through, and returns its exit code.
+#
+# Same stderr problem as Test-NativeCommand, but for the commands that publish the release rather than
+# probe the environment. `git push` and `git tag` always write progress to stderr - "To https://...",
+# "* [new tag]", "Everything up-to-date" - and under $ErrorActionPreference = 'Stop' PowerShell turns
+# that into a NativeCommandError. The work still completed, so the script ran to the end and printed
+# "=== Published ===" while the process exited 1. A wrapper checking $LASTEXITCODE would read a
+# successful release as a failure, and a genuine failure later on would be the second error in the
+# output rather than the only one. Progress on stderr is not an error; the exit code is the answer.
+function Invoke-NativeCommand {
+    param([scriptblock]$Command)
+
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Command
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 if ((Test-NativeCommand { & $gh auth status }) -ne 0) {
     Fail "Not logged in to GitHub. Run: gh auth login"
 }
@@ -99,12 +122,10 @@ Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "Creating tag $tag..." -ForegroundColor Yellow
-& git tag -a $tag -m "Kronos $Version"
-if ($LASTEXITCODE -ne 0) { Fail "Failed to create tag $tag." }
+if ((Invoke-NativeCommand { & git tag -a $tag -m "Kronos $Version" }) -ne 0) { Fail "Failed to create tag $tag." }
 
 Write-Host "Pushing tag..." -ForegroundColor Yellow
-& git push origin $tag
-if ($LASTEXITCODE -ne 0) {
+if ((Invoke-NativeCommand { & git push origin $tag }) -ne 0) {
     Write-Host "Tag push failed. The local tag $tag still exists; delete it with: git tag -d $tag" -ForegroundColor Yellow
     exit 1
 }
@@ -115,8 +136,7 @@ Write-Host "Creating GitHub Release..." -ForegroundColor Yellow
 # title, so "Kronos 1.53" reads better than "v1.53" but silently disables the update check: the parse
 # returns 0, which compares below every real version, so the app reports itself as up to date forever
 # with nothing logged. GitHubRelease now falls back to the tag, but the title should still be right.
-& $gh release create $tag --title "v$Version" --notes-file $NotesFile
-if ($LASTEXITCODE -ne 0) {
+if ((Invoke-NativeCommand { & $gh release create $tag --title "v$Version" --notes-file $NotesFile }) -ne 0) {
     Write-Host "Release creation failed. The tag was pushed, so delete it on GitHub before retrying," -ForegroundColor Yellow
     Write-Host "otherwise the retry will fail on 'tag already exists'." -ForegroundColor Yellow
     exit 1
@@ -177,8 +197,7 @@ if (-not $SkipBuild) {
         Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $artifact -CompressionLevel Optimal
 
         Write-Host "Uploading $artifactName..." -ForegroundColor Yellow
-        & $gh release upload $tag $artifact --clobber
-        if ($LASTEXITCODE -ne 0) {
+        if ((Invoke-NativeCommand { & $gh release upload $tag $artifact --clobber }) -ne 0) {
             Fail "The artifact upload failed. The release and tag exist without it; re-run with -SkipBuild once the build works."
         }
     }
@@ -189,4 +208,17 @@ if (-not $SkipBuild) {
 
 Write-Host ""
 Write-Host "=== Published ===" -ForegroundColor Green
-& $gh release view $tag --json url --jq .url
+
+# Printed as output rather than returned as a value, so the script's result is the exit code and not a
+# string a caller might accidentally treat as one. Without the explicit exit below, a PowerShell script
+# that ends on a successful command still exits 0, but one that ends after a suppressed error does not,
+# and this script had already proved it could reach here having exited 1.
+#
+# The URL goes in a hashtable rather than a local: Invoke-NativeCommand returns the exit code, and a
+# plain assignment inside the scriptblock would be made in a scope that discards it. Setting a property
+# mutates the one hashtable in every scope.
+$published = @{ Url = '' }
+$viewExit = Invoke-NativeCommand { $published.Url = (& $gh release view $tag --json url --jq .url) }
+if ($viewExit -ne 0) { exit 1 }
+Write-Host $published.Url
+exit 0

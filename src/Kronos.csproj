@@ -54,15 +54,18 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
-      Bumped to 1.54 for the Windows 10 22H2 launch floor, the "Update all" change, and the removal of
-      the Avalonia project. This must match the git tag or the updater will compare against the wrong
-      version: it reads the release title, and the comparison only offers a release strictly newer than
-      this number.
+      Bumped to 1.55 for the portable update fix: the update used to abandon the whole copy if any single
+      file could not be written, and the About section then kept reporting the previous version, commit and
+      build date after an update appeared to succeed. It also overwrote the user's game database and
+      settings with the blank copies inside the release archive.
+
+      This must match the git tag or the updater will compare against the wrong version: it reads the
+      release title, and the comparison only offers a release strictly newer than this number.
 
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.54</Version>
+    <Version>1.55</Version>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>

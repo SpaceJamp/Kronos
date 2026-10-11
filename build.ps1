@@ -59,6 +59,45 @@ Write-Host "=== Kronos Build Script (PowerShell) ===" -ForegroundColor Green
 Write-Host "Target: $Target | Configuration: $Configuration | Runtime: $Runtime" -ForegroundColor Cyan
 Write-Host ""
 
+# Git metadata for the About section: the tag and the branch, passed in with -p:.
+#
+# The commit needs no help - $(SourceRevisionId) comes from the git checkout, so the csproj picks it up on
+# its own - but the tag and the branch do, because MSBuild cannot run git while evaluating properties.
+#
+# These were never passed, so KronosGitTag and KronosGitBranch were always empty. Two consequences, both
+# visible in the About section: the version's hyperlink pointed at the generic releases page rather than
+# the tagged release it belongs to, and BuildInfo.IsFromTagBuild was always false, so the build commit row
+# was shown on every build including a release one, which is the opposite of when it is useful.
+#
+# Read with git rather than assumed. An archive with no .git, or a directory git refuses to trust, leaves
+# them empty, which the csproj and BuildInfo both already treat as "not a release build" rather than an
+# error. Callers have already noticed this script exit non-zero from git writing to stderr, so the
+# preference is lowered for the read and restored, and only the output is used.
+$gitMetadataArgs = @()
+$previousPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = 'Continue'
+
+    $branchName = (& git rev-parse --abbrev-ref HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($branchName)) {
+        $gitMetadataArgs += "-p:KronosGitBranch=$branchName"
+    }
+
+    # Only a tag that is actually on this commit counts. An old tag left lying around would otherwise be
+    # baked into a build made weeks later, and the About section would link to a release it is not.
+    $tagName = (& git tag --points-at HEAD 2>$null | Select-Object -First 1)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($tagName)) {
+        $gitMetadataArgs += "-p:KronosGitTag=$tagName"
+    }
+}
+finally {
+    $ErrorActionPreference = $previousPreference
+}
+
+if ($gitMetadataArgs.Count -gt 0) {
+    Write-Host "Git metadata: $($gitMetadataArgs -join ' ')" -ForegroundColor DarkGray
+}
+
 # Check for .NET SDK
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Write-Host "Error: .NET SDK not found. Please install .NET 10 SDK." -ForegroundColor Red
@@ -260,7 +299,7 @@ function Build-Windows {
     # Deliberately NOT -p:WindowsAppSDKSelfContained=true either. It reads like it would remove the
     # runtime prerequisite, but measured it crashes Release_Portable where it otherwise runs. The
     # artifact therefore needs the Windows App Runtime installed, which the README states.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir | Write-Host
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir @gitMetadataArgs | Write-Host
     Assert-DotnetSucceeded "Publish (Windows GUI)"
 
     if (-not (Test-Path (Join-Path $outputDir 'Kronos.exe'))) { Fail "No Kronos.exe in $outputDir." }
