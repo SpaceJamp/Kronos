@@ -59,14 +59,24 @@ public class VersionConsistencyTests
     [Fact]
     public void APatchReleaseDoesNotCollideWithTheReleaseItFixes()
     {
-        // Guards the reason the third part was allowed at all: a patch bump has to actually be a
+        // Guards the reason a patch component is allowed at all: when one is used it has to actually be a
         // different version, or the update check cannot offer it to anyone on the release it patches.
+        //
+        // Only asserted when there IS a patch component. This test was originally written to require one,
+        // and then failed the very next release for using plain 1.59 - which is a legitimate choice, since
+        // a fix to a release nobody has installed yet does not need a patch number. The rule is "a patch
+        // number must be meaningful", not "every version must have one".
         var version = CsprojVersion();
 
-        Assert.Matches(@"^\d+\.\d+\.\d+$", version);
+        if (version.Count(c => c == '.') != 2)
+        {
+            // major.minor, no patch. Nothing to compare against.
+            return;
+        }
+
         Assert.True(
-            Version.Parse(version) > Version.Parse(version[..^2]),
-            $"{version} must compare greater than {version[..^2]}, or the update check will not offer it.");
+            Version.Parse(version) > Version.Parse(string.Join('.', version.Split('.')[..2])),
+            $"{version} must compare greater than the release it patches, or the update check will not offer it.");
     }
 
     [Fact]
