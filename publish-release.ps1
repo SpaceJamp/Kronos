@@ -29,7 +29,8 @@
 param(
     [string]$Version = '',
     [string]$NotesFile = '',
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$ReplaceArtifactOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -119,14 +120,35 @@ if (-not (Test-Path $NotesFile)) { Fail "Release notes file not found: $NotesFil
 
 $tag = "v$Version"
 
-if ((Test-NativeCommand { & git rev-parse --verify "refs/tags/$tag" }) -eq 0) {
-    Fail "Tag $tag already exists locally. Move or delete it first."
+# Rebuilding an artifact that was already uploaded to this release. The tag exists by definition here, so
+# the guard below and the whole tag-and-release sequence are skipped, and only the build and upload run.
+#
+# This exists because a release can be published correctly and still ship a wrong artifact. v1.55 was
+# published with an empty build tag in its binary, found afterwards, and had to be replaced without
+# deleting the release and its notes and starting over. -SkipBuild could not do it, because the tag check
+# is not about the build.
+if ($ReplaceArtifactOnly) {
+    if ((Test-NativeCommand { & git rev-parse --verify "refs/tags/$tag" }) -ne 0) {
+        Fail "Tag $tag does not exist locally. There is no release to replace an artifact on; publish normally."
+    }
+
+    Write-Host "=== Rebuilding the $tag artifact ===" -ForegroundColor Green
+    Write-Host "The tag, release and notes are left alone." -ForegroundColor DarkGray
+}
+else {
+    if ((Test-NativeCommand { & git rev-parse --verify "refs/tags/$tag" }) -eq 0) {
+        Fail "Tag $tag already exists locally. Move or delete it first, or use -ReplaceArtifactOnly to rebuild just the artifact."
+    }
 }
 
 Write-Host "=== Publishing Kronos $Version ===" -ForegroundColor Green
 Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
 Write-Host ""
 
+if ($ReplaceArtifactOnly) {
+    # Fall through to the build and upload below, skipping tag creation, push and release creation.
+}
+else {
 Write-Host "Creating tag $tag..." -ForegroundColor Yellow
 if ((Invoke-NativeCommand { & git tag -a $tag -m "Kronos $Version" }) -ne 0) { Fail "Failed to create tag $tag." }
 
@@ -146,6 +168,7 @@ if ((Invoke-NativeCommand { & $gh release create $tag --title "v$Version" --note
     Write-Host "Release creation failed. The tag was pushed, so delete it on GitHub before retrying," -ForegroundColor Yellow
     Write-Host "otherwise the retry will fail on 'tag already exists'." -ForegroundColor Yellow
     exit 1
+}
 }
 
 if (-not $SkipBuild) {
