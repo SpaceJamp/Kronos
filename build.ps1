@@ -320,11 +320,18 @@ switch ($Target) {
     }
 }
 
-Write-Host "" 
+Write-Host ""
 Write-Host "=== Build Complete ===" -ForegroundColor Green
 foreach ($output in $outputs) {
     Write-Host "Output: $output" -ForegroundColor Green
 }
+
+# Machine-readable handoff. publish-release.ps1 needs the output directory, and taking the last line
+# of this script's output does not work: the human-readable summary below is not a path, so the caller
+# was handed "Note: Copy the entire output folder to target machine to run." and tried to join a drive
+# called Note. A tagged line is parseable no matter what else is printed.
+Write-Output "KRONOS_OUTPUT_DIR=$($outputs -join ';')"
+
 Write-Host ""
 Write-Host "To run Linux CLI: ./Kronos --help" -ForegroundColor Yellow
 Write-Host "To run Windows: Double-click Kronos.exe" -ForegroundColor Yellow

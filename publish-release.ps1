@@ -128,10 +128,18 @@ if (-not $SkipBuild) {
     # The artifact first published crashed on startup; build.ps1 now smoke tests the binary it is
     # about to hand over, and fails if it exits immediately or if Kronos.pri is missing. Both of those
     # were true of the build that shipped, and neither appeared anywhere in the build output.
-    $outputDir = & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
-        -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY | Select-Object -Last 1
+    $buildOutput = & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
+        -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY
     if ($LASTEXITCODE -ne 0) { Fail "The Windows build failed; the release exists without an artifact." }
-    $outputDir = "$outputDir".Trim()
+
+    # Parsed from the tagged line build.ps1 writes, not from the last line of its output. The summary
+    # it prints ends with "Note: Copy the entire output folder to target machine to run.", and taking
+    # that as the path produced an attempt to join a drive called "Note".
+    $outputDir = ($buildOutput |
+        Where-Object { $_ -like 'KRONOS_OUTPUT_DIR=*' } |
+        Select-Object -First 1) -replace '^KRONOS_OUTPUT_DIR=', ''
+
+    if (-not $outputDir) { Fail "The build did not report an output directory. Nothing was uploaded." }
     if (-not (Test-Path (Join-Path $outputDir 'Kronos.exe'))) {
         Fail "The build reported success but $outputDir has no Kronos.exe."
     }
