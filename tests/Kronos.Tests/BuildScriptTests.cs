@@ -365,6 +365,37 @@ public class BuildScriptTests
     }
 
     [Fact]
+    public void ThePublishedArchiveIsStagedRecursivelyAndItsSizeVerified()
+    {
+        // This shipped as v1.53: Copy-Item without -Recurse copied the *directories* but none of
+        // their contents, and Compress-Archive then omits empty directories entirely. The archive
+        // came out 97 files short - the whole of Assets, Translations and StoredData - and the only
+        // symptom anyone noticed was the app's logo missing from the title bar.
+        //
+        // Nothing about that is a build failure. The build succeeded, every exit code was zero, and
+        // the archive was a valid zip; it was simply short, and the shortfall only appears on the
+        // user's desktop.
+        var source = ReadRepoFile("publish-release.ps1");
+
+        // Comments are stripped first: the script explains this exact mistake in prose, and matching
+        // raw text would test the explanation rather than the code.
+        var copy = CodeLines("publish-release.ps1")
+            .FirstOrDefault(line => line.Contains("Copy-Item", StringComparison.Ordinal));
+
+        Assert.NotNull(copy);
+        Assert.Contains("-Recurse", copy!, StringComparison.Ordinal);
+
+        // Counted rather than trusted, because the failure mode is a silently short archive.
+        Assert.Contains("stagedCount", source, StringComparison.Ordinal);
+
+        // Named explicitly, because these are what went missing.
+        foreach (var required in new[] { "Kronos.exe", "Kronos.pri", @"Assets\icon_256.png" })
+        {
+            Assert.Contains(required, source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void TheWindowsBuildSmokeTestsTheBinaryItIsAboutToPublish()
     {
         // The first artifact published exited immediately with 0xC000027B and nothing in the build

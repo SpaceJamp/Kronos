@@ -148,7 +148,31 @@ if (-not $SkipBuild) {
     $staging = Join-Path ([System.IO.Path]::GetTempPath()) ("kronos-release-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $staging | Out-Null
     try {
-        Copy-Item (Join-Path $outputDir '*') $staging
+        # -Recurse is required and its absence is silent.
+        #
+        # Copy-Item without it copies the *directories* but none of their contents, leaving empty
+        # folders behind. Compress-Archive then omits empty directories entirely, so the archive is
+        # quietly short of everything that lived in them. That is exactly what shipped as v1.53: 97
+        # files gone - the whole of Assets (including the app icon the title bar loads), Translations,
+        # and StoredData - and the only symptom anyone saw was a missing logo.
+        Copy-Item (Join-Path $outputDir '*') $staging -Recurse
+
+        # Verified rather than assumed. A partial archive is not a build failure, so nothing upstream
+        # would ever report it, and the only place it shows up is the user's desktop.
+        $sourceCount = @(Get-ChildItem -LiteralPath $outputDir -Recurse -File).Count
+        $stagedCount = @(Get-ChildItem -LiteralPath $staging -Recurse -File).Count
+        if ($sourceCount -ne $stagedCount) {
+            Fail "Staging copied $stagedCount of $sourceCount files from $outputDir. Refusing to upload a partial archive."
+        }
+
+        # Named explicitly because these are what go missing, and the logo in particular is the one
+        # thing every user looks at.
+        foreach ($required in @('Kronos.exe', 'Kronos.pri', 'Assets\icon_256.png', 'Assets\icon.ico')) {
+            if (-not (Test-Path (Join-Path $staging $required))) {
+                Fail "The archive is missing $required. Refusing to upload it."
+            }
+        }
+
         $artifact = Join-Path $staging $artifactName
         Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $artifact -CompressionLevel Optimal
 
