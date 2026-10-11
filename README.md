@@ -17,9 +17,9 @@
 > disclosed in [AI_ASSISTED.md](AI_ASSISTED.md).
 
 > [!WARNING]
-> **The Windows build requires a 64-bit processor. There is no 32-bit build and never
-> will be.** A 32-bit CPU cannot execute the `x86_64` instructions in the app, the .NET runtime and the
-> bundled SQLite — it is a hardware limit.
+> **The build requires a 64-bit processor. There is no 32-bit build and never will be.** A 32-bit
+> CPU cannot execute the `x86_64` instructions in the app, the .NET runtime and the bundled SQLite —
+> it is a hardware limit.
 >
 > | `msinfo32` field (`Win`+`R` → `msinfo32`) | Value | Meaning |
 > |---|---|---|
@@ -37,95 +37,48 @@
 
 | Platform | Target framework | Status |
 |---|---|---|
-| **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection and DLL swapping. |
-| **Linux x64** | `net10.0` | ⏸️ **Paused — not being worked on.** The target still compiles, but no build has ever been run on Linux and the CLI cannot do anything useful. See [Linux support is paused](#linux-support-is-paused). |
-| **Linux x64 GUI** | — | ❌ **Does not build.** The Avalonia project depends on types not present in the Linux target. |
-| **macOS** | — | ❌ Not supported (no DLSS/FSR/XeSS on macOS). |
+| **Windows x64** | `net10.0-windows10.0.26100.0` | ✅ **Working.** WinUI 3 GUI with game detection, DLL swapping and self-update. |
 
-Everything below describes the **Windows** build unless stated otherwise. That is the only platform
-where Kronos does the thing its name describes end to end.
-
-### Linux support is paused
-
-**Linux support has been dropped for now.** It is not unfinished work waiting to be picked up — it is
-being set aside, and this section says so plainly so nobody wastes time on it.
-
-The reason is straightforward: **no Kronos build has ever been run on Linux.** Every Linux claim in
-this repository rests on the target compiling on a Windows machine and on tests that mock the
-platform. The first real run on real Linux kept failing on restore, and each fix was verified against
-a stub rather than against Linux itself. Continuing to build on that basis would be guessing.
-
-What exists, and what state it is in:
-
-- The `net10.0` target compiles. `build.sh` works, including installing the .NET 10 SDK when it is
-  absent — that part was confirmed on a real Linux machine before the pause.
-- The game model (`Game`, `GameAsset`, `GameHistory`), `DLLManager`, `DLLRecord`, `DLLAssetTypes` and
-  the SQLite database are compiled and reachable.
-- Manifest download and deserialisation work, including localised display names — the `.resw` files
-  are parsed directly instead of through WinUI's `ResourceManager`.
-- **But the CLI only has `update`, `version` and `self-update`.** Nothing wires `list`, `swap` or
-  `reset` to command-line arguments, so there is nothing on Linux that does what Kronos is for.
-- **No game detection.** Steam, GOG, Epic, Ubisoft, Xbox, Battle.net and EA App are all discovered
-  through the Windows registry, and there is no registry on Linux. Each would need discovery written
-  against that platform's on-disk layout — Steam's `libraryfolders.vdf` and `appmanifest_*.acf`, for
-  instance, which is plain file parsing rather than a registry key.
-- **The Avalonia GUI does not compile.**
-
-None of this is hidden or reverted. If Linux is picked up again, the starting point is the one
-described above rather than the broken state an earlier change left it in — see
-[What changed](#what-changed).
-
-> **Ownership notice:** Any Linux work is owned and maintained by this repository's maintainer. It is
-> not affiliated with, endorsed by, or supported by the upstream DLSS Swapper project.
+Kronos is a Windows application. The GUI, the store integrations and the DLL management are all
+Windows-only by design, and the project builds and ships for Windows only.
 
 ## Requirements
-
-### Windows (building and running)
 
 | | |
 |---|---|
 | **OS** | Windows 10 (20H1, build 19041) or newer, **x64** |
 | **CPU** | **64-bit** (x64 or ARM64) — 32-bit is not supported |
 | **GPU** | Any |
+| **To run** | [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0), or the self-contained build |
 | **To build** | .NET 10 SDK, Windows SDK 10.0.26100 |
-
-### Linux (building only — paused)
-
-> Paused. See [Linux support is paused](#linux-support-is-paused).
-
-| | |
-|---|---|
-| **OS** | Any modern Linux (glibc 2.31+) |
-| **CPU** | x64 |
-| **To build** | .NET 10 SDK — `build.sh` installs it if missing |
-| **Runtime** | Self-contained (no system .NET required) |
 
 ## Getting it
 
-**Official, signed Windows build:** [upstream releases](https://github.com/beeradmoore/dlss-swapper/releases) or
-`winget install --id=beeradmoore.dlss-swapper -e`. Those are the only signed builds of this software.
+**Official, signed build:** [upstream releases](https://github.com/beeradmoore/dlss-swapper/releases)
+or `winget install --id=beeradmoore.dlss-swapper -e`. Those are the only signed builds of this
+software.
 
 **Kronos:** download `Kronos-<version>.0-portable.zip` from the
 [Releases page](https://github.com/SpaceJamp/Kronos/releases). Unzip anywhere and run `Kronos.exe`.
 No installer, no console window, and no .NET runtime required.
 
 > **Needs the Windows App Runtime.** This is an unpackaged WinUI application, so it resolves
-> `Microsoft.UI.Xaml.dll` from the Windows App Runtime rather than carrying it. If `Kronos.exe` exits
-> immediately without showing a window, install the
-> [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) — upstream's
-> signed installer installs it as part of setup.
+> `Microsoft.UI.Xaml.dll` from the Windows App Runtime rather than carrying a copy. If `Kronos.exe`
+> exits immediately without showing a window, install the
+> [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) —
+> upstream's signed installer installs it as part of setup.
 
-> **These builds are unsigned.** Expect SmartScreen to warn; that is inherent to distributing binaries
-> without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for every asset, shown
-> beside its download link, and Kronos verifies it on any in-app update it performs.
+> **These builds are unsigned.** Expect SmartScreen to warn; that is inherent to distributing
+> binaries without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for
+> every asset, shown beside its download link, and Kronos verifies it on any in-app update.
 
-> **Kronos updates itself.** A portable build downloads the new archive from the Releases page,
-> checks it against the SHA256 GitHub publishes for it, and replaces itself. The copy is done by a
-> detached helper after the app exits, because Windows will not let a running executable be
-> overwritten; the helper keeps a rollback copy of `Kronos.exe` and restores it if the copy fails. A
-> release with no published checksum is refused rather than installed unverified.
+> **Kronos updates itself.** It downloads the new archive from the Releases page, checks it against
+> the SHA256 GitHub publishes for it, and replaces itself. The copy is done by a detached helper
+> after the app exits, because Windows will not let a running executable be overwritten; the helper
+> keeps a rollback copy of `Kronos.exe` and restores it if the copy fails. A release with no
+> published checksum is refused rather than installed unverified.
 
-**Building from source** produces the same binary, and is covered in [Building](#building). It needs
+**Building from source** produces the same binary and is covered in [Building](#building). It needs
 your own ImageSharp licence key.
 
 Kronos does not add DLSS to games that do not support it, and swapping DLLs is not guaranteed to
@@ -133,20 +86,18 @@ improve performance, reduce artifacts, or avoid crashes. Downgrading a runtime b
 game shipped with can disable Frame Generation, so Kronos warns before it does that. Originals are
 always restorable.
 
-## Supported game libraries (Windows)
+## Supported game libraries
 
 Steam · GOG · Epic Games Store · Ubisoft Connect · Xbox App · Battle.net · EA App · games added
 manually via **Add Game**
 
 ## Building
 
-### Windows (WinUI 3 GUI)
-
 ```powershell
 # Build
 dotnet build ".\src\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c Release
 
-# Test (366 tests)
+# Test (426 tests)
 dotnet test ".\Kronos.sln" -c Release
 
 # Self-contained portable build → Output/win-x64-portable-<timestamp>/
@@ -162,74 +113,18 @@ configurations keep all data inside the build output, so neither touches a real 
 **x64 only, for the project as well as the output.** `<Platforms>` is `x64` and the runtime is
 `win-x64`. Do not add a 32-bit configuration; see the warning at the top.
 
-### Linux
-
-> **Paused — see [Linux support is paused](#linux-support-is-paused).** `build.sh` still works and the
-> `net10.0` target still compiles, but the CLI has no commands that do anything useful, and no
-> resulting binary has ever been run on Linux. Treat anything below as untested on the platform it
-> describes.
-
-```bash
-# CLI — updater commands only
-./build.sh
-# → Output/linux-x64-<timestamp>/Kronos
-
-# Cross-compile from Windows
-.\build.ps1 -Target Linux
-```
-
-Output is self-contained — no .NET runtime needed on the target machine.
-
-**The .NET 10 SDK is installed for you if it is missing.** The project targets `net10.0`, which
-needs the .NET 10 SDK specifically — an installed .NET 8 or 9 will not build it. `build.sh` checks
-for the right major version and, if it is not there, downloads Microsoft's official
-[`dotnet-install.sh`](https://dot.net/v1/dotnet-install.sh) and installs into `~/.dotnet`. That is a
-per-user install, so it does not need `sudo` and does not touch a system-wide installation.
-
-It also appends `~/.dotnet` to `PATH` in your `~/.profile`, so later shells find it too. That
-applies to **new** shells — run `source ~/.profile`, or open a new terminal, before building again
-by hand.
-
-To install somewhere else, or to skip the auto-install entirely:
-
-```bash
-DOTNET_INSTALL_DIR=/opt/dotnet ./build.sh     # different location
-```
-
-If the automatic install fails, it prints the manual instructions and exits rather than carrying on
-with a missing SDK. You can also install it yourself from
-[dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0).
-
-### Prerequisites at a glance
-
-| Building | Needs |
-|---|---|
-| Windows | .NET 10 SDK, Windows SDK 10.0.26100 |
-| Linux | .NET 10 SDK — or just run `build.sh`, which installs it |
-
-#### Linux commands
-
-```bash
-./Kronos version                          # Show version information
-./Kronos update --check                   # Check for updates, do not apply
-./Kronos update                           # Apply an available update
-./Kronos update --force                   # Reinstall the current release even if already on it
-./Kronos self-update --path ./update.tar.gz   # Internal: apply a downloaded update
-```
-
-`list`, `swap`, `reset` and `import` are **not implemented**, and are not scheduled. The code they
-would call is compiled and reachable in the Linux build; what is missing is the argument parsing and
-output formatting on top of it.
+`build.ps1` publishes the `Release_Portable` configuration, which is the one designed to run without
+package identity. It then **launches the binary it just published** and fails if it exits during the
+first twelve seconds, or if `Kronos.pri` is missing — a build that produces something which dies on
+startup is not a build worth shipping, and neither failure is visible from the exit codes alone.
 
 ### Build script options
 
 | Script | Option | Values |
 |---|---|---|
-| `build.ps1` | `-Target` | `Windows`, `Linux`, `All` (default: detected from the host OS) |
+| `build.ps1` | `-Target` | `Windows` (default) |
 | `build.ps1` | `-Configuration` | `Release`, `Debug` |
 | `build.ps1` | `-LicenseKey` | SixLabors ImageSharp key, if not already in the environment |
-| `build.sh` | `$1` | `Windows`, `Linux`, `All` |
-| `build.sh` | `$2` | `Release`, `Debug` |
 
 ### The ImageSharp licence key
 
@@ -237,18 +132,16 @@ ImageSharp 3.2 and later require a licence. Kronos builds against a **Community 
 build time — never committed. Set it as an environment variable:
 
 ```powershell
-$env:IMAGESHARP_LICENSE_KEY = "<your key>"   # PowerShell
-export IMAGESHARP_LICENSE_KEY="<your key>"    # bash
+$env:IMAGESHARP_LICENSE_KEY = "<your key>"
 ```
 
-or pass `-LicenseKey` / as the fourth argument to `build.ps1` / `build.sh`. Without it the build fails
-with a clear error from the ImageSharp MSBuild target. See
-[Third-party licences](#third-party-licences).
+or pass `-LicenseKey` to `build.ps1`. Without it the build fails with a clear error from the
+ImageSharp MSBuild target. See [Third-party licences](#third-party-licences).
 
 ### Releasing
 
 There is **no CI and no release automation.** Tagging a commit publishes nothing. To cut a release,
-run the publishing script from an authenticated checkout:
+run the publishing script from an authenticated checkout with the GitHub CLI logged in:
 
 ```powershell
 ./publish-release.ps1                 # tag, release, build and upload the portable artifact
@@ -261,25 +154,24 @@ It refuses to run rather than doing the wrong thing quietly:
   tag that disagrees makes the updater compare against the wrong number
 - **dirty working tree** — aborts
 - **tag already exists** — aborts
+- **short archive** — aborts if the staged copy has fewer files than the build output. `Copy-Item`
+  without `-Recurse` copies directories but not their contents, `Compress-Archive` then omits the
+  empty ones, and the result is a valid zip that is quietly missing everything that lived in them.
+  The archive is counted, not trusted.
 - **release exists but the upload failed** — says so, because the retry will otherwise fail on
   "tag already exists" and leave you guessing
-
-It also builds and smoke tests before it uploads. `build.ps1` launches the binary it just published and
-fails if it exits during the first twelve seconds or if `Kronos.pri` is missing. That check exists
-because the first artifact published from this repository was a binary that died on startup, and
-nothing in the build output said so.
 
 Two things the script gets right that are easy to get wrong:
 
 - **The release title begins with the version.** `GitHubUpdater.GetVersionNumber` parses the first
-  space-delimited token of the release *title* and requires a leading `v`. A title like "Kronos 1.53"
-  parses to 0, which compares below every real version, so the app reports itself as up to date forever
-  with nothing logged. The tag is a fallback now, but the title should still be right — it is also
-  what the update dialog displays.
+  space-delimited token of the release *title* and requires a leading `v`. A title like
+  "Kronos 1.53" parses to 0, which compares below every real version, so the app reports itself as
+  up to date forever with nothing logged. The tag is a fallback now, but the title should still be
+  right — it is also what the update dialog displays.
 - **The updater's repository is `SpaceJamp/Kronos`.** It was `SpaceJamp/kronos-dlss-swapper`, which
   does not exist, so every check 404'd and surfaced as a failed check rather than as a wrong name. A
-  test now compares the constant against this repository's own `origin` remote, so a rename breaks the
-  build instead of the updater.
+  test now compares the constant against this repository's own `origin` remote, so a rename breaks
+  the build instead of the updater.
 
 > [!NOTE]
 > The workflow inherited from upstream was removed. It called `package\*.cmd` scripts that were
@@ -291,8 +183,8 @@ Two things the script gets right that are easy to get wrong:
 > dotnet test ".\Kronos.sln" -c Release
 > ```
 >
-> If you want automation back, a `build.yml` that restores, builds and runs the tests on both target
-> frameworks is about twenty lines — the hard parts already work.
+> If you want automation back, a `build.yml` that restores, builds and runs the tests is about
+> twenty lines — the hard parts already work.
 
 ## What changed
 
@@ -305,16 +197,17 @@ Kronos is a derivative of upstream DLSS Swapper. The substantive differences:
   namespace, and both the DLL manifest and the acknowledgements page look resources up by name.
 - **Data lives in `%LOCALAPPDATA%\Kronos` with database `kronos.db`**, not in DLSS Swapper's folder,
   so a Kronos build starts empty rather than inheriting an existing installation.
-- The Inno Setup installer and packaging scripts were **removed**. Users build from source.
+- The Inno Setup installer and its `package\*.cmd` scripts were removed. Releases now carry a
+  self-contained portable archive instead.
 
 ### Bugs fixed
 
-**The Games page rendered empty.** A refactor for Linux support rebuilt the collection views with
-`Source = _allGames` — a list of `Game` — while leaving `IsSourceGrouped = true`, and gave each
-library's view a throwaway `ObservableCollection` instead of the real collection. WinUI tried to group
-individual games by a property they do not have and produced nothing, so the Games page showed no
-games on any build, even though detection was working and the database was full. The original design —
-a list of `GameGroup` objects over filtered views of the shared collection — has been restored.
+**The Games page rendered empty.** A refactor rebuilt the collection views with `Source = _allGames`
+— a list of `Game` — while leaving `IsSourceGrouped = true`, and gave each library's view a
+throwaway `ObservableCollection` instead of the real one. WinUI tried to group individual games by a
+property they do not have and produced nothing, so the Games page showed no games on any build, even
+though detection was working and the database was full. The original design — a list of `GameGroup`
+objects over filtered views of the shared collection — has been restored.
 
 **"Reset to default" never worked.** When backups were changed from one `.dlsss` file to a numbered
 chain (`.kronosbak1`, `.kronosbak2`, …), the write paths were updated but the read paths were not.
@@ -342,6 +235,17 @@ was modified" — which a catch-all converted into "this game has no DLLs", perm
 cover loading was cleared by a trailing statement rather than a `finally`, so one network failure left
 it stuck and every subsequent call returned immediately.
 
+**The selection checkbox could not be reached in grid view.** The tile's cover art was declared after
+the checkbox, and a Grid draws later children on top; with no size or alignment it stretched over the
+whole tile, so every click on the tick opened the game instead. List view was unaffected because its
+cover sits in its own column, which made it look grid-specific.
+
+**The update check read a repository that does not exist.** `DefaultRepository` was
+`SpaceJamp/kronos-dlss-swapper`, and GitHub answers 404 for a name that is not there — which the
+check reported as *failed*, so the symptom was never a wrong version offered, just a check that did
+nothing, silently, forever. The test written to prevent a stale name had itself locked in the wrong
+one. It now compares the constant against this repository's own `origin` remote.
+
 **Assorted correctness fixes** — the Xbox library dereferenced a possibly-null `WindowsIdentity` and
 replaced rather than merged artwork when a title was installed in two locations; Steam's
 `appmanifest` regex was pinned to a literal backslash and matched nothing on a forward-slash path;
@@ -350,6 +254,16 @@ unnormalised, so its games could not be matched by the ignore list; `kronos upda
 dereferenced a null when already up to date.
 
 ### Features
+
+**Portable builds update themselves.** Previously only an installer-style executable was understood,
+so a portable release was never offered. A portable build now downloads the archive, verifies it
+against the SHA256 GitHub publishes, and hands the replacement to a detached helper that waits for
+the process to exit. The helper rolls back `Kronos.exe` if the copy fails. An asset with no
+published checksum is refused rather than installed unverified.
+
+**"Update all" acts on the whole library.** There is no checkbox to tick per tile and no selection to
+get stuck. The confirmation dialog names every game it is about to write to, which is what makes the
+whole-library scope safe.
 
 **Downgrades are warned about.** Swapping in an older runtime than the game shipped with can break
 Frame Generation. This was silent: the swap verified the file existed, matched its hash and was
@@ -372,78 +286,35 @@ cleared on failure instead of leaving buttons permanently disabled.
 
 **Maintainability.** Per-DLL-type logic is driven from one table
 ([`src/Data/DLLAssetTypeInfo.cs`](src/Data/DLLAssetTypeInfo.cs)) instead of nine parallel if/else
-chains. There is an xUnit suite in [`tests/`](tests/) — 366 tests covering backup decisions, swap
-versioning, equality contracts, path helpers and more. There is no CI, so run it yourself before
-pushing: `dotnet test ".\Kronos.sln" -c Release`.
-
-### Linux core restored to the build
-
-The Linux target had stopped compiling the game model. A change made during the original port
-removed `Game.cs`, `GameManager.cs`, `DLLManager.cs`, `DLLRecord.cs`, `Manifest.cs`, `GameHistory.cs`,
-`GameAsset.cs` and the manually-added library from the `net10.0` compile list, without touching their
-cross-platform branches — so those branches had never been compiled, and the Linux CLI was an
-updater that shared nothing with the Windows app. Those files are back in the list. Getting them to
-compile surfaced three pieces of coupling that were worth removing regardless of platform:
-
-- **`App.CurrentApp.RunOnUIThread` was called from the game model.** Marshalling bound-property
-  updates is a genuine concern of the UI layer, so calling into a WinUI `Application` from
-  `Game.cs` put the whole file out of reach of the Linux build. It now goes through
-  `UiDispatcher.Invoke`, which forwards to the WinUI dispatcher on Windows and runs inline on Linux.
-  The Windows behaviour is unchanged.
-- **The shared `HttpClient` lived on `App`.** It was reachable only as `App.CurrentApp.HttpClient`,
-  so the file downloader and the Steam cover URL resolver — both of which the Linux target needs —
-  could not compile there. It moved to a standalone `Http` holder that `App` now delegates to.
-  Nothing about it was Windows-specific.
-- **`ResourceHelper` was built entirely on WinUI's `ResourceManager`.** On Linux it now parses the
-  `.resw` XML directly, which is the same data WinUI would have compiled into a PRI, so the CLI is
-  genuinely localised rather than printing resource keys. A missing string falls back to
-  en-US and then to the key, because a missing label is not a reason to abort whatever wanted it.
-
-Three things were also needlessly Windows-only and are now shared:
-
-- `DLLAssetTypes`, a pure data table, was behind `#if WINDOWS` despite having no Windows types.
-- `IsInKnownGameAsset` existed twice behind `#if WINDOWS` with **different signatures** —
-  `(GameAsset, Game)` and `(GameAsset, GameLibrary, string?)` — and otherwise identical bodies. The
-  signature mismatch meant its only two call sites could not compile for Linux at all. There is now
-  one implementation taking the `Game`.
-- `Game.ResizeCoverAsync` and `AddCustomCover` are plain ImageSharp work, and were excluded on Linux
-  even though the ImageSharp package is licensed for both.
-
-The genuinely Windows-only parts stayed Windows-only: `IsInstalled`, the registry-backed store
-libraries, and the `PromptTo*` methods that drive a `ContentDialog` and a WinRT file picker.
-
-**The Avalonia GUI still does not build**, and the Linux CLI still has no DLL commands. Linux work
-is paused — see [Linux support is paused](#linux-support-is-paused).
+chains. There is an xUnit suite in [`tests/`](tests/) — 426 tests covering backup decisions, swap
+versioning, mass-update scope, release parsing, the games page markup and the build scripts. There is
+no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release`.
 
 ### Signature verification is honest about what it checked
 
-`WinTrust.VerifyEmbeddedSignature` used to return `bool`, and its Linux implementation returned
-`true` — which reads as "verified" when nothing was checked at all. Anyone importing a DLL on Linux
-got a clean success and no indication that the one check Windows performs simply does not exist
-there.
-
-It now returns a three-valued `SignatureCheckResult`:
+`WinTrust.VerifyEmbeddedSignature` returned a plain `bool`, which cannot distinguish *"checked, and
+it passed"* from *"nothing was checked"*. It now returns a three-valued `SignatureCheckResult`:
 
 | Result | Meaning |
 |---|---|
 | `Valid` | Checked, and it passed |
 | `Invalid` | Checked, and it did not pass |
-| `Unavailable` | **Nothing was checked** — the platform has no Authenticode implementation |
+| `Unavailable` | **Nothing was checked** — no Authenticode implementation was available |
 
 Only `Invalid` blocks. `Unavailable` proceeds, because blocking would make the feature impossible
-where it has no alternative, but the result is annotated:
+where there is no alternative, but the result is annotated rather than passing as success:
 
 - The import summary dialog shows a **banner in orange with a warning icon**, and its title becomes
   *"N file(s) imported WITHOUT signature verification"*.
 - The log records it.
-- Windows never returns `Unavailable`, so the banner never appears there.
+- Windows never returns `Unavailable`, so the banner does not appear in normal use — it is the
+  fallback for a build with no Authenticode implementation at all.
 
-Scope worth being precise about: **the download and swap path was already hash-verified** on both
-platforms — the zip is checked against `ZipMD5Hash` on download, and the extracted DLL against
-`MD5Hash` before it is written into a game. That check is plain `System.Security.Cryptography` and
-worked on Linux the whole time. This change affects the *import* paths (`ImportDll` and the NVIDIA
-driver import), where the file is not in the signed manifest and so has no expected hash — there,
-the signature check was the only gate, and on Linux there is none.
+Scope worth being precise about: **the download and swap path is hash-verified** — the zip is checked
+against `ZipMD5Hash` on download, and the extracted DLL against `MD5Hash` before it is written into a
+game. That is plain `System.Security.Cryptography`. This change affects the *import* paths
+(`ImportDll` and the NVIDIA driver import), where the file is not in the signed manifest and so has no
+expected hash — there, the signature check is the only gate.
 
 The user-facing judgement is unchanged: these are files already on the user's disk that they picked.
 The change is that the app now says so rather than implying it verified something.
@@ -462,8 +333,8 @@ dotnet list src\Kronos.csproj package --vulnerable --include-transitive
 
 ### Unchanged on purpose
 
-The DLL manifest is still fetched from upstream's public `beeradmoore.github.io` endpoint, and the DLLs
-themselves still come from NVIDIA. Kronos depends on those staying available.
+The DLL manifest is still fetched from upstream's public `beeradmoore.github.io` endpoint, and the
+DLLs themselves still come from NVIDIA. Kronos depends on those staying available.
 
 Per-file detail is in the commit history.
 
@@ -474,17 +345,18 @@ rather than kept in this file. Routine changes are in the commit history and are
 
 ## Where data is stored
 
-| Platform | Location | Contents |
+| Configuration | Location | Contents |
 |---|---|---|
-| Windows | `%LOCALAPPDATA%\Kronos\` | `kronos.db`, `json\`, `dlls\`, `image_cache\`, `logs\` |
-| Windows (Portable) | `<build output>\StoredData\` | same layout, self-contained |
-| Linux | `$XDG_DATA_HOME/Kronos/` (default `~/.local/share/Kronos`) | same layout |
+| Installed | `%LOCALAPPDATA%\Kronos\` | `kronos.db`, `json\`, `dlls\`, `image_cache\`, `logs\` |
+| Portable | `<build output>\StoredData\` | same layout, self-contained |
 
 ## Branding and assets
 
 `src\Assets\icon.ico` is the one that matters — it is `<ApplicationIcon>` in the csproj, so it sets the
-executable icon. The `*Logo*.png` and `*Tile*.png` files are upstream's MSIX tile set and are unused by
-this unpackaged build.
+executable icon, and `Assets\icon_256.png` is what the in-window title bar loads. Both must survive
+into the published archive; the archive is file-counted before upload for exactly that reason. The
+`*Logo*.png` and `*Tile*.png` files are upstream's MSIX tile set and are unused by this unpackaged
+build.
 
 ## Contributing
 
