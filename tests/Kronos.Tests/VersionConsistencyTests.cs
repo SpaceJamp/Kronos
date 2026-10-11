@@ -40,16 +40,33 @@ public class VersionConsistencyTests
     }
 
     [Fact]
-    public void TheVersionIsATwoPartNumber()
+    public void TheVersionIsTwoPartsOrATwoPartVersionWithAPatchNumber()
     {
-        // The project has always used major.minor here, 1.45 then 1.46, and the installer filename
-        // carries it verbatim. The SDK expands it to 1.47.0.0 in the assembly and the version
-        // resource, which is what the About page and the registry entry show.
+        // The project used major.minor here for its whole life - 1.45, 1.46, on through 1.58 - and the
+        // installer filename carried it verbatim. The SDK expands it to 1.58.0.0 in the assembly and the
+        // version resource, which is what the About page and the registry entry show.
         //
-        // This test caught itself: it was written expecting three parts and failed against 1.47. The
-        // two part form is the established one and is what every existing tag uses, so the assertion
-        // was wrong rather than the version.
-        Assert.Matches(@"^\d+\.\d+$", CsprojVersion());
+        // 1.58.1 added a third part, for a single bug fix on top of a shipped release. That is a real
+        // convention change rather than a mistake, so this assertion was widened rather than the version
+        // bent back - a patch release that reported itself as 1.58 would be indistinguishable from the
+        // release it fixes, and the updater would not offer it to anyone already on 1.58.
+        //
+        // The updater handles four-part versions: VersionExtensions.TryParseVersionNumber treats missing
+        // parts as zero, so 1.58.1.0 packs and compares correctly against 1.58.0.0.
+        Assert.Matches(@"^\d+\.\d+(\.\d+)?$", CsprojVersion());
+    }
+
+    [Fact]
+    public void APatchReleaseDoesNotCollideWithTheReleaseItFixes()
+    {
+        // Guards the reason the third part was allowed at all: a patch bump has to actually be a
+        // different version, or the update check cannot offer it to anyone on the release it patches.
+        var version = CsprojVersion();
+
+        Assert.Matches(@"^\d+\.\d+\.\d+$", version);
+        Assert.True(
+            Version.Parse(version) > Version.Parse(version[..^2]),
+            $"{version} must compare greater than {version[..^2]}, or the update check will not offer it.");
     }
 
     [Fact]
