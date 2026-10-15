@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Kronos.Helpers;
 
 namespace Kronos;
 
@@ -7,6 +8,12 @@ internal class ProxySettings
 {
 #if WINDOWS
     bool _hasLoaded;
+
+    /// <summary>
+    /// The Credential Manager entry the proxy is kept in. It used to be PasswordVault's ("Kronos", "proxy"),
+    /// which Uno does not implement; see CredentialStore.
+    /// </summary>
+    internal const string CredentialTarget = "Kronos/proxy";
 #endif
     public string Server { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
@@ -22,23 +29,13 @@ internal class ProxySettings
 
             try
             {
-                var vault = new Windows.Security.Credentials.PasswordVault();
-                var proxySettings = vault.Retrieve("Kronos", "proxy");
-                if (proxySettings is not null)
+                var stored = CredentialStore.Read(CredentialTarget);
+                if (stored is not null && TryDecode(stored, out var server, out var username, out var password))
                 {
-                    proxySettings.RetrievePassword();
-                    var proxyEncodedDetails = proxySettings.Password.Split('|');
-                    if (proxyEncodedDetails.Length == 3)
-                    {
-                        Settings.ProxySettings.Server = Encoding.UTF8.GetString(Convert.FromBase64String(proxyEncodedDetails[0]));
-                        Settings.ProxySettings.Username = Encoding.UTF8.GetString(Convert.FromBase64String(proxyEncodedDetails[1]));
-                        Settings.ProxySettings.Password = Encoding.UTF8.GetString(Convert.FromBase64String(proxyEncodedDetails[2]));
-                    }
+                    Settings.ProxySettings.Server = server;
+                    Settings.ProxySettings.Username = username;
+                    Settings.ProxySettings.Password = password;
                 }
-            }
-            catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == -2147023728)
-            {
-                // NOOP
             }
             catch (Exception ex)
             {
@@ -53,40 +50,66 @@ internal class ProxySettings
 #if WINDOWS
         try
         {
-            var vault = new Windows.Security.Credentials.PasswordVault();
-
             if (server is not null)
             {
                 // Save new proxy settings
-                var proxyServer = Convert.ToBase64String(Encoding.UTF8.GetBytes(server));
-                var proxyUsername = username is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(username)) : string.Empty;
-                var proxyPassword = password is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(password)) : string.Empty;
-
-                vault.Add(new Windows.Security.Credentials.PasswordCredential("Kronos", "proxy", $"{proxyServer}|{proxyUsername}|{proxyPassword}"));
-
-                Settings.ProxySettings.Server = server;
-                Settings.ProxySettings.Username = username ?? string.Empty;
-                Settings.ProxySettings.Password = password ?? string.Empty;
+                if (CredentialStore.Write(CredentialTarget, "proxy", Encode(server, username, password)))
+                {
+                    Settings.ProxySettings.Server = server;
+                    Settings.ProxySettings.Username = username ?? string.Empty;
+                    Settings.ProxySettings.Password = password ?? string.Empty;
+                }
             }
             else
             {
                 // Try delete existing proxy settings
-                var proxyCredentails = vault.Retrieve("Kronos", "proxy");
-                if (proxyCredentails is not null)
-                {
-                    vault.Remove(proxyCredentails);
-                }
+                CredentialStore.Delete(CredentialTarget);
 
                 Settings.ProxySettings.Server = string.Empty;
                 Settings.ProxySettings.Username = string.Empty;
                 Settings.ProxySettings.Password = string.Empty;
             }
-
         }
         catch (Exception ex)
         {
             Logger.Error(ex);
         }
 #endif
+    }
+
+    /// <summary>
+    /// The stored form: three base64 fields joined by '|', the same encoding the PasswordVault entry used,
+    /// so a '|' inside a value cannot split it.
+    /// </summary>
+    internal static string Encode(string server, string? username, string? password)
+    {
+        var proxyServer = Convert.ToBase64String(Encoding.UTF8.GetBytes(server));
+        var proxyUsername = username is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(username)) : string.Empty;
+        var proxyPassword = password is not null ? Convert.ToBase64String(Encoding.UTF8.GetBytes(password)) : string.Empty;
+        return $"{proxyServer}|{proxyUsername}|{proxyPassword}";
+    }
+
+    internal static bool TryDecode(string stored, out string server, out string username, out string password)
+    {
+        server = username = password = string.Empty;
+
+        var parts = stored.Split('|');
+        if (parts.Length != 3)
+        {
+            return false;
+        }
+
+        try
+        {
+            server = Encoding.UTF8.GetString(Convert.FromBase64String(parts[0]));
+            username = Encoding.UTF8.GetString(Convert.FromBase64String(parts[1]));
+            password = Encoding.UTF8.GetString(Convert.FromBase64String(parts[2]));
+            return true;
+        }
+        catch (FormatException)
+        {
+            server = username = password = string.Empty;
+            return false;
+        }
     }
 }

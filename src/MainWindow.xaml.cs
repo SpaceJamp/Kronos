@@ -57,7 +57,26 @@ public sealed partial class MainWindow : Window
 
         RegisterSettingsAccelerator();
 
-        if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
+        if (OperatingSystem.IsWindows())
+        {
+            // Win32 window placement, not AppWindow - see WindowPlacementHelper for why AppWindow's sizes
+            // and positions cannot be trusted on Uno. Restored now if the native window already exists,
+            // otherwise on first activation, before anything else happens to it.
+            if (TryRestorePlacement() == false)
+            {
+                Activated += RestorePlacementOnFirstActivation;
+            }
+
+            Closed += (object sender, WindowEventArgs args) =>
+            {
+                var placement = WindowPlacementHelper.Read(WindowHandleHelper.FindNativeWindow(this));
+                if (placement is not null)
+                {
+                    Settings.Instance.LastWindowSizeAndPosition = placement;
+                }
+            };
+        }
+        else if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
         {
             var lastWindowSizeAndPosition = Settings.Instance.LastWindowSizeAndPosition;
             _trackedWindow = new WindowPositionRect(lastWindowSizeAndPosition);
@@ -73,53 +92,9 @@ public sealed partial class MainWindow : Window
             {
                 overlappedPresenter.Maximize();
             }
+
+            TrackPlacementThroughAppWindow();
         }
-
-        AppWindow?.Changed += (AppWindow sender, AppWindowChangedEventArgs args) =>
-        {
-            if (args.DidPositionChange)
-            {
-                if (sender.Presenter is OverlappedPresenter presenter)
-                {
-                    var isCurrentlyMinimizedOrMaximized =
-                        presenter.State == OverlappedPresenterState.Minimized ||
-                        presenter.State == OverlappedPresenterState.Maximized;
-
-                    if (isCurrentlyMinimizedOrMaximized == false)
-                    {
-                        _trackedWindow.UpdatePosition(sender.Position);
-                    }
-                }
-            }
-        };
-
-        SizeChanged += (object sender, WindowSizeChangedEventArgs args) =>
-        {
-            if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
-            {
-                var currentState = overlappedPresenter.State;
-                var isTransitioningToMaximized =
-                    currentState == OverlappedPresenterState.Maximized &&
-                    _trackedWindow.State != OverlappedPresenterState.Maximized;
-
-                if (isTransitioningToMaximized == false && currentState != OverlappedPresenterState.Maximized)
-                {
-                    _trackedWindow.UpdateFromAppWindow(AppWindow);
-                }
-
-                _trackedWindow.State = overlappedPresenter.State;
-            }
-        };
-
-        Closed += (object sender, WindowEventArgs args) =>
-        {
-            if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
-            {
-                Settings.Instance.LastWindowSizeAndPosition = new WindowPositionRect(_trackedWindow);
-            }
-
-        };
-
         // Always the Window-level title bar now. The AppWindowTitleBar path depended on
         // AppWindowTitleBar.IsCustomizationSupported() and the Button*Color setters, which Uno does not
         // implement (see WindowManager).
@@ -190,6 +165,80 @@ public sealed partial class MainWindow : Window
     /// others - which is what every other Windows app does.
     /// </remarks>
     const VirtualKey CommaKey = (VirtualKey)0xBE;
+
+    /// <summary>
+    /// Restores the saved size, position and state through the Win32 window placement.
+    /// </summary>
+    /// <returns>False when the native window cannot be found yet, so the caller can try again later.</returns>
+    bool TryRestorePlacement()
+    {
+        var hWnd = WindowHandleHelper.FindNativeWindow(this);
+        if (hWnd == 0)
+        {
+            return false;
+        }
+
+        var maximise = WindowPlacementHelper.Restore(hWnd, Settings.Instance.LastWindowSizeAndPosition);
+        if (maximise && AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
+        {
+            overlappedPresenter.Maximize();
+        }
+
+        return true;
+    }
+
+    void RestorePlacementOnFirstActivation(object sender, WindowActivatedEventArgs args)
+    {
+        Activated -= RestorePlacementOnFirstActivation;
+        if (TryRestorePlacement() == false)
+        {
+            Logger.Warning("Could not find the main window's native handle; its saved size and position were not restored.");
+        }
+    }
+
+    /// <summary>
+    /// The AppWindow-based placement tracking, kept for platforms without Win32 window placement.
+    /// </summary>
+    void TrackPlacementThroughAppWindow()
+    {
+        AppWindow?.Changed += (AppWindow sender, AppWindowChangedEventArgs args) =>
+        {
+            if (args.DidPositionChange && sender.Presenter is OverlappedPresenter presenter)
+            {
+                var isCurrentlyMinimizedOrMaximized =
+                    presenter.State == OverlappedPresenterState.Minimized ||
+                    presenter.State == OverlappedPresenterState.Maximized;
+
+                if (isCurrentlyMinimizedOrMaximized == false)
+                {
+                    _trackedWindow.UpdatePosition(sender.Position);
+                }
+            }
+        };
+
+        SizeChanged += (object sender, WindowSizeChangedEventArgs args) =>
+        {
+            if (AppWindow?.Presenter is OverlappedPresenter overlappedPresenter)
+            {
+                var currentState = overlappedPresenter.State;
+                var isTransitioningToMaximized =
+                    currentState == OverlappedPresenterState.Maximized &&
+                    _trackedWindow.State != OverlappedPresenterState.Maximized;
+
+                if (isTransitioningToMaximized == false && currentState != OverlappedPresenterState.Maximized)
+                {
+                    _trackedWindow.UpdateFromAppWindow(AppWindow);
+                }
+
+                _trackedWindow.State = overlappedPresenter.State;
+            }
+        };
+
+        Closed += (object sender, WindowEventArgs args) =>
+        {
+            Settings.Instance.LastWindowSizeAndPosition = new WindowPositionRect(_trackedWindow);
+        };
+    }
 
     /// <summary>Ctrl+, - the platform convention for Settings, from any page.</summary>
     /// <remarks>

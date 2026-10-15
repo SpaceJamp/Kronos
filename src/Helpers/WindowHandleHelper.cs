@@ -73,6 +73,93 @@ internal static class WindowHandleHelper
     }
 
     /// <summary>
+    /// The native handle of a specific window, or 0 if it cannot be found.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For work on that exact window - saving and restoring its placement, repainting it - rather than for
+    /// owning a dialog, where any window of ours will do. <see cref="GetOwnerHandle"/> falls back to the
+    /// active or main window, which is the wrong window here.
+    /// </para>
+    /// <para>
+    /// On Uno, WindowNative returns 0x1 and the real handle is internal, so this looks among the top-level
+    /// windows of the calling thread for Uno's window class with this window's title. Call it on the UI
+    /// thread, after the title is set. A title shared by two windows on the thread is ambiguous, and 0 is
+    /// returned rather than guessing.
+    /// </para>
+    /// </remarks>
+    internal static nint FindNativeWindow(Window window)
+    {
+        if (OperatingSystem.IsWindows() == false)
+        {
+            return 0;
+        }
+
+        nint fromFramework;
+        try
+        {
+            fromFramework = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        }
+        catch (Exception)
+        {
+            fromFramework = 0;
+        }
+
+        if (IsWindowOfThisProcess(fromFramework))
+        {
+            return fromFramework;
+        }
+
+        var title = window.Title ?? string.Empty;
+        nint match = 0;
+        var matches = 0;
+        nint onlyUnoWindow = 0;
+        var unoWindows = 0;
+        Win32.EnumThreadWindows(Win32.GetCurrentThreadId(), (hWnd, _) =>
+        {
+            var className = new System.Text.StringBuilder(256);
+            Win32.GetClassName(hWnd, className, className.Capacity);
+            if (className.ToString() != UnoWindowClassName)
+            {
+                return true;
+            }
+
+            onlyUnoWindow = hWnd;
+            unoWindows++;
+
+            var text = new System.Text.StringBuilder(512);
+            Win32.GetWindowText(hWnd, text, text.Capacity);
+            if (text.ToString() == title)
+            {
+                match = hWnd;
+                matches++;
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        if (matches == 1)
+        {
+            return match;
+        }
+
+        // The title is data-bound and localised, so the native text can lag behind Window.Title while
+        // the window is being set up. With a single Uno window on the thread there is nothing to confuse
+        // it with.
+        if (matches == 0 && unoWindows == 1)
+        {
+            return onlyUnoWindow;
+        }
+
+        Logger.Verbose(matches == 0
+            ? $"No native window found for '{title}'."
+            : $"{matches} native windows are titled '{title}'; not guessing which one is meant.");
+        return 0;
+    }
+
+    /// <summary>The window class Uno's Win32 host registers for an application window.</summary>
+    const string UnoWindowClassName = "UnoPlatformRegularWindow";
+
+    /// <summary>
     /// A real window, and one of ours. The second half matters: an owner from another process would make
     /// the picker modal to someone else's window.
     /// </summary>

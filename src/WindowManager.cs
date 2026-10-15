@@ -162,7 +162,13 @@ public class WindowManager
     // to trigger repaint tracking task id 38044406
     void RepaintWindow(Window window)
     {
-        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        // Not WindowNative.GetWindowHandle, which returns 0x1 on Uno, so this sent its activation messages
+        // to no window at all and the title bar never repainted on a theme change.
+        var hWnd = Helpers.WindowHandleHelper.FindNativeWindow(window);
+        if (hWnd == 0)
+        {
+            return;
+        }
 
         var activeWindow = Win32.GetActiveWindow();
         if (hWnd == activeWindow)

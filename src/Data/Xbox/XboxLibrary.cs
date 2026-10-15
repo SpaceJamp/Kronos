@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using Kronos.Helpers;
 using Kronos.Interfaces;
-using Windows.Management.Deployment;
 
 namespace Kronos.Data.Xbox;
 
@@ -31,12 +29,17 @@ internal class XboxLibrary : IGameLibrary
 
     }
 
+    /// <summary>The Xbox app's own package family.</summary>
+    const string XboxAppPackageFamily = "Microsoft.GamingApp_8wekyb3d8bbwe";
+
     public bool IsInstalled()
     {
-        var packageManager = new PackageManager();
-        var packages = packageManager.FindPackagesForUser(WindowsIdentity.GetCurrent()?.User?.Value ?? string.Empty, "Microsoft.GamingApp_8wekyb3d8bbwe");
-        return packages.Any();
+        // Win32 rather than WinRT's PackageManager, which Uno does not implement: see AppxPackages.
+        return AppxPackages.FindInstalledPackages(XboxAppPackageFamily).Count > 0;
     }
+
+    /// <summary>What MicrosoftGame.config says about a game, beyond its icons.</summary>
+    sealed record GameIdentity(string Publisher, string DisplayName);
 
     readonly string[] _defaultHiddenGames = [];
 
@@ -52,6 +55,7 @@ internal class XboxLibrary : IGameLibrary
         var cachedGames = GameManager.Instance.GetGames<XboxGame>();
 
         var gameNamesToFindPackages = new Dictionary<string, List<string>>();
+        var gameIdentities = new Dictionary<string, GameIdentity>();
 
         var drives = DriveInfo.GetDrives();
         foreach (var drive in drives)
@@ -136,6 +140,18 @@ internal class XboxLibrary : IGameLibrary
                                     continue;
                                 }
 
+                                // The publisher is what turns the package name into a family name, and the
+                                // display name is plain text here, where the package manifest's is often an
+                                // ms-resource reference.
+                                var publisher = identityNode.Attributes?["Publisher"]?.Value ?? string.Empty;
+                                var displayName = shellVisualsNode.Attributes?["DefaultDisplayName"]?.Value ?? string.Empty;
+                                if (string.IsNullOrEmpty(publisher) == false &&
+                                    (gameIdentities.TryGetValue(identityNodeName, out var knownIdentity) == false ||
+                                     string.IsNullOrEmpty(knownIdentity.DisplayName)))
+                                {
+                                    gameIdentities[identityNodeName] = new GameIdentity(publisher, displayName);
+                                }
+
                                 var potentialIcons = new List<string>();
 
                                 // These are added in order as these are the way we wish to use them.
@@ -204,101 +220,90 @@ internal class XboxLibrary : IGameLibrary
             }
         }
 
-        var packageManager = new PackageManager();
-        // WindowsIdentity.GetCurrent() returns null on a non-interactive host, and this call site was
-        // missing the ?. that line 37 has. A null here threw NullReferenceException straight out of
-        // ListGamesAsync and cost the user every Xbox game.
-        var currentUserSid = WindowsIdentity.GetCurrent()?.User?.Value;
-        if (string.IsNullOrWhiteSpace(currentUserSid))
+        // Each game found on a gaming root is looked up by its own package family, through the Win32
+        // packaging API. This used to list every package for the user through WinRT's PackageManager and
+        // match names, which on Uno threw NotImplementedException before reaching a single game. Asking
+        // for the family directly also only ever considers main packages installed for this user, which
+        // is what the old IsFramework / IsResourcePackage filter was approximating.
+        foreach (var (packageName, localCoverImages) in gameNamesToFindPackages)
         {
-            Logger.Error("Could not determine the current user SID. Skipping Xbox package lookup.");
-            return [];
-        }
+            if (gameIdentities.TryGetValue(packageName, out var identity) == false)
+            {
+                Logger.Warning($"{Name} library: {packageName} has no publisher in its MicrosoftGame.config, so its package cannot be looked up.");
+                continue;
+            }
 
-        var packages = packageManager.FindPackagesForUser(currentUserSid);
-        foreach (var package in packages)
-        {
-            if (package is null)
+            var familyName = AppxPackages.FamilyNameFromIdentity(packageName, identity.Publisher);
+            if (string.IsNullOrEmpty(familyName))
             {
                 continue;
             }
 
-            // Filter out frameworks and resource packages first
-            if (package.IsFramework || package.IsResourcePackage)
+            var fullNames = AppxPackages.FindInstalledPackages(familyName);
+            if (fullNames.Count == 0)
+            {
+                // On a gaming root but not installed for this user - another account's, or mid-uninstall.
+                continue;
+            }
+
+            // Does the install path exist?
+            var installedPath = AppxPackages.GetInstalledPath(fullNames[0]);
+            if (string.IsNullOrEmpty(installedPath) || Directory.Exists(installedPath) == false)
             {
                 continue;
             }
 
-            var packageName = package.Id?.Name ?? string.Empty;
-
-
-            if (string.IsNullOrWhiteSpace(packageName) == false && gameNamesToFindPackages.TryGetValue(packageName, out var localCoverImages))
+            // Does the product have app list entries?
+            if (AppxPackages.HasAppListEntry(installedPath) == false)
             {
-                var familyName = package.Id?.FamilyName ?? string.Empty;
-                if (string.IsNullOrEmpty(familyName))
+                continue;
+            }
+
+            try
+            {
+                var cachedGame = GameManager.Instance.GetGame<XboxGame>(familyName);
+                var activeGame = cachedGame ?? new XboxGame(familyName);
+
+                if (activeGame.IsHidden is null && _defaultHiddenGames.Contains(activeGame.PlatformId))
+                {
+                    activeGame.IsHidden = true;
+                }
+
+                activeGame.Title = string.IsNullOrEmpty(identity.DisplayName) ? packageName : identity.DisplayName;  // TODO: Will this be a problem if the game is already loaded
+                activeGame.InstallPath = PathHelpers.NormalizePath(installedPath);
+
+                if (activeGame.IsInIgnoredPath())
                 {
                     continue;
                 }
 
-                // Does the install path exist?
-                if (Directory.Exists(package.InstalledPath) == false)
+                if (Directory.Exists(activeGame.InstallPath) == false)
                 {
+                    Logger.Warning($"{Name} library could not load game {activeGame.Title} ({activeGame.PlatformId}) because install path does not exist: {activeGame.InstallPath}");
                     continue;
                 }
 
-                // Does the product have appEntries?
-                var appEntries = await package.GetAppListEntriesAsync();
-                if (appEntries.Count == 0)
+                activeGame.LoadApplicationId();
+
+                await activeGame.SetLocalHeaderImagesAsync(localCoverImages);
+                //await game.UpdateCacheImageAsync();
+                await activeGame.SaveToDatabaseAsync();
+
+                // If the game is not from cache, force processing
+                if (cachedGame is null)
                 {
-                    continue;
+                    activeGame.NeedsProcessing = true;
                 }
 
-                try
+                if (activeGame.NeedsProcessing == true || forceNeedsProcessing == true)
                 {
-                    var cachedGame = GameManager.Instance.GetGame<XboxGame>(familyName);
-                    var activeGame = cachedGame ?? new XboxGame(familyName);
-
-                    if (activeGame.IsHidden is null && _defaultHiddenGames.Contains(activeGame.PlatformId))
-                    {
-                        activeGame.IsHidden = true;
-                    }
-
-                    activeGame.Title = package.DisplayName;  // TODO: Will this be a problem if the game is already loaded
-                    activeGame.InstallPath = PathHelpers.NormalizePath(package.InstalledPath);
-
-                    if (activeGame.IsInIgnoredPath())
-                    {
-                        continue;
-                    }
-
-                    if (Directory.Exists(activeGame.InstallPath) == false)
-                    {
-                        Logger.Warning($"{Name} library could not load game {activeGame.Title} ({activeGame.PlatformId}) because install path does not exist: {activeGame.InstallPath}");
-                        continue;
-                    }
-
-                    activeGame.LoadApplicationId();
-
-                    await activeGame.SetLocalHeaderImagesAsync(localCoverImages);
-                    //await game.UpdateCacheImageAsync();
-                    await activeGame.SaveToDatabaseAsync();
-
-                    // If the game is not from cache, force processing
-                    if (cachedGame is null)
-                    {
-                        activeGame.NeedsProcessing = true;
-                    }
-
-                    if (activeGame.NeedsProcessing == true || forceNeedsProcessing == true)
-                    {
-                        activeGame.ProcessGame(forceNeedsProcessing: forceNeedsProcessing);
-                    }
-                    games.Add(activeGame);
+                    activeGame.ProcessGame(forceNeedsProcessing: forceNeedsProcessing);
                 }
-                catch (Exception err)
-                {
-                    Logger.Error(err);
-                }
+                games.Add(activeGame);
+            }
+            catch (Exception err)
+            {
+                Logger.Error(err);
             }
         }
 
