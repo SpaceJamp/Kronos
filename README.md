@@ -184,7 +184,7 @@ The Linux port has no store detection yet — see [Platform support](#platform-s
 # Build
 dotnet build ".\src\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c Release
 
-# Test (631 tests)
+# Test (632 tests)
 dotnet test ".\Kronos.sln" -c Release
 
 # Self-contained portable build → Output/win-x64-portable-<timestamp>/
@@ -401,7 +401,7 @@ cleared on failure instead of leaving buttons permanently disabled.
 
 **Maintainability.** Per-DLL-type logic is driven from one table
 ([`src/Data/DLLAssetTypeInfo.cs`](src/Data/DLLAssetTypeInfo.cs)) instead of nine parallel if/else
-chains. There is an xUnit suite in [`tests/`](tests/) — 631 tests covering backup decisions, swap
+chains. There is an xUnit suite in [`tests/`](tests/) — 632 tests covering backup decisions, swap
 versioning, mass-update scope, release parsing, the games page markup and the build scripts. There is
 no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release`.
 

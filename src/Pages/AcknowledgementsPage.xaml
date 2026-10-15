@@ -6,7 +6,7 @@
     xmlns:local="using:Kronos.Pages"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:communitytoolkitcontrols="using:CommunityToolkit.WinUI.Controls"
+    xmlns:usercontrols="using:Kronos.UserControls"
     xmlns:ct_converters="using:CommunityToolkit.WinUI.Converters"
     xmlns:converters="using:Kronos.Converters"
     mc:Ignorable="d">
@@ -40,9 +40,8 @@
         <ScrollView Grid.Row="1" Grid.Column="1">
             <StackPanel Padding="16" Spacing="16">
 
-                <communitytoolkitcontrols:MarkdownTextBlock Visibility="{x:Bind ViewModel.SelectedItem.Notes, Converter={StaticResource NullToVisibilityConverter}, Mode=OneWay}"
-                                                        Text="{x:Bind ViewModel.SelectedItem.Notes, FallbackValue='', Mode=OneWay}"
-                                                        Config="{x:Bind ViewModel.MarkdownConfig, Mode=OneWay}" />
+                <usercontrols:MarkdownView Visibility="{x:Bind ViewModel.SelectedItem.Notes, Converter={StaticResource NullToVisibilityConverter}, Mode=OneWay}"
+                                        Text="{x:Bind ViewModel.SelectedItem.Notes, FallbackValue='', Mode=OneWay}" />
 
                 <Grid Height="2" Margin="8,0,8,0" Background="{StaticResource AppBarSeparatorForegroundThemeBrush}"  Visibility="{x:Bind ViewModel.SelectedItem.Notes, Converter={StaticResource NullToVisibilityConverter}, Mode=OneWay}"/>
 

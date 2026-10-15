@@ -1,8 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Uno.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <!--
+      Uno.Sdk and net10.0-desktop, to match src/Kronos.csproj. A plain Microsoft.NET.Sdk project cannot
+      reference it: "desktop" is a target platform only Uno.Sdk knows, so restore rejects the reference
+      as incompatible. The Uno version comes from global.json.
+    -->
+    <TargetFramework>net10.0-desktop</TargetFramework>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <RootNamespace>Kronos.Tests</RootNamespace>
@@ -12,9 +16,10 @@
     <LangVersion>preview</LangVersion>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Deliberately no UseWinUI: these tests exercise plain logic, not XAML. -->
+    <!-- These tests exercise plain logic, not XAML. -->
     <SelfContained>false</SelfContained>
-    <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- Same suppressions as src/Kronos.csproj; see there. -->
+    <NoWarn>$(NoWarn);NU1507;NETSDK1201;PRI257</NoWarn>
 
     <!--
     Same auditing and lock file as src/Kronos.csproj, and for the same reasons. The test project has

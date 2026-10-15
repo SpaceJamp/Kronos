@@ -19,5 +19,7 @@
     has to be tested rather than assumed.
     -->
     <PackageVersion Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
+    <!-- Phase 3: the games grid groups AdvancedCollectionViews from this package. -->
+    <PackageVersion Include="CommunityToolkit.WinUI.Collections" Version="8.2.251219" />
   </ItemGroup>
 </Project>

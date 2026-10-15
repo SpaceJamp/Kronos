@@ -10,6 +10,11 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
 
+        // Phase 3: dialogs and images. Needs a rendered page - a ContentDialog needs a XamlRoot and an
+        // image only opens once it is in a live tree - so unlike the windowing probe it runs on Loaded.
+        // Registered first: the handler below throws (see App.LaunchedWindow), and would stop this one.
+        Loaded += async (_, _) => await RunDialogsAndImagesProbeAsync();
+
         // Loaded event rather than an OnLoaded override. WinUI's Page has a Loaded event; Uno's Page does
         // not expose an overridable OnLoaded, so the override compiles nowhere. Worth knowing, because
         // "is this an override or an event" is the sort of difference that is invisible until it fails.
@@ -37,6 +42,25 @@ public sealed partial class MainPage : Page
     /// readable result is that the environment has no compositor: the app starts, but nothing is ever
     /// presented. The answers do not need a window to be produced, only to be read.
     /// </remarks>
+    async Task RunDialogsAndImagesProbeAsync()
+    {
+        var path = Environment.GetEnvironmentVariable("KRONOS_PHASE3_PROBE_OUTPUT");
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var probe = new DialogsAndImagesProbe { ProgressPath = path + ".progress" };
+        File.WriteAllText(probe.ProgressPath, "loaded" + Environment.NewLine);
+        var host = (Content as ScrollViewer)?.Content as Panel
+            ?? throw new InvalidOperationException("MainPage's content is no longer a ScrollViewer around a Panel.");
+
+        await probe.RunAsync(App.LaunchedWindow ?? throw new InvalidOperationException("No launched window."), this, host);
+
+        File.WriteAllText(path, string.Join("\n", probe.Report));
+        Application.Current.Exit();
+    }
+
     void WriteReport()
     {
         var path = Environment.GetEnvironmentVariable("KRONOS_PROBE_OUTPUT");

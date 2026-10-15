@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace Kronos.Converters;
 
-internal class BoolToOpacityConverter : DependencyObject, IValueConverter
+internal partial class BoolToOpacityConverter : DependencyObject, IValueConverter
 {
     public static readonly DependencyProperty TrueValueProperty = DependencyProperty.Register(
         nameof(TrueValue),

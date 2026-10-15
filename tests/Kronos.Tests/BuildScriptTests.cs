@@ -492,31 +492,29 @@ public class BuildScriptTests
     }
 
     [Fact]
-    public void ThePortableConfigurationIsAWindowedApplicationAndNotAConsoleOne()
+    public void TheAppIsAWindowedApplicationAndNotAConsoleOne()
     {
-        // Release_Portable overrode the output type to Exe, which is the *console* subsystem, undoing
-        // the WinExe the Windows target framework sets. Launching the shipped build then opened a
-        // command prompt behind the app and left it there for as long as the app ran.
+        // Release_Portable once overrode the output type to Exe, which is the *console* subsystem, undoing
+        // the WinExe set at the top of the project. Launching the shipped build then opened a command
+        // prompt behind the app and left it there for as long as the app ran.
         //
-        // Checked against the element rather than the absence of one, because a later group could
-        // reintroduce it without this noticing.
+        // Release_Portable is gone with WinAppSDK, but the failure is not tied to it: any group that sets
+        // Exe brings the console window back. Uno's own template uses Exe, which makes this an easy thing
+        // to copy in by accident.
         var csproj = ReadRepoFile(Path.Combine("src", "Kronos.csproj"));
 
-        // Matched on the whole opening tag, because the condition has to be exactly this. There is
-        // also a group conditioned on 'Release' OR 'Release_Portable', whose condition text contains
-        // the same substring, and it carries Optimize and nothing else.
-        const string opening = "<PropertyGroup Condition=\"'$(Configuration)'=='Release_Portable'\">";
+        Assert.Contains("<OutputType>WinExe</OutputType>", csproj, StringComparison.Ordinal);
+        Assert.DoesNotContain("<OutputType>Exe</OutputType>", csproj, StringComparison.Ordinal);
+    }
 
-        var start = csproj.IndexOf(opening, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"No {opening} found in src/Kronos.csproj.");
+    [Fact]
+    public void TheReleasePortableConfigurationIsGone()
+    {
+        // It existed only because WinAppSDK could not be published unpackaged any other way. Under Uno
+        // it is a configuration with no reason to exist (spike/UNO-MIGRATION-PLAN.md, phase 1).
+        var csproj = ReadRepoFile(Path.Combine("src", "Kronos.csproj"));
 
-        var bodyStart = csproj.IndexOf('>', start) + 1;
-        var bodyEnd = csproj.IndexOf("</PropertyGroup>", bodyStart, StringComparison.Ordinal);
-        Assert.True(bodyEnd > bodyStart, "The Release_Portable PropertyGroup is not closed.");
-
-        Assert.Contains(
-            "<OutputType>WinExe</OutputType>",
-            csproj.Substring(bodyStart, bodyEnd - bodyStart),
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("'Release_Portable'", csproj, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"<Configurations>[^<]*Release_Portable", csproj);
     }
 }

@@ -281,7 +281,7 @@ public partial class GameGridPageModel : ObservableObject
         try
         {
             // Associate the HWND with the folder picker
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+            var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
 
             var folder = FileSystemHelper.OpenFolder(hWnd, okButtonLabel: ResourceHelper.GetString("GamesPage_ManuallyAdding_SelectGameFolder"));

@@ -6,7 +6,7 @@
     xmlns:local="using:Kronos"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:ctWinUI="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:tv="using:WinUI.TableView"
     xmlns:converters="using:CommunityToolkit.WinUI.Converters"
     mc:Ignorable="d"
     Title="{x:Bind ViewModel.TranslationProperties.ApplicationTilteTranslationToolboxWindowText, Mode=OneTime}">
@@ -85,9 +85,9 @@
         </Grid>
 
 
-        <ctWinUI:DataGrid x:Name="MainDataGrid" Grid.Row="1" SelectionMode="Single" GridLinesVisibility="All" VerticalAlignment="Stretch" ColumnWidth="*" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.TranslationRows, Mode=OneWay}">
+        <tv:TableView x:Name="MainTableView" Grid.Row="1" SelectionMode="Single" SelectionUnit="Row" GridLinesVisibility="All" VerticalAlignment="Stretch" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.TranslationRows, Mode=OneWay}">
 
-            <ctWinUI:DataGrid.Resources>
+            <tv:TableView.Resources>
                 <Style TargetType="TextBox">
                     <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="BorderBrush" Value="Transparent"/>
@@ -95,57 +95,57 @@
 
                 <converters:EmptyStringToObjectConverter x:Key="EmptyStringToObjectConverter" EmptyValue="{StaticResource SystemFillColorCriticalBrush}" NotEmptyValue="Transparent" />
 
-            </ctWinUI:DataGrid.Resources>
+            </tv:TableView.Resources>
 
-            <ctWinUI:DataGrid.Columns>
+            <tv:TableView.Columns>
 
-                <ctWinUI:DataGridTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.KeyText, Mode=OneWay}" Tag="Key" Binding="{Binding Key}" IsReadOnly="True">
-                      <ctWinUI:DataGridTextColumn.ElementStyle>
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.KeyText, Mode=OneWay}" Tag="Key" Binding="{Binding Key}" IsReadOnly="True">
+                      <tv:TableViewTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextWrapping" Value="Wrap" />
                             <Setter Property="IsTextSelectionEnabled" Value="True" />
                         </Style>
-                    </ctWinUI:DataGridTextColumn.ElementStyle>
-                </ctWinUI:DataGridTextColumn>
+                    </tv:TableViewTextColumn.ElementStyle>
+                </tv:TableViewTextColumn>
 
-                <ctWinUI:DataGridTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.CommentText, Mode=OneWay}" Tag="Comment" Binding="{Binding Comment}" IsReadOnly="True">
-                    <ctWinUI:DataGridTextColumn.ElementStyle>
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.CommentText, Mode=OneWay}" Tag="Comment" Binding="{Binding Comment}" IsReadOnly="True">
+                    <tv:TableViewTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextWrapping" Value="Wrap" />
                             <Setter Property="IsTextSelectionEnabled" Value="True" />
                         </Style>
-                    </ctWinUI:DataGridTextColumn.ElementStyle>
-                </ctWinUI:DataGridTextColumn>
+                    </tv:TableViewTextColumn.ElementStyle>
+                </tv:TableViewTextColumn>
 
-                <ctWinUI:DataGridTextColumn Width="2*"  Header="{x:Bind ViewModel.TranslationProperties.SourceTranslationText, Mode=OneWay}" Tag="SourceTranslation" IsReadOnly="True" Binding="{Binding SourceTranslation}">
-                    <ctWinUI:DataGridTextColumn.ElementStyle>
+                <tv:TableViewTextColumn Width="2*"  Header="{x:Bind ViewModel.TranslationProperties.SourceTranslationText, Mode=OneWay}" Tag="SourceTranslation" IsReadOnly="True" Binding="{Binding SourceTranslation}">
+                    <tv:TableViewTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextWrapping" Value="Wrap" />
                             <Setter Property="IsTextSelectionEnabled" Value="True" />
                         </Style>
-                    </ctWinUI:DataGridTextColumn.ElementStyle>
-                </ctWinUI:DataGridTextColumn>
+                    </tv:TableViewTextColumn.ElementStyle>
+                </tv:TableViewTextColumn>
 
                 <!--
-                <ctWinUI:DataGridTextColumn Width="2*" Header="{x:Bind ViewModel.TranslationProperties.NewTranslationText, Mode=OneWay}" Tag="NewTranslation" IsReadOnly="False" Binding="{Binding NewTranslation, Mode=TwoWay}">
-                    <ctWinUI:DataGridTextColumn.ElementStyle>
+                <tv:TableViewTextColumn Width="2*" Header="{x:Bind ViewModel.TranslationProperties.NewTranslationText, Mode=OneWay}" Tag="NewTranslation" IsReadOnly="False" Binding="{Binding NewTranslation, Mode=TwoWay}">
+                    <tv:TableViewTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextWrapping" Value="Wrap" />
                             <Setter Property="IsTextSelectionEnabled" Value="True" />
                         </Style>
-                    </ctWinUI:DataGridTextColumn.ElementStyle>
-                    <ctWinUI:DataGridTextColumn.EditingElementStyle>
+                    </tv:TableViewTextColumn.ElementStyle>
+                    <tv:TableViewTextColumn.EditingElementStyle>
                         <Style TargetType="TextBox">
                             <Setter Property="TextWrapping" Value="Wrap" />
                             <Setter Property="AcceptsReturn" Value="true" />
                         </Style>
-                    </ctWinUI:DataGridTextColumn.EditingElementStyle>
-                </ctWinUI:DataGridTextColumn>
+                    </tv:TableViewTextColumn.EditingElementStyle>
+                </tv:TableViewTextColumn>
                 -->
 
                 <!--  Binding="{Binding NewTranslation, Mode=TwoWay}"-->
-                <ctWinUI:DataGridTemplateColumn Width="2*" Header="{x:Bind ViewModel.TranslationProperties.NewTranslationText, Mode=OneWay}" Tag="NewTranslation" IsReadOnly="False">
-                    <ctWinUI:DataGridTemplateColumn.CellTemplate>
+                <tv:TableViewTemplateColumn Width="2*" Header="{x:Bind ViewModel.TranslationProperties.NewTranslationText, Mode=OneWay}" Tag="NewTranslation" IsReadOnly="False">
+                    <tv:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Border BorderThickness="2" BorderBrush="{Binding NewTranslation, Converter={StaticResource EmptyStringToObjectConverter}, Mode=OneWay}">
 
@@ -176,11 +176,11 @@
                                 </TextBox>
                             </Border>
                         </DataTemplate>
-                    </ctWinUI:DataGridTemplateColumn.CellTemplate>
-                </ctWinUI:DataGridTemplateColumn>
+                    </tv:TableViewTemplateColumn.CellTemplate>
+                </tv:TableViewTemplateColumn>
 
 
-            </ctWinUI:DataGrid.Columns>
-        </ctWinUI:DataGrid>
+            </tv:TableView.Columns>
+        </tv:TableView>
     </Grid>
 </Window>
