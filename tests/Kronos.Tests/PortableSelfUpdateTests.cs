@@ -110,6 +110,8 @@ public class PortableSelfUpdateTests
         var script = PortableSelfUpdate.BuildHandoffScript(@"C:\tmp\extract", @"C:\apps\Kronos", 4321, relaunch: false);
 
         // The executable is the one file that cannot be re-obtained if the copy goes wrong.
+        // The backup path must be a real file name, not a join onto the variable being defined.
+        Assert.Contains("$backup = Join-Path $target 'Kronos.exe.updatebak'", script, StringComparison.Ordinal);
         Assert.Contains("Copy-Item -LiteralPath $entry -Destination $backup", script, StringComparison.Ordinal);
         Assert.Contains("catch {", script, StringComparison.Ordinal);
         Assert.Contains("Copy-Item -LiteralPath $backup -Destination $entry", script, StringComparison.Ordinal);
@@ -342,7 +344,7 @@ public class PortableSelfUpdateTests
                 scriptPath,
                 PortableSelfUpdate.BuildHandoffScript(Source, Target, processId: 0, relaunch));
 
-            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            var startInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "powershell.exe",
                 Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{scriptPath}\"",
@@ -350,7 +352,11 @@ public class PortableSelfUpdateTests
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-            })!;
+            };
+            // As the app does. Without it these tests failed whenever the test run was started from
+            // PowerShell 7, and passed from any other shell.
+            PortableSelfUpdate.UseWindowsPowerShellModules(startInfo);
+            using var process = System.Diagnostics.Process.Start(startInfo)!;
 
             Output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
             process.WaitForExit(120_000);
@@ -390,6 +396,12 @@ public class PortableSelfUpdateTests
         var exitCode = install.Run();
 
         Assert.True(exitCode == 0, $"exit code was {exitCode}. Script output:\n{install.Output}");
+
+        // A clean run prints nothing. The script runs with ErrorActionPreference 'Continue', so errors do
+        // not stop it, and an exit code of 0 alone let this test pass for months while the rollback copy
+        // failed on every run: $backup was joined onto an undefined variable, and whether that broke the
+        // update depended on how PowerShell resolved the empty path.
+        Assert.True(string.IsNullOrWhiteSpace(install.Output), $"The script reported errors:\n{install.Output}");
 
         // The application is genuinely the new one...
         Assert.Equal("NEW-EXE", install.Read("Kronos.exe"));

@@ -109,9 +109,13 @@ public static class PortableSelfUpdate
         var entryPoint = Quote(EntryPointFileName);
         var backup = Quote(EntryPointFileName + BackupSuffix);
 
-        // $PID is a PowerShell automatic variable holding the *script's* own id, so the waiting
-        // variable must not be called pid. Shadowing it would make this wait on itself, forever.
-        var waitOn = "kronosProcessId";
+        // The process id is written into Wait-Process as a literal rather than held in a variable:
+        // $PID is a PowerShell automatic variable holding the *script's* own id, and shadowing it
+        // would make this wait on itself, forever.
+        //
+        // The extracted payload's folder is $source. It used to be held in a variable named
+        // $kronosProcessId, left over from that rename, which read as though the copy loop was
+        // walking a process id.
 
         var script = new StringBuilder();
         // Not 'Stop'. A Stop preference turns any single unwritable file into a terminating error, and
@@ -124,20 +128,31 @@ public static class PortableSelfUpdate
         // time this runs, which is the common case rather than an error.
         script.AppendLine(CultureInfo.InvariantCulture, $"Wait-Process -Id {processId} -ErrorAction SilentlyContinue");
         script.AppendLine("Start-Sleep -Milliseconds 750");
-        script.AppendLine(CultureInfo.InvariantCulture, $"${waitOn} = {source}");
+        script.AppendLine($"$source = {source}");
         script.AppendLine($"$target = {target}");
         script.AppendLine($"$entry = Join-Path $target {entryPoint}");
-        script.AppendLine("$backup = Join-Path $target $backup");
+        // Interpolated. This used to be the literal "Join-Path $target $backup", joining onto a script
+        // variable that did not exist yet, so the rollback copy was never made. Depending on how
+        // PowerShell resolved the empty path, it either errored and carried on (the update worked, with
+        // no rollback) or resolved to the install folder, failed to copy Kronos.exe onto itself, and
+        // aborted the update.
+        script.AppendLine($"$backup = Join-Path $target {backup}");
         script.AppendLine($"$dataFolder = {Quote(DataFolderName)}");
         script.AppendLine();
 
         script.AppendLine("# Rollback copy first: the executable is the one file that cannot be re-obtained.");
         script.AppendLine("$updated = $false");
         script.AppendLine("$copied = $false");
+        // A try of its own. When the executable is locked the backup cannot be read either, and inside
+        // the main try that failure skipped every other file - the one-locked-file abort this script
+        // exists to avoid. Without a backup the update still goes ahead; there is just nothing to roll
+        // back to, and $copied stays false so nothing is restored from a copy that was never made.
         script.AppendLine("try {");
-        script.AppendLine("    Copy-Item -LiteralPath $entry -Destination $backup -Force");
+        script.AppendLine("    Copy-Item -LiteralPath $entry -Destination $backup -Force -ErrorAction Stop");
         script.AppendLine("    $copied = $true");
+        script.AppendLine("} catch { }");
         script.AppendLine();
+        script.AppendLine("try {");
         script.AppendLine("    # One file at a time, and the user's data folder is never touched.");
         script.AppendLine("    #");
         script.AppendLine("    # The archive ships a StoredData folder holding the blank database and default");
@@ -146,8 +161,8 @@ public static class PortableSelfUpdate
         script.AppendLine("    # copying that folder over the installation replaced their data with an empty");
         script.AppendLine("    # database on every update. Silent, and total.");
         script.AppendLine("    $failed = New-Object System.Collections.ArrayList");
-        script.AppendLine($"    Get-ChildItem -LiteralPath ${waitOn} -Recurse -File | ForEach-Object {{");
-        script.AppendLine("        $relative = $_.FullName.Substring($kronosProcessId.Length).TrimStart([char]'\\')");
+        script.AppendLine("    Get-ChildItem -LiteralPath $source -Recurse -File | ForEach-Object {");
+        script.AppendLine("        $relative = $_.FullName.Substring($source.Length).TrimStart([char]'\\')");
         script.AppendLine("        if ($relative.Split([char]'\\')[0] -eq $dataFolder) { return }");
         script.AppendLine("        $destination = Join-Path $target $relative");
         script.AppendLine("        $folder = Split-Path $destination -Parent");
@@ -160,7 +175,7 @@ public static class PortableSelfUpdate
         script.AppendLine("    # rests on, so compare it against the archive instead of trusting the copy. The");
         script.AppendLine("    # previous version skipped this and relaunched a stale build reporting a stale");
         script.AppendLine("    # version, commit and build date.");
-        script.AppendLine("    $sourceEntry = Join-Path $kronosProcessId 'Kronos.exe'");
+        script.AppendLine("    $sourceEntry = Join-Path $source 'Kronos.exe'");
         script.AppendLine("    if ((Test-Path $sourceEntry) -and (Test-Path $entry)) {");
         script.AppendLine("        if ((Get-FileHash -LiteralPath $sourceEntry -Algorithm SHA256).Hash -eq");
         script.AppendLine("            (Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash) { $updated = $true }");
@@ -271,6 +286,7 @@ public static class PortableSelfUpdate
             startInfo.ArgumentList.Add("Bypass");
             startInfo.ArgumentList.Add("-File");
             startInfo.ArgumentList.Add(scriptPath);
+            UseWindowsPowerShellModules(startInfo);
 
             var process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("Could not start the update handoff process.");
@@ -282,6 +298,21 @@ public static class PortableSelfUpdate
             TryDelete(stagingRoot);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Stops powershell.exe inheriting PowerShell 7's module path.
+    /// </summary>
+    /// <remarks>
+    /// When Kronos is started from a PowerShell 7 session, PSModulePath points at PowerShell 7's module
+    /// folders, and the child powershell.exe (Windows PowerShell 5.1) inherits it. 5.1 then fails to load
+    /// modules such as Microsoft.PowerShell.Utility, so Get-FileHash is not found, the script's try block
+    /// throws, and the update rolls back and exits 1 without a word. Removing the variable lets 5.1
+    /// rebuild its own default path. Found because the end-to-end tests failed only when run from pwsh.
+    /// </remarks>
+    internal static void UseWindowsPowerShellModules(ProcessStartInfo startInfo)
+    {
+        startInfo.Environment.Remove("PSModulePath");
     }
 
     static void TryDelete(string directory)
