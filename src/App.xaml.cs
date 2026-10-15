@@ -764,6 +764,16 @@ public sealed partial class App : Application
     }
 
 
+    /// <summary>
+    /// Queues an action to run later on the UI thread, even when called from it. Unlike
+    /// <see cref="RunOnUIThread"/>, this never runs the action inline: it returns false instead, so the
+    /// caller can decide what to do.
+    /// </summary>
+    public bool EnqueueOnUIThread(Action action)
+    {
+        return _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, new DispatcherQueueHandler(action)) ?? false;
+    }
+
     public Task RunOnUIThreadAsync(Func<Task> function)
     {
         var dispatcherQueue = _dispatcherQueue;

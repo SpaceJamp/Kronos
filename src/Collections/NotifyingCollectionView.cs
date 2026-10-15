@@ -20,23 +20,39 @@ namespace Kronos.Collections;
 /// (GroupedGridProbe): every other combination works, and only this one fails.
 /// </para>
 /// <para>
-/// Each change is translated rather than collapsed into a Reset, so adding one game does not rebuild every
-/// container in its group. A snapshot of the view is kept because a Remove has to carry the removed item,
-/// and by the time VectorChanged fires it is already gone from the view.
+/// Every change is announced as a Reset. This used to translate each change into an Add, Remove or Replace
+/// at the right index, and the translation was correct - replaying the events gives exactly the view's
+/// contents (NotifyingCollectionViewTests) - but Uno's grouped grid applies an incremental change in any
+/// group after the first at the wrong place. On a library with Steam, Xbox and manually added games, the
+/// Xbox and manual tiles were realised among the Steam ones and bound to the first Steam game, so the
+/// Games page showed one cover several times over and lost the games it should have shown. A Reset is
+/// the one notification Uno's grouped grid handles correctly, which is why searching made the grid right.
 /// </para>
 /// <para>
-/// The view's filtering and sorting are untouched: this only reads it. Changes are raised on whichever
-/// thread changed the view, which is the UI thread wherever Kronos changes the game list.
+/// A Reset rebuilds the group's containers, and loading a library changes every game several times, so
+/// when a scheduler is supplied a burst of changes is coalesced into one Reset that runs after it. Without
+/// one (tests) each change resets immediately.
+/// </para>
+/// <para>
+/// The view's filtering and sorting are untouched: this only reads it.
 /// </para>
 /// </remarks>
 public sealed class NotifyingCollectionView : IList, INotifyCollectionChanged
 {
     readonly AdvancedCollectionView _view;
     readonly List<object> _snapshot;
+    readonly Func<Action, bool>? _schedule;
+    bool _resetPending;
 
-    public NotifyingCollectionView(AdvancedCollectionView view)
+    /// <param name="view">The view to re-announce.</param>
+    /// <param name="schedule">
+    /// Queues an action to run later on the thread that owns the view, returning false if it could not be
+    /// queued. Used to coalesce bursts of changes into a single Reset.
+    /// </param>
+    public NotifyingCollectionView(AdvancedCollectionView view, Func<Action, bool>? schedule = null)
     {
         _view = view;
+        _schedule = schedule;
         _snapshot = new List<object>(view);
         _view.VectorChanged += View_VectorChanged;
     }
@@ -48,50 +64,34 @@ public sealed class NotifyingCollectionView : IList, INotifyCollectionChanged
 
     void View_VectorChanged(IObservableVector<object> sender, IVectorChangedEventArgs args)
     {
-        var index = (int)args.Index;
-        NotifyCollectionChangedEventArgs change;
-
-        switch (args.CollectionChange)
+        if (_resetPending)
         {
-            case CollectionChange.ItemInserted when index >= 0 && index <= _snapshot.Count && index < _view.Count:
-            {
-                var item = _view[index];
-                _snapshot.Insert(index, item);
-                change = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index);
-                break;
-            }
-
-            case CollectionChange.ItemRemoved when index >= 0 && index < _snapshot.Count:
-            {
-                var item = _snapshot[index];
-                _snapshot.RemoveAt(index);
-                change = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index);
-                break;
-            }
-
-            case CollectionChange.ItemChanged when index >= 0 && index < _snapshot.Count && index < _view.Count:
-            {
-                var oldItem = _snapshot[index];
-                var newItem = _view[index];
-                _snapshot[index] = newItem;
-                change = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, newItem, oldItem, index);
-                break;
-            }
-
-            default:
-                // A Reset, or an index that no longer lines up with the snapshot. Either way the honest
-                // answer is to start again from the view as it is now.
-                _snapshot.Clear();
-                _snapshot.AddRange(_view);
-                change = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset);
-                break;
+            return;
         }
 
-        CollectionChanged?.Invoke(this, change);
+        if (_schedule is not null)
+        {
+            _resetPending = true;
+            if (_schedule(Reset))
+            {
+                return;
+            }
+            _resetPending = false;
+        }
+
+        Reset();
+    }
+
+    void Reset()
+    {
+        _resetPending = false;
+        _snapshot.Clear();
+        _snapshot.AddRange(_view);
+        CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
     // Read from the snapshot, not the view, so what a listener reads always agrees with the last event it
-    // was given.
+    // was given, including while a coalesced Reset is still pending.
     public object? this[int index]
     {
         get => _snapshot[index];

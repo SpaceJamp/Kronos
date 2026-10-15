@@ -26,6 +26,8 @@ internal class GameGroup
         Name = name;
         GameLibrary = gameLibrary;
         View = games;
-        Games = games is null ? null : new NotifyingCollectionView(games);
+        // Coalesces a library load's many changes into one Reset per UI tick. Falls back to resetting
+        // immediately when there is no window to queue on yet.
+        Games = games is null ? null : new NotifyingCollectionView(games, action => App.CurrentApp?.EnqueueOnUIThread(action) ?? false);
     }
 }
