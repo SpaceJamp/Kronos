@@ -7,22 +7,11 @@ using System.Linq;
 using System.Xml.Linq;
 using Kronos.Language;
 
-#if WINDOWS
-using Windows.ApplicationModel.Resources;
-using Windows.ApplicationModel.Resources.Core;
-#endif
-
 namespace Kronos.Helpers;
 
 public class ResourceHelper
 {
     private const string error = "LangResourceError";
-
-#if WINDOWS
-    static readonly ResourceLoader _resourceLoader = new ResourceLoader();
-    static readonly ResourceContext _resourceContext = ResourceContext.GetForViewIndependentUse();
-    static readonly ResourceMap _resourceMap = ResourceManager.Current.MainResourceMap.GetSubtree("Resources");
-#endif
 
     static readonly Dictionary<string, string> _resources = new Dictionary<string, string>();
 
@@ -58,19 +47,8 @@ public class ResourceHelper
         }
 #endif
         _resources.Clear();
-#if WINDOWS
-        try
-        {
-            _resourceContext.Languages = new List<string> { key };
-        }
-        catch (Exception err)
-        {
-            Logger.Error($"Could not load resource map for key {key}: {err.Message}");
-        }
-#else
         _languageTag = key;
         _stringsByLanguage = null;
-#endif
     }
 
     internal static void UpdateFromLiveTranslations(List<TranslationRow> translations)
@@ -104,33 +82,9 @@ public class ResourceHelper
             return value;
         }
 
-#if WINDOWS
-        // But if we have a resource map fall back to it.
-        var resourceCandidate = _resourceMap.GetValue(resourceName, _resourceContext);
-        if (string.IsNullOrWhiteSpace(resourceCandidate?.ValueAsString) == false)
-        {
-            return resourceCandidate.ValueAsString;
-        }
-
-        Debug.WriteLine($"Translation not found: {resourceName}");
-
-        // If not we fallback to the original language.
-        var fallbackString = _resourceLoader.GetString(resourceName);
-
-#if DEBUG
-        if (string.IsNullOrWhiteSpace(fallbackString))
-        {
-            Debug.WriteLine($"Translation not found: {resourceName}");
-            Debugger.Break();
-        }
-#endif
-        return fallbackString;
-#else
         return GetStringFromResw(resourceName);
-#endif
     }
 
-#if !WINDOWS
     /// <summary>The requested language, e.g. "en-US". Defaults to en-US.</summary>
     static string _languageTag = "en-US";
 
@@ -144,10 +98,10 @@ public class ResourceHelper
     /// Reads a string out of the translated .resw file for the current language.
     /// </summary>
     /// <remarks>
-    /// On Windows these strings come from WinUI's ResourceManager, which compiles the .resw files
-    /// into a PRI. There is no equivalent here, so the .resw is read as the XML it already is -
-    /// which is exactly the same data WinUI would have baked into the PRI. That keeps the Linux CLI
-    /// genuinely localised rather than printing resource keys.
+    /// Under WinAppSDK these strings came from the MRT ResourceManager, which compiles the .resw files
+    /// into a PRI. Uno does not implement that API (ResourceContext.GetForViewIndependentUse throws
+    /// NotImplementedException, which killed startup from this class's static initialiser), so on
+    /// every platform the .resw is read as the XML it already is - exactly the same data the PRI held.
     ///
     /// Returns the key itself when a string is missing. A missing translation is a missing label,
     /// not a reason to throw out of whatever operation happened to want the label.
@@ -222,7 +176,6 @@ public class ResourceHelper
 
         return strings;
     }
-#endif
 
     public static string GetFormattedResourceTemplate(string templateResourceName, params object[] args)
     {

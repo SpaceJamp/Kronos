@@ -147,6 +147,31 @@ public sealed partial class App : Application
     }
 
     /// <summary>
+    /// Held for the life of the process so the OS keeps the name claimed. Never disposed: releasing it
+    /// early would let a second instance start.
+    /// </summary>
+    static Mutex? _singleInstanceMutex;
+
+    /// <summary>
+    /// Claims the per-user single-instance mutex. Returns false if another instance already holds it.
+    /// </summary>
+    static bool TryClaimSingleInstance()
+    {
+        try
+        {
+            _singleInstanceMutex = new Mutex(true, @"Local\Kronos.main", out var createdNew);
+            return createdNew;
+        }
+        catch (Exception err)
+        {
+            // Failing to create the mutex must not stop the app starting. Two instances is a smaller
+            // problem than none.
+            Logger.Error(err, "Could not create the single-instance mutex.");
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Flushes and closes Serilog, ignoring any failure.
     /// </summary>
     static void FlushLogQuietly()
@@ -166,20 +191,18 @@ public sealed partial class App : Application
     /// will be used such as when the application is launched to open a specific file.
     /// </summary>
     /// <param name="args">Details about the launch request and process.</param>
-    protected override async void OnLaunched(LaunchActivatedEventArgs args)
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // If this is the first instance launched, then register it as the "main" instance.
-        // If this isn't the first instance launched, then "main" will already be registered,
-        // so retrieve it.
-        var mainInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("main");
-
-        // If the instance that's executing the OnLaunched handler right now
-        // isn't the "main" instance.
-        if (mainInstance.IsCurrent == false)
+        // Only one instance runs at a time. A second launch exits.
+        //
+        // This used to be WinAppSDK's AppInstance.FindOrRegisterForKey("main") plus
+        // RedirectActivationToAsync. Uno does not implement AppLifecycle (every member throws
+        // NotImplementedException), and nothing here ever subscribed to the redirected activation, so
+        // all the redirect ever did was end the second process. A named mutex does the same on every
+        // platform .NET runs on.
+        if (TryClaimSingleInstance() == false)
         {
-            // Redirect the activation (and args) to the "main" instance, and exit.
-            var activatedEventArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
-            await mainInstance.RedirectActivationToAsync(activatedEventArgs);
+            Logger.Info("Another instance of Kronos is already running, so this one is exiting.");
             Process.GetCurrentProcess().Kill();
             return;
         }

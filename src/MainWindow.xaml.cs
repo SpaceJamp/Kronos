@@ -8,8 +8,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System;
-using System.Runtime.InteropServices;
+using System.IO;
 using System.Threading.Tasks;
+using Windows.Graphics;
 using Windows.System;
 
 namespace Kronos;
@@ -21,15 +22,7 @@ public sealed partial class MainWindow : Window
 {
     public MainWindowModel ViewModel { get; private set; }
 
-    IntPtr _windowIcon;
-
     readonly WindowPositionRect _trackedWindow = new WindowPositionRect();
-
-    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-    static extern IntPtr ExtractAssociatedIcon(IntPtr hInst, string iconPath, ref IntPtr index);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    static extern int DestroyIcon(IntPtr hIcon);
 
     public MainWindow()
     {
@@ -71,7 +64,10 @@ public sealed partial class MainWindow : Window
 
             if (lastWindowSizeAndPosition.Width > 512 && lastWindowSizeAndPosition.Height > 512)
             {
-                AppWindow.MoveAndResize(lastWindowSizeAndPosition.GetRectInt32());
+                // Move then Resize, rather than MoveAndResize: Uno does not implement MoveAndResize.
+                var rect = lastWindowSizeAndPosition.GetRectInt32();
+                AppWindow.Move(new PointInt32 { X = rect.X, Y = rect.Y });
+                AppWindow.Resize(new SizeInt32 { Width = rect.Width, Height = rect.Height });
             }
             if (lastWindowSizeAndPosition.State == OverlappedPresenterState.Maximized)
             {
@@ -122,27 +118,14 @@ public sealed partial class MainWindow : Window
                 Settings.Instance.LastWindowSizeAndPosition = new WindowPositionRect(_trackedWindow);
             }
 
-            // Release the icon.
-            if (_windowIcon != IntPtr.Zero)
-            {
-                DestroyIcon(_windowIcon);
-                _windowIcon = IntPtr.Zero;
-            }
         };
 
-        if (WindowManager.IsCustomizationSupported)
-        {
-            var appWindow = App.CurrentApp.WindowManager.GetAppWindowForWindow(this);
-            var appWindowTitleBar = appWindow.TitleBar;
-            appWindowTitleBar.ExtendsContentIntoTitleBar = true;
-            RootGrid.RowDefinitions[0].Height = new GridLength(32);
-        }
-        else
-        {
-            RootGrid.RowDefinitions[0].Height = new GridLength(28);
-            ExtendsContentIntoTitleBar = true;
-            SetTitleBar(AppTitleBar);
-        }
+        // Always the Window-level title bar now. The AppWindowTitleBar path depended on
+        // AppWindowTitleBar.IsCustomizationSupported() and the Button*Color setters, which Uno does not
+        // implement (see WindowManager).
+        RootGrid.RowDefinitions[0].Height = new GridLength(28);
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
 
         SetIcon();
 
@@ -159,29 +142,19 @@ public sealed partial class MainWindow : Window
 
 
     /// <summary>
-    /// Default the Window Icon to the icon stored in the .exe, if any.
-    ///
-    /// The Icon can be overriden by callers by calling SetIcon themselves.
+    /// Sets the window icon from Assets\icon.ico, which is copied next to the executable.
     /// </summary>
-    /// via this MAUI PR https://github.com/dotnet/maui/pull/6900
+    /// <remarks>
+    /// This used to pull the icon out of the exe with ExtractAssociatedIcon and hand the HICON to
+    /// AppWindow.SetIcon(IconId) via Win32Interop.GetIconIdFromIcon. Uno implements neither of those, but
+    /// it does implement the path overload, and the .ico is the same one the exe embeds.
+    /// </remarks>
     void SetIcon()
     {
-        var processPath = Environment.ProcessPath;
-        if (!string.IsNullOrEmpty(processPath))
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+        if (File.Exists(iconPath))
         {
-            var index = IntPtr.Zero; // 0 = first icon in resources
-            _windowIcon = ExtractAssociatedIcon(IntPtr.Zero, processPath, ref index);
-            if (_windowIcon != IntPtr.Zero)
-            {
-                var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
-
-                var appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
-                if (appWindow is not null)
-                {
-                    var iconId = Win32Interop.GetIconIdFromIcon(_windowIcon);
-                    appWindow.SetIcon(iconId);
-                }
-            }
+            AppWindow?.SetIcon(iconPath);
         }
     }
 
