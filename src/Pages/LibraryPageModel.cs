@@ -476,11 +476,17 @@ public partial class LibraryPageModel : ObservableObject
             DefaultButton = ContentDialogButton.Close,
         };
 
+        // Set just before the import closes the dialog itself. Hide() raises Closing too, and without
+        // this the handler below took that for the user pressing Cancel: it blocked the close and
+        // requested cancellation, so a successful import left the dialog stuck on screen, skipped
+        // saving the manifest, and never showed the summary.
+        var importFinished = false;
+
         loadingDialog.Closing += (sender, args) =>
         {
             // Request cancellation rather than tearing the dialog down immediately, so the user can
             // still see the progress settle instead of the dialog vanishing mid-import.
-            if (cancellationToken.IsCancellationRequested == false)
+            if (importFinished == false && cancellationToken.IsCancellationRequested == false)
             {
                 args.Cancel = true;
                 ImportCancelCommand.Execute(null);
@@ -726,6 +732,7 @@ public partial class LibraryPageModel : ObservableObject
             return importResults;
         });
 
+        importFinished = true;
         loadingDialog.Hide();
 
         if (cancellationToken.IsCancellationRequested)
