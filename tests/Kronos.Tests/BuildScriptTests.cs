@@ -93,8 +93,7 @@ public class BuildScriptTests
 
         foreach (var line in restores)
         {
-            // -f and --framework are the trap. -p:TargetFramework=net10.0 is deliberate and correct:
-            // it is how the fallback passes avoid evaluating the Windows target framework.
+            // -f and --framework are the trap: on restore, -f means --force.
             Assert.False(
                 Regex.IsMatch(line, @"(?:^|\s)(-f|--framework)(?:\s|=|$)"),
                 $"{script}: 'dotnet restore' has no --framework option and its -f means --force, so a "
@@ -300,49 +299,48 @@ public class BuildScriptTests
                 + "their output including errors.");
     }
 
-    // ------------------------------------------------------------------ restore fallback
+    // ------------------------------------------------------------------ restore scope
 
     [Theory]
     [MemberData(nameof(BuildScripts))]
-    public void RestoreIsTriedMoreThanOnceBeforeGivingUp(string script)
+    public void RestoreIsNeverNarrowedToOneTargetFramework(string script)
     {
-        // A single restore command is not reliable everywhere. On Linux, evaluating the Windows target
-        // framework can fail, and the script then has to fall back to restoring net10.0 alone rather
-        // than stopping. Each attempt must therefore be a separate call, not a loop that reuses one.
-        var restores = RestoreLines(script);
-
-        Assert.True(
-            restores.Count >= 2,
-            $"{script}: found {restores.Count} restore command(s). A single one cannot fall back when "
-                + "evaluating the Windows target framework fails on Linux.");
+        // Both scripts used to fall back to -p:TargetFramework=net10.0 when the old net10.0-windows target
+        // failed to evaluate on Linux, saving and restoring the committed lock file around it because a
+        // single-framework restore rewrites it. Under Uno there is one target framework, net10.0-desktop,
+        // and net10.0 no longer exists: a restore narrowed to it would rewrite packages.lock.json for a
+        // framework the project does not have. A plain restore covers both runtime identifiers.
+        foreach (var line in RestoreLines(script))
+        {
+            Assert.False(
+                line.Contains("TargetFramework", StringComparison.Ordinal),
+                $"{script}: restore is narrowed to one target framework, which rewrites the committed lock "
+                    + $"file. Offending line: {line}");
+        }
     }
 
     [Theory]
     [MemberData(nameof(BuildScripts))]
-    public void TheCommittedLockFileIsSavedAndRestoredAroundASingleFrameworkRestore(string script)
+    public void RestoreUsesTheConfigurationThatIsAboutToBeBuilt(string script)
     {
-        // -p:TargetFramework=net10.0 rewrites packages.lock.json to hold only that framework, which
-        // deletes 553 lines - the Windows target's entire dependency graph - from a committed file.
-        var lines = CodeLines(script);
-        var text = string.Join("\n", lines);
-
-        Assert.True(
-            text.Contains("packages.lock.json", StringComparison.Ordinal),
-            $"{script}: a single-framework restore rewrites the committed packages.lock.json, but the "
-                + "script never mentions it.");
-
-        Assert.True(
-            lines.Count(line => line.Contains("net10.0", StringComparison.Ordinal)) >= 2
-                && Regex.IsMatch(text, @"net10\.0.*restore|restore.*net10\.0"),
-            $"{script}: expected a fallback restore for net10.0 alongside the full restore.");
+        // Uno.Sdk adds Uno.WinUI.DevServer only when Optimize is false, and decides at restore time. A
+        // restore with no configuration is a Debug restore, and the Release build after it failed with
+        // UNOB0019 - which is how phase 4 found that a Release build had never been made on Uno.
+        foreach (var line in RestoreLines(script))
+        {
+            Assert.True(
+                line.Contains("-p:Configuration=", StringComparison.Ordinal),
+                $"{script}: restore does not say which configuration it is for, so a Release build after it "
+                    + $"fails with UNOB0019. Offending line: {line}");
+        }
     }
 
     [Theory]
     [MemberData(nameof(BuildScripts))]
     public void PublishDoesNotRestoreAgain(string script)
     {
-        // Publish runs its own restore by default, which would evaluate the Windows target framework
-        // again on Linux and rewrite the committed lock file outside the protection above.
+        // Publish runs its own restore by default, which repeats work the checked restore already did,
+        // and does it without the configuration check above.
         foreach (var line in CodeLines(script).Where(line => Regex.IsMatch(line, @"^&?\s*(\S*/)?dotnet\s+publish\b", RegexOptions.IgnoreCase)))
         {
             Assert.True(
@@ -392,36 +390,48 @@ public class BuildScriptTests
     // ------------------------------------------------------------------ Windows portable packaging
 
     [Fact]
-    public void TheWindowsPortableBuildPublishesThePortableConfiguration()
+    public void TheWindowsPortableBuildDefinesPortable()
     {
-        // The project has a Release_Portable configuration, and a portable zip should be built from
-        // it. Not because Release is broken - a plain `-c Release` publish runs fine, which was
-        // measured rather than assumed - but because Release_Portable defines PORTABLE, which compiles
-        // out the updater's -installer.exe branch. Leaving that branch in would have a portable build
-        // looking for an installer asset that a portable release never publishes.
+        // The released zip must be built with PORTABLE defined: user data in StoredData beside the
+        // executable, the portable self-update, and the updater's -installer.exe branch compiled out, so
+        // a portable build is not offered an installer asset a portable release never publishes.
         //
-        // The variable, not the caller's -Configuration, is what reaches dotnet publish.
-        var source = ReadRepoFile("build.ps1");
+        // That define used to come from the Release_Portable configuration, which existed only because
+        // WinAppSDK could not publish unpackaged otherwise. Under Uno it comes from KronosPortable.
+        var csproj = ReadRepoFile(Path.Combine("src", "Kronos.csproj"));
+        Assert.Matches(@"Condition=""'\$\(KronosPortable\)'=='true'"">\s*<DefineConstants>[^<]*PORTABLE", csproj);
 
-        Assert.True(
-            source.Contains("'Release_Portable'", StringComparison.Ordinal),
-            "build.ps1 no longer names Release_Portable, so it may be publishing the packaged Release "
-                + "configuration, which leaves the installer auto-update branch compiled into a "
-                + "portable build.");
+        foreach (var script in new[] { "build.ps1", "build.sh" })
+        {
+            var publish = CodeLines(script)
+                .FirstOrDefault(line => Regex.IsMatch(line, @"dotnet\s+publish.*win-x64", RegexOptions.IgnoreCase));
+
+            Assert.NotNull(publish);
+            Assert.True(
+                publish!.Contains("-p:KronosPortable=true", StringComparison.Ordinal),
+                $"{script}: the Windows publish does not set KronosPortable, so the zip would be built without "
+                    + $"PORTABLE. Offending line: {publish}");
+        }
+    }
+
+    [Fact]
+    public void TheWindowsPortableBuildIsAlwaysRelease()
+    {
+        // The variable, not the caller's -Configuration, is what reaches restore, build and publish. They
+        // must agree (see RestoreUsesTheConfigurationThatIsAboutToBeBuilt), and the zip must be optimised.
+        var source = ReadRepoFile("build.ps1");
+        Assert.Contains("$portableConfiguration = 'Release'", source, StringComparison.Ordinal);
 
         var publish = CodeLines("build.ps1")
-            .FirstOrDefault(line => Regex.IsMatch(line, @"dotnet\s+publish.*windows10\.0", RegexOptions.IgnoreCase));
-
-        Assert.NotNull(publish);
-        Assert.True(
-            publish!.Contains("$portableConfiguration", StringComparison.Ordinal),
-            $"The Windows publish must use the portable configuration, not the caller's -Configuration. Offending line: {publish}");
+            .First(line => Regex.IsMatch(line, @"dotnet\s+publish.*win-x64", RegexOptions.IgnoreCase));
+        Assert.Contains("-c $portableConfiguration", publish, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("PublishSingleFile")]
-    [InlineData("WindowsAppSDKSelfContained")]
-    public void TheWindowsPortableBuildAvoidsThePropertiesThatBreakStartup(string property)
+    [InlineData("build.ps1", "PublishSingleFile")]
+    [InlineData("build.ps1", "WindowsAppSDKSelfContained")]
+    [InlineData("build.sh", "PublishSingleFile")]
+    public void TheWindowsPortableBuildAvoidsThePropertiesThatBreakStartup(string script, string property)
     {
         // Both were tried on a hunch, and both produce a binary that dies before showing a window.
         // Every combination was measured rather than reasoned about:
@@ -437,12 +447,16 @@ public class BuildScriptTests
         // it is not true, so the resource index is never embedded. WindowsAppSDKSelfContained is the
         // less obvious one - it looks like it would remove the runtime prerequisite and does the
         // opposite.
-        var lines = CodeLines("build.ps1");
+        //
+        // build.sh is checked too: its Windows publish still passed PublishSingleFile=true until phase 4,
+        // because only build.ps1 was ever checked. Under Uno single-file is still wrong - the app reads
+        // Assets and Translations from disk beside the executable.
+        var lines = CodeLines(script);
         var offending = lines.Where(line => line.Contains(property, StringComparison.Ordinal)).ToList();
 
         Assert.True(
             offending.TrueForAll(line => line.TrimStart().StartsWith("#", StringComparison.Ordinal)),
-            $"build.ps1 sets {property} on the Windows publish, which produces a binary that crashes on "
+            $"{script} sets {property} on the Windows publish, which produces a binary that crashes on "
                 + $"startup. Offending line(s): {string.Join(" | ", offending)}");
     }
 
@@ -470,8 +484,9 @@ public class BuildScriptTests
         // Counted rather than trusted, because the failure mode is a silently short archive.
         Assert.Contains("stagedCount", source, StringComparison.Ordinal);
 
-        // Named explicitly, because these are what went missing.
-        foreach (var required in new[] { "Kronos.exe", "Kronos.pri", @"Assets\icon_256.png" })
+        // Named explicitly, because these are what went missing. Uno.UI.dll replaced Kronos.pri, the
+        // WinAppSDK resource index, as the file without which the app cannot start.
+        foreach (var required in new[] { "Kronos.exe", "Uno.UI.dll", @"Assets\icon_256.png" })
         {
             Assert.Contains(required, source, StringComparison.Ordinal);
         }
@@ -488,7 +503,33 @@ public class BuildScriptTests
 
         Assert.Contains("Start-Process", source, StringComparison.Ordinal);
         Assert.Contains("HasExited", source, StringComparison.Ordinal);
-        Assert.Contains("Kronos.pri", source, StringComparison.Ordinal);
+        Assert.Contains("Uno.UI.dll", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheReleaseBuildRunsUnderTheSamePowerShellAsTheReleaseScript()
+    {
+        // publish-release.ps1 used to start build.ps1 with a hard-coded powershell.exe. Run from
+        // PowerShell 7, that child Windows PowerShell 5.1 inherits PowerShell 7's PSModulePath and can fail
+        // to load its own modules - the fault that silently broke the portable self-update.
+        var lines = CodeLines("publish-release.ps1");
+
+        Assert.DoesNotContain(lines, line => Regex.IsMatch(line, @"&\s*powershell(\.exe)?\s", RegexOptions.IgnoreCase));
+        Assert.Contains(lines, line => line.Contains("(Get-Process -Id $PID).Path", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheReleaseChecksTheImageSharpKeyBeforeRunningTheTests()
+    {
+        // Under Uno the Release test run compiles the app, and ImageSharp refuses a non-Debug build without
+        // the key. Checked after the tests, a missing key surfaced as "the test suite failed".
+        var source = ReadRepoFile("publish-release.ps1");
+
+        var keyCheck = source.IndexOf("IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY)", StringComparison.Ordinal);
+        var testRun = source.IndexOf("dotnet test", StringComparison.Ordinal);
+
+        Assert.True(keyCheck >= 0 && testRun >= 0, "Expected both an ImageSharp key check and a test run.");
+        Assert.True(keyCheck < testRun, "publish-release.ps1 runs the tests before checking for the ImageSharp key.");
     }
 
     [Fact]

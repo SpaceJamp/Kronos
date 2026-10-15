@@ -75,9 +75,8 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <!--
       Release_Portable is gone. It existed because WinAppSDK could only be published unpackaged under a
-      configuration of its own; Uno has no such constraint. Note that it also carried the PORTABLE
-      define, which build.ps1 relies on for the shipped zip - that is phase 4's to resolve, together
-      with the rest of build.ps1, which still names the old Windows target framework.
+      configuration of its own; Uno has no such constraint. The PORTABLE define it carried now comes
+      from the KronosPortable property further down.
     -->
     <Configurations>Debug;Release;Debug_Portable</Configurations>
     <PackageIcon>Assets\icon_256.png</PackageIcon>
@@ -202,6 +201,19 @@
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug_Portable'">
     <DefineConstants>$(DefineConstants);DEBUG;PORTABLE</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    The portable build: build.ps1 publishes the release zip with -c Release -p:KronosPortable=true.
+
+    PORTABLE used to come from the Release_Portable configuration, which existed only because WinAppSDK
+    could not publish unpackaged any other way. The define is what matters, not the configuration: it
+    keeps the user's data in StoredData beside the executable, enables the portable self-update, and
+    compiles out the updater's -installer.exe branch, which would look for an asset a portable release
+    never publishes. A property keeps that without bringing back a configuration Uno has no use for.
+  -->
+  <PropertyGroup Condition="'$(KronosPortable)'=='true'">
+    <DefineConstants>$(DefineConstants);PORTABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

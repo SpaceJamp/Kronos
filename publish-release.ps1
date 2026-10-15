@@ -146,6 +146,38 @@ Write-Host "=== Publishing Kronos $Version ===" -ForegroundColor Green
 Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
 Write-Host ""
 
+# Preflight: the ImageSharp key the build needs.
+#
+# Checked before the tests as well as before the build. Under Uno the test run compiles the app in
+# Release, and ImageSharp refuses any non-Debug build without the key, so a missing key used to surface
+# as "the test suite failed", pointing at the wrong problem.
+#
+# Passed to build.ps1 as -LicenseKey $env:IMAGESHARP_LICENSE_KEY. When that variable is empty the argument
+# expands to nothing at all, so the child process is launched as `... -File build.ps1 -Target Windows
+# -LicenseKey ` and PowerShell rejects it: "Missing an argument for parameter 'LicenseKey'".
+#
+# That error is harmless; where it arrived was not. The tag had been pushed and the release created, so
+# v1.59 was published with correct notes and no artifact - the worst state to hand someone, because the
+# release page looks complete and a download simply 404s. Checked here so the run stops before creating
+# anything. -SkipBuild is exempt because it builds nothing.
+if (-not $SkipBuild) {
+    if ([string]::IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY)) {
+        Fail @"
+IMAGESHARP_LICENSE_KEY is not set, so the build would fail - and it would fail only after the tag was
+pushed and the release created, leaving a release with no artifact.
+
+Set it before publishing, for this session only:
+
+    `$env:IMAGESHARP_LICENSE_KEY = '<your ImageSharp community key>'
+
+Nothing has been created on GitHub. Re-run once the key is set.
+
+To rebuild the artifact for a release that already exists, use -ReplaceArtifactOnly, which skips the tag
+and release creation entirely.
+"@
+    }
+}
+
 # Preflight: the tests must pass, before anything is created on GitHub.
 #
 # This is here because of a repeated mistake rather than a hypothetical one. Three times in one session a
@@ -180,34 +212,6 @@ deliberately rather than by accident.
     Write-Host ""
 }
 
-# Preflight: the ImageSharp key the build needs.
-#
-# Passed to build.ps1 as -LicenseKey $env:IMAGESHARP_LICENSE_KEY. When that variable is empty the argument
-# expands to nothing at all, so the child process is launched as `... -File build.ps1 -Target Windows
-# -LicenseKey ` and PowerShell rejects it: "Missing an argument for parameter 'LicenseKey'".
-#
-# That error is harmless; where it arrived was not. The tag had been pushed and the release created, so
-# v1.59 was published with correct notes and no artifact - the worst state to hand someone, because the
-# release page looks complete and a download simply 404s. Checked here so the run stops before creating
-# anything. -SkipBuild is exempt because it builds nothing.
-if (-not $SkipBuild) {
-    if ([string]::IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY)) {
-        Fail @"
-IMAGESHARP_LICENSE_KEY is not set, so the build would fail - and it would fail only after the tag was
-pushed and the release created, leaving a release with no artifact.
-
-Set it before publishing, for this session only:
-
-    `$env:IMAGESHARP_LICENSE_KEY = '<your ImageSharp community key>'
-
-Nothing has been created on GitHub. Re-run once the key is set.
-
-To rebuild the artifact for a release that already exists, use -ReplaceArtifactOnly, which skips the tag
-and release creation entirely.
-"@
-    }
-}
-
 if ($ReplaceArtifactOnly) {
     # Fall through to the build and upload below, skipping tag creation, push and release creation.
 }
@@ -236,11 +240,16 @@ if ((Invoke-NativeCommand { & $gh release create $tag --title "v$Version" --note
 
 if (-not $SkipBuild) {
     Write-Host "Building the Windows portable artifact..." -ForegroundColor Yellow
-    # Release_Portable, not the -Configuration this script was given. build.ps1 decides this itself.
-    # The artifact first published crashed on startup; build.ps1 now smoke tests the binary it is
-    # about to hand over, and fails if it exits immediately or if Kronos.pri is missing. Both of those
-    # were true of the build that shipped, and neither appeared anywhere in the build output.
-    $buildOutput = & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
+    # build.ps1 decides the configuration itself (Release with KronosPortable), not the caller. The
+    # artifact first published crashed on startup; build.ps1 now checks the files the app needs and
+    # smoke tests the binary it is about to hand over, failing if it exits immediately. Neither of
+    # those was visible anywhere in the build output of the build that shipped.
+    #
+    # Run under the same PowerShell as this script, not a hard-coded powershell.exe. Started from
+    # PowerShell 7, a child Windows PowerShell 5.1 inherits PowerShell 7's PSModulePath and can fail to
+    # load its own modules - the fault that silently broke the portable self-update, found the same way.
+    $powershellHost = (Get-Process -Id $PID).Path
+    $buildOutput = & $powershellHost -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
         -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY
     if ($LASTEXITCODE -ne 0) {
         # Pointed at -ReplaceArtifactOnly rather than leaving the caller to work it out. At this point the
@@ -291,8 +300,9 @@ That skips the tag and release creation and only rebuilds and uploads the artifa
         }
 
         # Named explicitly because these are what go missing, and the logo in particular is the one
-        # thing every user looks at.
-        foreach ($required in @('Kronos.exe', 'Kronos.pri', 'Assets\icon_256.png', 'Assets\icon.ico')) {
+        # thing every user looks at. Uno.UI.dll stands where Kronos.pri, the WinAppSDK resource index,
+        # used to: the one file without which the app cannot start at all.
+        foreach ($required in @('Kronos.exe', 'Uno.UI.dll', 'Assets\icon_256.png', 'Assets\icon.ico')) {
             if (-not (Test-Path (Join-Path $staging $required))) {
                 Fail "The archive is missing $required. Refusing to upload it."
             }

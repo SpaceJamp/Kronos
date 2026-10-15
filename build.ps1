@@ -5,8 +5,9 @@
     Builds Kronos for the current platform or cross-compiles for Linux
 
 .DESCRIPTION
-    This script builds Kronos for the current platform (Windows GUI or Linux CLI) 
-    or cross-compiles Linux from Windows.
+    This script builds Kronos, an Uno Platform app with one target framework (net10.0-desktop), for
+    Windows (a self-contained portable folder that needs no Windows App Runtime) or Linux. The Linux
+    build does not compile yet; see the README.
     Requires .NET 10 SDK installed.
 
 .EXAMPLE
@@ -14,7 +15,7 @@
     .\build.ps1 -Configuration Debug      # Debug build
     .\build.ps1 -Target Linux             # Cross-compile Linux from Windows
     .\build.ps1 -Target Windows           # Build Windows (native)
-    .\build.ps1 -Target All               # Build both Linux CLI and Windows GUI
+    .\build.ps1 -Target All               # Build both Linux and Windows
     .\build.ps1 -Configuration Release -Target Linux -Runtime linux-x64
 #>
 
@@ -160,103 +161,65 @@ function Assert-DotnetSucceeded {
     }
 }
 
-# Restores, trying several approaches in turn.
+# Restores, and checks that it really did.
 #
-# No single restore command works everywhere and a failure here is opaque: restore can fail without
-# writing the assets file, and the --no-restore build that follows then reports "NETSDK1004: Assets
-# file project.assets.json not found", naming the symptom rather than the cause.
+# A failure here is opaque: restore can fail without writing the assets file, and the --no-restore
+# build that follows then reports "NETSDK1004: Assets file project.assets.json not found", naming the
+# symptom rather than the cause. So the assets file is deleted first and required afterwards.
 #
-#   Pass 1  every target framework - preferred. The only pass that leaves the committed lock file
-#           untouched, so it keeps builds reproducible.
-#   Pass 2  net10.0 only - never evaluates the Windows target framework, which is the most likely
-#           reason pass 1 fails on Linux.
-#   Pass 3  net10.0 only plus the runtime identifier - adds the RID-specific assets the build needs.
+# One restore, with no framework or runtime filter. The project has one target framework,
+# net10.0-desktop, and declares both runtime identifiers (win-x64 and linux-x64), so a plain restore
+# covers every build this script makes, on either operating system. It is also the only restore that
+# leaves the committed packages.lock.json as it is.
 #
-# Passes 2 and 3 restore one framework, which rewrites the committed packages.lock.json to hold only
-# that framework - 553 lines of it, as measured. So it is saved first and restored in a finally block,
-# which also covers restore throwing. Quietly deleting the Windows target's dependency graph from a
-# committed file would be worse than any restore failure.
+# This used to make up to three attempts, falling back to -p:TargetFramework=net10.0 when evaluating
+# the old net10.0-windows target failed on Linux. Under Uno that target framework no longer exists,
+# and restoring a framework the project does not have would have rewritten the committed lock file
+# for nothing.
+#
+# The configuration, though, must be the one about to be built. Uno.Sdk adds its hot-reload package,
+# Uno.WinUI.DevServer, only when Optimize is false, and decides that at restore time. A restore with no
+# configuration is a Debug restore, and a Release build after it fails with UNOB0019 ("The DevServer
+# package is intended for development builds only").
 function Restore-Dependencies {
-    param($srcDir, $Runtime = 'linux-x64')
+    param($srcDir, $Configuration)
 
     $project = Join-Path $srcDir "Kronos.csproj"
     $assets = Join-Path (Join-Path $srcDir "obj") "project.assets.json"
-    $lockFile = Join-Path $srcDir "packages.lock.json"
 
-    $attemptLabels = @(
-        'every target framework',
-        'net10.0 only',
-        "net10.0 only, $Runtime"
-    )
+    # An assets file left over from an earlier run would make a restore that genuinely failed look
+    # like one that succeeded.
+    Remove-Item $assets -Force -ErrorAction SilentlyContinue
 
-    for ($i = 0; $i -lt $attemptLabels.Count; $i++) {
-        Write-Host ("Restore pass {0} of {1}: {2}" -f ($i + 1), $attemptLabels.Count, $attemptLabels[$i]) -ForegroundColor Blue
+    # Never `-f`: on restore it means --force, and forwards the next argument to MSBuild as a second
+    # project (MSB1008).
+    dotnet restore $project -p:Configuration=$Configuration | Write-Host
+    Assert-DotnetSucceeded "Restore"
 
-        # An assets file left over from an earlier run would make a restore that genuinely failed
-        # look like one that succeeded.
-        Remove-Item $assets -Force -ErrorAction SilentlyContinue
-
-        $backup = $null
-        if ($i -gt 0 -and (Test-Path $lockFile)) {
-            $backup = "$lockFile.kronosbak"
-            Copy-Item $lockFile $backup -Force
-        }
-
-        try {
-            # Literal commands rather than a splatted argument array. `-f` on restore means --force and
-            # forwards the framework as a second project (MSB1008), and an argument array is one step
-            # further from the thing that goes wrong.
-            #
-            # The exit code is recorded rather than asserted, so a failing pass falls through to the
-            # next one instead of ending the build - which is the whole point of having several.
-            $restoreExitCode = 1
-            if ($i -eq 0) {
-                dotnet restore $project | Write-Host
-                $restoreExitCode = $LASTEXITCODE
-            } elseif ($i -eq 1) {
-                dotnet restore $project -p:TargetFramework=net10.0 | Write-Host
-                $restoreExitCode = $LASTEXITCODE
-            } else {
-                dotnet restore $project -p:TargetFramework=net10.0 -r $Runtime | Write-Host
-                $restoreExitCode = $LASTEXITCODE
-            }
-
-            if ($restoreExitCode -eq 0 -and (Test-Path $assets)) {
-                Write-Host ("Restore succeeded on pass {0}: {1}." -f ($i + 1), $attemptLabels[$i]) -ForegroundColor Green
-                return
-            }
-        }
-        finally {
-            if ($backup) {
-                Copy-Item $backup $lockFile -Force
-                Remove-Item $backup -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        if ($i -lt $attemptLabels.Count - 1) {
-            Write-Host "That did not produce the assets file. Trying the next approach." -ForegroundColor Yellow
-            Write-Host ""
-        }
+    if (-not (Test-Path $assets)) {
+        throw "Restore exited successfully but wrote no project.assets.json. The output above is the real error; building with --no-restore would only have reported NETSDK1004, which names the symptom and hides the cause."
     }
-
-    throw "Restore produced no assets file on any of $($attemptLabels.Count) passes. The errors above are the real ones; building with --no-restore would only have reported NETSDK1004, which names the symptom and hides the cause."
 }
 
 function Build-Linux {
     param($Configuration, $Runtime, $NoRestore, $srcDir, $outputDir)
-    
-    Write-Host "=== Building Linux CLI ===" -ForegroundColor Green
-    
+
+    # The same Uno project as Windows, for the Linux runtime identifier. It does not compile yet: the
+    # data layer still has Windows-only code (registry, P/Invoke) that the old net10.0 Linux CLI target
+    # excluded. That is the next project after the Uno migration, not a build-script problem, so this
+    # fails honestly at the build step rather than being skipped.
+    Write-Host "=== Building Linux ===" -ForegroundColor Green
+
     if (-not $NoRestore) {
         Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-        Restore-Dependencies $srcDir $Runtime
+        Restore-Dependencies $srcDir $Configuration
     }
-    
-    Write-Host "Building Linux CLI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --no-restore | Write-Host
-    Assert-DotnetSucceeded "Build (Linux CLI)"
 
-    Write-Host "Publishing Linux CLI for $Runtime..." -ForegroundColor Yellow
+    Write-Host "Building Linux ($Configuration)..." -ForegroundColor Yellow
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0-desktop -c $Configuration -r $Runtime --no-restore | Write-Host
+    Assert-DotnetSucceeded "Build (Linux)"
+
+    Write-Host "Publishing Linux for $Runtime..." -ForegroundColor Yellow
     # Nested Join-Path rather than the three-argument form: -AdditionalChildPath only exists in
     # PowerShell 7+, so the short form failed outright on the Windows PowerShell 5.1 that ships with
     # Windows and is still the default for a double-clicked .ps1.
@@ -264,73 +227,68 @@ function Build-Linux {
     # No --no-build here: publish has to re-evaluate for the RID anyway (runtime pack, self-contained
     # layout), and pairing an RID-less build with an RID'd --no-build publish made this step look for
     # bin/<cfg>/<tfm>/<rid>/ output that the build had never produced.
-    # --no-restore: publish would otherwise restore again, evaluating the Windows target framework on
-    # Linux - the thing the restore passes exist to avoid - and rewriting the committed lock file
-    # outside the protection in Restore-Dependencies. The restore above covered this framework and
-    # this RID, which is exactly what the build step then consumed.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0 -c $Configuration -r $Runtime --self-contained --no-restore -o $outputDir | Write-Host
-    Assert-DotnetSucceeded "Publish (Linux CLI)"
-    
-    Write-Host "Linux CLI published to: $outputDir" -ForegroundColor Green
+    # --no-restore: publish would otherwise run its own restore. The restore above already covered
+    # this framework and this RID, which is exactly what the build step then consumed.
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-desktop -c $Configuration -r $Runtime --self-contained --no-restore -o $outputDir | Write-Host
+    Assert-DotnetSucceeded "Publish (Linux)"
+
+    Write-Host "Linux published to: $outputDir" -ForegroundColor Green
     return $outputDir
 }
 
 function Build-Windows {
     param($Configuration, $NoRestore, $srcDir, $outputDir)
-    
+
     Write-Host "=== Building Windows GUI ===" -ForegroundColor Green
-    
+
+    # The Windows build is Release with KronosPortable=true, whatever -Configuration asked for, because
+    # that is the only Windows build this script produces: the portable zip.
+    #
+    # KronosPortable defines PORTABLE (see the csproj): user data in StoredData beside the executable,
+    # the portable self-update, and the updater's -installer.exe branch compiled out, so a portable
+    # build is not offered an installer asset that a portable zip release never publishes. It replaces
+    # the Release_Portable configuration, which existed only because WinAppSDK could not publish
+    # unpackaged any other way.
+    #
+    # Restore, build and publish all use it. They have to agree: see Restore-Dependencies for the
+    # UNOB0019 failure a Debug restore causes in a Release build.
+    $portableConfiguration = 'Release'
+    if ($Configuration -ne $portableConfiguration) {
+        Write-Host "Note: the Windows portable build is always $portableConfiguration; -Configuration $Configuration applies to Linux only." -ForegroundColor DarkYellow
+    }
+
     if (-not $NoRestore) {
         Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-        Restore-Dependencies $srcDir 'win-x64'
+        Restore-Dependencies $srcDir $portableConfiguration
     }
-    
-    
-    Write-Host "Building Windows GUI ($Configuration)..." -ForegroundColor Yellow
-    dotnet build "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $Configuration -r win-x64 --no-restore | Write-Host
+
+    Write-Host "Building Windows GUI ($portableConfiguration, KronosPortable)..." -ForegroundColor Yellow
+    dotnet build "$srcDir\Kronos.csproj" -f net10.0-desktop -c $portableConfiguration -r win-x64 --no-restore -p:KronosPortable=true | Write-Host
     Assert-DotnetSucceeded "Build (Windows GUI)"
 
-    # The published configuration is Release_Portable, whatever -Configuration asked for.
-    #
-    # Not because Release is broken - a plain `-c Release` publish runs perfectly well. It is because
-    # Release_Portable is this project's designated *unpackaged* configuration: OutputType Exe, with
-    # the JSON assets embedded as resources, and the PORTABLE constant defined. PORTABLE compiles out
-    # the updater's -installer.exe branch, so a portable build is not offered an installer it would
-    # have no way to run. Release leaves that branch in, where it will look for an asset that a
-    # portable zip release does not publish.
-    #
-    # Measured across every combination, because the first artifact published here crashed and the
-    # cause had to be pinned down rather than guessed:
-    #
-    #   -c Release                     plain publish                    runs
-    #   -c Release                     + PublishSingleFile=true        CRASHES  <- what shipped
-    #   -c Release                     + WindowsAppSDKSelfContained    CRASHES
-    #   -c Release_Portable            plain publish                    runs
-    #   -c Release_Portable            + WindowsAppSDKSelfContained    CRASHES
-    #
-    # All three crashes are 0xC000027B, STATUS_STOWED_RESOURCE_NOT_FOUND, in Microsoft.UI.Xaml.dll,
-    # before any window appears.
-    $portableConfiguration = 'Release_Portable'
-
-    Write-Host "Publishing Windows Portable ($portableConfiguration)..." -ForegroundColor Yellow
+    Write-Host "Publishing Windows Portable ($portableConfiguration, KronosPortable)..." -ForegroundColor Yellow
     $outputDir = Join-Path (Join-Path $PSScriptRoot "Output") "win-x64-portable-$timestamp"
-    # --no-restore for the same reason as the Linux publish: it would otherwise restore again and
-    # rewrite the committed lock file outside the protection in Restore-Dependencies.
+    # --no-restore for the same reason as the Linux publish.
     #
-    # Deliberately NOT -p:PublishSingleFile=true. The csproj imports CopyPriFile.targets only when
-    # PublishSingleFile is not true, so single-file means the resource index is never embedded - and
-    # that is exactly the build that was published and did not start. Windows App SDK does not support
-    # single-file publishing at all.
+    # Self-contained, so it needs neither .NET nor - now that the app is on Uno rather than Windows
+    # App SDK - the Windows App Runtime. Uno ships its own UI framework (Uno.UI.dll) and renders through
+    # Skia, so there is no Microsoft.UI.Xaml.dll to resolve from an installed runtime.
     #
-    # Deliberately NOT -p:WindowsAppSDKSelfContained=true either. It reads like it would remove the
-    # runtime prerequisite, but measured it crashes Release_Portable where it otherwise runs. The
-    # artifact therefore needs the Windows App Runtime installed, which the README states.
-    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir @gitMetadataArgs | Write-Host
+    # Deliberately NOT -p:PublishSingleFile=true. Under WinAppSDK it produced a binary that crashed
+    # with 0xC000027B before any window appeared, and the app reads Assets and Translations from disk
+    # beside the executable, which a single-file bundle would not lay out.
+    dotnet publish "$srcDir\Kronos.csproj" -f net10.0-desktop -c $portableConfiguration -r win-x64 --self-contained --no-restore -o $outputDir -p:KronosPortable=true @gitMetadataArgs | Write-Host
     Assert-DotnetSucceeded "Publish (Windows GUI)"
 
-    if (-not (Test-Path (Join-Path $outputDir 'Kronos.exe'))) { Fail "No Kronos.exe in $outputDir." }
-    if (-not (Test-Path (Join-Path $outputDir 'Kronos.pri'))) {
-        Fail "No Kronos.pri in $outputDir. Without the resource index the app cannot start, and it fails at launch rather than saying so."
+    # The files the app cannot start, or cannot look right, without. Kronos.pri was the WinAppSDK
+    # resource index; Uno has none, and its equivalent is its own UI framework being present at all.
+    foreach ($required in @('Kronos.exe', 'Uno.UI.dll', 'Assets\icon.ico', 'Assets\static_manifest.json')) {
+        if (-not (Test-Path (Join-Path $outputDir $required))) {
+            Fail "No $required in $outputDir. The published build is incomplete."
+        }
+    }
+    if (-not (Test-Path (Join-Path $outputDir 'Translations'))) {
+        Fail "No Translations folder in $outputDir. Every string in the app is read from it at runtime."
     }
 
     # Launch it. A build that produces a binary which dies on startup is not a build worth shipping,
@@ -398,7 +356,7 @@ foreach ($output in $outputs) {
 Write-Output "KRONOS_OUTPUT_DIR=$($outputs -join ';')"
 
 Write-Host ""
-Write-Host "To run Linux CLI: ./Kronos --help" -ForegroundColor Yellow
+Write-Host "To run Linux: ./Kronos" -ForegroundColor Yellow
 Write-Host "To run Windows: Double-click Kronos.exe" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Note: Copy the entire output folder to target machine to run." -ForegroundColor Yellow
