@@ -146,31 +146,33 @@ Write-Host "=== Publishing Kronos $Version ===" -ForegroundColor Green
 Write-Host "Notes: $NotesFile" -ForegroundColor Cyan
 Write-Host ""
 
-# Preflight: the ImageSharp key the build needs.
+# Preflight: the ImageSharp licence the build needs.
 #
 # Checked before the tests as well as before the build. Under Uno the test run compiles the app in
-# Release, and ImageSharp refuses any non-Debug build without the key, so a missing key used to surface
+# Release, and ImageSharp refuses any non-Debug build without a licence, so a missing one used to surface
 # as "the test suite failed", pointing at the wrong problem.
 #
-# Passed to build.ps1 as -LicenseKey $env:IMAGESHARP_LICENSE_KEY. When that variable is empty the argument
-# expands to nothing at all, so the child process is launched as `... -File build.ps1 -Target Windows
-# -LicenseKey ` and PowerShell rejects it: "Missing an argument for parameter 'LicenseKey'".
+# Either source will do: the IMAGESHARP_LICENSE_KEY environment variable, or a sixlabors.lic file in src\,
+# which ImageSharp's build step finds by itself. The file is git-ignored (*.lic in .gitignore) and must
+# never be committed.
 #
-# That error is harmless; where it arrived was not. The tag had been pushed and the release created, so
-# v1.59 was published with correct notes and no artifact - the worst state to hand someone, because the
-# release page looks complete and a download simply 404s. Checked here so the run stops before creating
-# anything. -SkipBuild is exempt because it builds nothing.
+# Checked here so the run stops before creating anything: v1.59 was published with correct notes and no
+# artifact because a missing key only failed the build after the tag was pushed and the release created.
+# -SkipBuild is exempt because it builds nothing.
+$licenceFile = Join-Path $PSScriptRoot 'src\sixlabors.lic'
 if (-not $SkipBuild) {
-    if ([string]::IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY)) {
+    if ([string]::IsNullOrWhiteSpace($env:IMAGESHARP_LICENSE_KEY) -and -not (Test-Path -LiteralPath $licenceFile)) {
         Fail @"
-IMAGESHARP_LICENSE_KEY is not set, so the build would fail - and it would fail only after the tag was
-pushed and the release created, leaving a release with no artifact.
+No ImageSharp licence found: IMAGESHARP_LICENSE_KEY is not set and there is no src\sixlabors.lic. The
+build would fail - and it would fail only after the tag was pushed and the release created, leaving a
+release with no artifact.
 
-Set it before publishing, for this session only:
+Provide it one of two ways:
 
-    `$env:IMAGESHARP_LICENSE_KEY = '<your ImageSharp community key>'
+    Copy your sixlabors.lic into src\ (it is git-ignored and will not be committed), or
+    `$env:IMAGESHARP_LICENSE_KEY = '<your ImageSharp community key>'   (this session only)
 
-Nothing has been created on GitHub. Re-run once the key is set.
+Nothing has been created on GitHub. Re-run once the licence is in place.
 
 To rebuild the artifact for a release that already exists, use -ReplaceArtifactOnly, which skips the tag
 and release creation entirely.
@@ -249,8 +251,12 @@ if (-not $SkipBuild) {
     # PowerShell 7, a child Windows PowerShell 5.1 inherits PowerShell 7's PSModulePath and can fail to
     # load its own modules - the fault that silently broke the portable self-update, found the same way.
     $powershellHost = (Get-Process -Id $PID).Path
+    #
+    # The licence key is not passed as an argument. A process's command line can be read by any other
+    # process on the machine, and build.ps1 inherits IMAGESHARP_LICENSE_KEY from this process's environment
+    # anyway - or the build finds src\sixlabors.lic by itself.
     $buildOutput = & $powershellHost -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') `
-        -Target Windows -LicenseKey $env:IMAGESHARP_LICENSE_KEY
+        -Target Windows
     if ($LASTEXITCODE -ne 0) {
         # Pointed at -ReplaceArtifactOnly rather than leaving the caller to work it out. At this point the
         # tag, release and notes are correct; only the artifact is missing. Deleting the release to start
