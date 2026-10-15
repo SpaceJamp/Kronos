@@ -206,7 +206,7 @@ public partial class LibraryPageModel : ObservableObject
         var finalExportZip = string.Empty;
         try
         {
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+            var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
             var fileFilters = new List<FileSystemHelper.FileFilter>()
             {
@@ -420,7 +420,7 @@ public partial class LibraryPageModel : ObservableObject
         }
 
 
-        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+        var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
         var fileFilters = new List<FileSystemHelper.FileFilter>()
         {
@@ -1537,7 +1537,7 @@ public partial class LibraryPageModel : ObservableObject
                 exportName = $"export_{directoryInfo.Name}.zip";
             }
 
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+            var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
             var fileFilters = new List<FileSystemHelper.FileFilter>()
             {

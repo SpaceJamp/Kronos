@@ -28,9 +28,30 @@ public sealed partial class LibraryPage : Page
 
     void MainGridView_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        UpdateItemWidth(e.NewSize.Width);
+    }
+
+    /// <summary>
+    /// The panel only exists once the GridView has been templated, which is after its first SizeChanged.
+    /// Without this the first width was never applied and the tiles sized themselves to their text.
+    /// </summary>
+    void ItemsPanel_Loaded(object sender, RoutedEventArgs e)
+    {
+        UpdateItemWidth(MainGridView.ActualWidth);
+    }
+
+    void UpdateItemWidth(double width)
+    {
+        // The panel is a WrapPanel (see LibraryPage.xaml). The hard cast to ItemsWrapGrid that was here
+        // threw a NullReferenceException on every resize under Uno, which does not implement it.
+        if (width <= 0 || MainGridView.ItemsPanelRoot is not WrapPanel wrapPanel)
+        {
+            return;
+        }
+
         // via: https://stackoverflow.com/a/41141249
-        var columns = Math.Ceiling(MainGridView.ActualWidth / 400);
-        ((ItemsWrapGrid)MainGridView.ItemsPanelRoot).ItemWidth = (e.NewSize.Width / columns) - 1;
+        var columns = Math.Ceiling(width / 400);
+        wrapPanel.ItemWidth = (float)((width / columns) - 1);
     }
 
     private void MainGridView_ItemClick(object sender, ItemClickEventArgs e)

@@ -1876,7 +1876,7 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
     {
         try
         {
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+            var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
             var fileFilters = new List<FileSystemHelper.FileFilter>()
             {

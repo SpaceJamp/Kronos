@@ -207,7 +207,7 @@ public partial class TranslationToolboxWindowModel : ObservableObject
 
             try
             {
-                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                var hWnd = WindowHandleHelper.GetOwnerHandle(window);
                 var fileFilters = new List<FileSystemHelper.FileFilter>()
                 {
                     new FileSystemHelper.FileFilter("JSON files", "*.json"),
@@ -345,7 +345,7 @@ public partial class TranslationToolboxWindowModel : ObservableObject
                     new FileSystemHelper.FileFilter("JSON files", ".json"),
                     new FileSystemHelper.FileFilter("CSV files", ".csv"),
                 };
-                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                var hWnd = WindowHandleHelper.GetOwnerHandle(window);
                 var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "kronos_translation.json", "json");
 
                 // User cancelled.
@@ -563,7 +563,7 @@ public partial class TranslationToolboxWindowModel : ObservableObject
                 {
                     new FileSystemHelper.FileFilter("ZIP files", ".zip"),
                 };
-                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                var hWnd = WindowHandleHelper.GetOwnerHandle(window);
                 var outputPath = FileSystemHelper.SaveFile(hWnd, fileFilters, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "kronos_published_translation.zip", "zip");
 
                 // User cancelled.

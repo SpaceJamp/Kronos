@@ -499,7 +499,7 @@ public partial class SettingsPageModel : ObservableObject
     {
         if (_weakPage.TryGetTarget(out SettingsPage? settingsPage))
         {
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.CurrentApp.MainWindow);
+            var hWnd = WindowHandleHelper.GetOwnerHandle(App.CurrentApp.MainWindow);
 
             var folderPath = string.Empty;
             try

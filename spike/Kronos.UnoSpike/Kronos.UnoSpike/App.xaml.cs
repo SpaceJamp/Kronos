@@ -28,6 +28,15 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
 
     /// <summary>
+    /// The window of the App the host actually launched.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Instance"/> is a second App, constructed by its own static initialiser, which the host
+    /// never launches - so its MainWindowForProbe always throws. Phase 3's probe needs the real one.
+    /// </remarks>
+    public static Window? LaunchedWindow { get; private set; }
+
+    /// <summary>
     /// The main window, for the windowing probe.
     /// </summary>
     /// <remarks>
@@ -44,6 +53,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         MainWindow = new Window();
+        LaunchedWindow = MainWindow;
 #if DEBUG
         MainWindow.UseStudio();
 #endif

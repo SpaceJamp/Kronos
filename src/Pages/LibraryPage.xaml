@@ -96,7 +96,9 @@
 
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid Orientation="Horizontal"/>
+                    <!-- WrapPanel, not ItemsWrapGrid: Uno does not implement ItemsWrapGrid, and the
+                         library rendered no DLLs at all. Same Orientation and ItemWidth. -->
+                    <WrapPanel Orientation="Horizontal" Loaded="ItemsPanel_Loaded"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
 

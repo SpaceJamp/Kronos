@@ -38,6 +38,7 @@
     precisely why it has to be tested rather than assumed.
     -->
     <PackageReference Include="CommunityToolkit.WinUI.Converters" />
+    <PackageReference Include="CommunityToolkit.WinUI.Collections" />
   </ItemGroup>
 
 </Project>
