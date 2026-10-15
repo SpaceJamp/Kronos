@@ -82,9 +82,15 @@
     <PackageIcon>Assets\icon_256.png</PackageIcon>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <!--
-      Bumped to 1.60 for nine fixes from a full audit: an installer update that ran unverified as
-      administrator, a Refresh button that was permanently dead, a game-processing slot that leaked, an
-      HttpClient disposed mid-download, and several failures that surfaced as the wrong message.
+      Bumped to 1.61, which carries a startup-crash fix that 1.60 does not have. The bug was mine and it
+      was in the source for a few days: registering a Ctrl+, accelerator on the root grid from
+      MainWindow's constructor fail-fasts inside Microsoft.UI.Xaml.dll, so the app died during launch
+      with no exception, no log and no window. 1.60 predates it and is unaffected.
+
+      It survived because build.ps1's smoke test - which starts the published binary and fails the
+      build if it dies - called a Fail function that was never defined in that script. The test worked;
+      it detected the crash and then died reporting it, after the build had already printed a green
+      line. Both are fixed, and both now have tests.
 
       This must match the git tag or the updater will compare against the wrong version: it reads the
       release title, and the comparison only offers a release strictly newer than this number.
@@ -92,7 +98,7 @@
       This is now the single source of truth for the version. The Avalonia project, which used to have
       to be kept in step with it, has been removed.
     -->
-    <Version>1.60</Version>
+    <Version>1.61</Version>
     <!--
       Uno's DevServer strips the assembly version attributes from Debug builds, so hot reload does not
       trip over them, and every Debug build then reports itself as 0.0.0.0 - in the log header, and to

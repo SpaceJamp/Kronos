@@ -30,3 +30,6 @@ src/publish/
 # variable instead. See the "ImageSharp licence key" section of README.md.
 *.lic
 sixlabors.lic
+# Staging file for publish-release.ps1. Release notes live on GitHub Releases;
+# keeping a copy in the repo means it goes stale and ships the previous version's text.
+RELEASE_BODY.md
