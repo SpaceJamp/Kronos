@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace Kronos.Converters;
 
-internal class NullableBoolToObjectConverter : DependencyObject, IValueConverter
+internal partial class NullableBoolToObjectConverter : DependencyObject, IValueConverter
 {
     public static readonly DependencyProperty TrueValueProperty = DependencyProperty.Register(
         nameof(TrueValue),

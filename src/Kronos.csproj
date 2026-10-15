@@ -1,16 +1,40 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Uno.Sdk">
+  <!--
+    Uno Platform, not Windows App SDK. The Uno.Sdk version is pinned in the repository's global.json
+    (msbuild-sdks), to the same version spike/Kronos.UnoSpike proved the XAML on; do not float it.
+
+    One target framework, net10.0-desktop, for both Windows and Linux. Which operating system the
+    build is for is decided by the runtime identifier rather than by the target framework - see the
+    WINDOWS / LINUX group below - so the 36 #if WINDOWS blocks keep meaning what they meant before.
+  -->
   <PropertyGroup>
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
     <OutputType>WinExe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <!--
+      SkiaRenderer only. The spike also enabled Lottie, Toolkit and Mvvm; Kronos uses none of the first
+      two, and the Mvvm feature would add an implicit CommunityToolkit.Mvvm that fights the explicitly
+      versioned one below.
+    -->
+    <UnoFeatures>SkiaRenderer;</UnoFeatures>
+    <!--
+      Uno has no generated Main on desktop: the host is built by hand in UnoProgram.cs. On Linux the
+      CLI in Program.cs also has a Main, so the startup object has to be named.
+    -->
+    <StartupObject>Kronos.UnoProgram</StartupObject>
+    <ApplicationTitle>Kronos</ApplicationTitle>
+    <ApplicationId>com.kronos.app</ApplicationId>
+    <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
+    <ApplicationPublisher>Kronos</ApplicationPublisher>
+
     <AssemblyName>Kronos</AssemblyName>
-    <TargetFrameworks>net10.0;net10.0-windows10.0.26100.0</TargetFrameworks>
     <SixLaborsLicenseKey>$([System.Environment]::GetEnvironmentVariable('IMAGESHARP_LICENSE_KEY'))</SixLaborsLicenseKey>
-    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <!--
       RootNamespace matches AssemblyName. They are kept in step deliberately: the embedded resource
       names are derived from the root namespace, and AcknowledgementsPageModel and DLLManager both
       look resources up by name, so letting the two drift silently breaks the static manifest
       (the app then refuses to start) and empties the acknowledgements page.
-  
+
       The storage folder in Storage.cs is "Kronos" rather than the original "DLSS Swapper" for the
       same reason: this is a separate program and should not read or write another product's data.
     -->
@@ -49,10 +73,15 @@
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Configurations>Debug;Release;Debug_Portable;Release_Portable</Configurations>
+    <!--
+      Release_Portable is gone. It existed because WinAppSDK could only be published unpackaged under a
+      configuration of its own; Uno has no such constraint. Note that it also carried the PORTABLE
+      define, which build.ps1 relies on for the shipped zip - that is phase 4's to resolve, together
+      with the rest of build.ps1, which still names the old Windows target framework.
+    -->
+    <Configurations>Debug;Release;Debug_Portable</Configurations>
     <PackageIcon>Assets\icon_256.png</PackageIcon>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
-    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <!--
       Bumped to 1.60 for nine fixes from a full audit: an installer update that ran unverified as
       administrator, a Refresh button that was permanently dead, a game-processing slot that leaked, an
@@ -65,6 +94,17 @@
       to be kept in step with it, has been removed.
     -->
     <Version>1.60</Version>
+    <!--
+      Uno's DevServer strips the assembly version attributes from Debug builds, so hot reload does not
+      trip over them, and every Debug build then reports itself as 0.0.0.0 - in the log header, and to
+      the updater, which compares against it. A true version matters more here than hot reload.
+    -->
+    <UnoDisableGenerateAssemblyInfoWorkaround>true</UnoDisableGenerateAssemblyInfoWorkaround>
+    <!--
+      Uno.Sdk defaults this to false. Logger and BuildInfo read the commit from the "+hash" suffix of the
+      informational version, so without it every build logs "commit: none (not a git build)".
+    -->
+    <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <PublishSingleFile>false</PublishSingleFile>
@@ -72,12 +112,48 @@
     <PublishReadyToRunShowWarnings>false</PublishReadyToRunShowWarnings>
     <CETCompat>false</CETCompat>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      NU1507: several package sources (nuget.org and the Toolkit Labs feed in nuget.config).
+      NETSDK1201: specifying a RID no longer implies self-contained.
+      PRI257: the default language (en) is not one of the included resources (en-US etc.).
+      Same set the Uno template, and so the spike, suppresses.
+    -->
+    <NoWarn>$(NoWarn);NU1507;NETSDK1201;PRI257</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
+  <!--
+    WINDOWS or LINUX, from the runtime identifier.
+
+    These used to come from the target framework: net10.0-windows10.0.26100.0 defined WINDOWS and
+    net10.0 defined LINUX. With one net10.0-desktop target framework for both, the runtime identifier
+    is the only thing left that says which operating system a build is for. A build with no runtime
+    identifier is for the machine doing the building.
+  -->
+  <PropertyGroup Condition="$(RuntimeIdentifier.StartsWith('win')) Or ('$(RuntimeIdentifier)'=='' And $([MSBuild]::IsOSPlatform('Windows')))">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+    <KronosTargetsWindows>true</KronosTargetsWindows>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(KronosTargetsWindows)'!='true'">
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    The Linux command-line interface and its self-updater. Excluded from Windows builds exactly as the
+    old net10.0-windows target excluded them; the GUI's GitHubUpdater covers Windows.
+  -->
+  <ItemGroup Condition="'$(KronosTargetsWindows)'=='true'">
+    <Compile Remove="Program.cs" />
+    <Compile Remove="Updater.cs" />
+  </ItemGroup>
+
+  <!--
+    Excluded everywhere. Its GitHubRelease collides with Data/GitHub/GitHubRelease.cs now that Linux
+    compiles the GUI too, and it was already dead on Linux: Updater.cs declares its own Kronos.GitHubRelease
+    and GitHubAsset, which shadow these.
+  -->
+  <ItemGroup>
+    <Compile Remove="Data\GitHub\GitHubTypes.cs" />
+  </ItemGroup>
 
   <!--
   Build metadata, injected at compile time and read back by src\BuildInfo.cs.
@@ -124,523 +200,45 @@
     <InternalsVisibleTo Include="Kronos.Tests" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-    <OutputType>WinExe</OutputType>
-    <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <WindowsPackageType>None</WindowsPackageType>
-    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
-  </PropertyGroup>
-
-  <!-- Exclude Linux-only files from Windows build -->
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-    <Compile Remove="Program.cs" />
-    <Compile Remove="Updater.cs" />
-  </ItemGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <OutputType>Exe</OutputType>
-    <UseWinUI>false</UseWinUI>
-    <EnableMsixTooling>false</EnableMsixTooling>
-    <StartupObject>Kronos.Program</StartupObject>
-    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
-  </PropertyGroup>
-
-  <!-- Cross-platform core files for the Linux target.
-       The game model, DLL management and library discovery all live here rather than behind
-       #if WINDOWS, so the Linux CLI can actually list and swap DLLs instead of only
-       self-updating. Game discovery still differs: the Windows libraries read the registry,
-       which is why they stay excluded below. -->
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <!-- Core infrastructure -->
-    <Compile Include="Storage.cs" />
-    <Compile Include="Database.cs" />
-    <Compile Include="WinTrust.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Logger.cs" />
-    <Compile Include="BuildInfo.cs" />
-    <Compile Include="ProxySettings.cs" />
-    <Compile Include="Settings.cs" />
-    <Compile Include="SourceGenerationContext.cs" />
-
-    <!-- Game model and DLL management -->
-    <Compile Include="Data\GameAsset.cs" />
-    <!-- Used by Game's swap and reset, which are both compiled for Linux, so it has to be listed too. -->
-    <Compile Include="Data\AtomicFile.cs" />
-    <Compile Include="Data\Game.cs" />
-    <Compile Include="Data\GameHistory.cs" />
-    <Compile Include="Data\GameManager.cs" />
-    <Compile Include="Data\DLLManager.cs" />
-    <Compile Include="Data\DLLRecord.cs" />
-    <Compile Include="Data\Manifest.cs" />
-    <Compile Include="Data\UnknownGameAsset.cs" />
-    <Compile Include="Data\ManuallyAdded\ManuallyAddedLibrary.cs" />
-    <Compile Include="Data\ManuallyAdded\ManuallyAddedGame.cs" />
-
-    <!--
-      Only the game *models* from these libraries, not the libraries themselves. GameManager
-      pattern-matches on XboxGame/BattleNetGame when launching a title; the discovery code that
-      reads WindowsApps and product.db is registry and Windows-path bound, so it stays excluded.
-    -->
-    <Compile Include="Data\Xbox\XboxGame.cs" />
-    <Compile Include="Data\BattleNet\BattleNetGame.cs" />
-    <Compile Include="Updater.cs" />
-
-    <!-- Core data models (no UI dependencies) -->
-    <Compile Include="Data\GameAssetType.cs" />
-    <Compile Include="Data\DLLImportResult.cs" />
-    <Compile Include="Data\KnownDLLs.cs" />
-    <Compile Include="Data\HashedKnownDLL.cs" />
-    <Compile Include="Data\GameLibrarySettings.cs" />
-    <Compile Include="Data\LocalRecord.cs" />
-    <Compile Include="Data\NVIDIA\ListBucketResult.cs" />
-    <Compile Include="Data\NVIDIA\ListBucketResultContents.cs" />
-    <Compile Include="Data\Steam\SteamStateFlag.cs" />
-    <Compile Include="Data\Steam\Manifest\LibraryFoldersVDF.cs" />
-    <Compile Include="Data\Steam\SteamAPI\*.cs" />
-    <Compile Include="Data\Steam\Manifest\AppManifestACF.cs" />
-    <Compile Include="Data\GitHub\GitHubTypes.cs" />
-    
-
-    <!-- Helpers (cross-platform only) -->
-    <Compile Include="UiDispatcher.cs" />
-    <Compile Include="Http.cs" />
-    <Compile Include="Helpers\PathHelpers.cs" />
-    <Compile Include="Helpers\LanguageManager.cs" />
-    <Compile Include="Helpers\DllBackupStack.cs" />
-    <Compile Include="Helpers\RepackDetector.cs" />
-    <Compile Include="Helpers\CommonHelpers.cs" />
-    <Compile Include="Helpers\FileDownloader.cs" />
-    <Compile Include="Helpers\ResourceHelper.cs" />
-    <Compile Include="Helpers\FSR31\FSR31Helper.cs" />
-    <Compile Include="Helpers\FSR31\FxxConsts.cs" />
-    <!--
-      PortableSelfUpdate.cs is deliberately absent. It replaces a running portable build with a newer
-      one by waiting on the current process id and relaunching the executable, which are Windows
-      behaviours with no meaning here. This group sets EnableDefaultCompileItems to false precisely
-      so the Linux target is an explicit list rather than everything under src/.
-    -->
-    <Compile Include="Data\DLLAssetTypeInfo.cs" />
-    <Compile Include="Data\Steam\SteamCoverUrlResolver.cs" />
-
-    <!-- Extensions -->
-    <Compile Include="Extensions\FileVersionInfoExtensions.cs" />
-    <Compile Include="Extensions\VersionExtensions.cs" />
-    <Compile Include="Extensions\FileStreamExtensions.cs" />
-
-    <!-- Interfaces -->
-    <Compile Include="Interfaces\IGameLibrary.cs" />
-
-    <!-- JSON Converters -->
-    <Compile Include="JsonConverters\HexStringToUintConverter.cs" />
-
-    <!-- Language -->
-    <Compile Include="Language\TranslationRow.cs" />
-
-    <!--
-      Translations for the Linux target. On Windows these .resw files are compiled by the XAML
-      compiler into a PRI that ResourceHelper reads through WinUI's ResourceManager; there is no PRI
-      here, so ResourceHelper parses the XML directly. It has to be copied to the output directory
-      rather than embedded, because it looks for it at Translations/<language>/Resources.resw next
-      to the executable.
-    -->
-    <Content Include="Translations\**\*.resw" CopyToOutputDirectory="PreserveNewest" />
-
-    <!-- Messages -->
-    <Compile Include="Messages\GameLibrariesStateChangedMessage.cs" />
-    <Compile Include="Messages\GameLibrariesOrderChangedMessage.cs" />
-
-    <!-- Attributes -->
-    <Compile Include="Attributes\TranslationPropertyAttribute.cs" />
-
-    <!-- EA App (cross-platform data models) -->
-    <Compile Include="Data\EAApp\GameSearchResult.cs" />
-  </ItemGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Release' OR '$(Configuration)'=='Release_Portable'">
-    <Optimize>True</Optimize>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)'=='Debug_Portable'">
     <DefineConstants>$(DefineConstants);DEBUG;PORTABLE</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)'=='Release_Portable'">
-    <DefineConstants>$(DefineConstants);RELEASE;PORTABLE</DefineConstants>
-    <!--
-      WinExe, not Exe. The portable configuration used to override the output type to Exe, which is the
-      *console* subsystem: launching Kronos then opened a black command prompt window behind the app and
-      left it there for as long as the app ran. The Windows target framework already sets WinExe at the
-      top of this file, and this group was silently undoing it for the one configuration that gets
-      shipped to users.
-
-      Console output is not wanted here anyway. Serilog.Sinks.Console is referenced and its writes
-      simply go nowhere without an attached console, which is the right outcome - the app logs to its
-      own log file under the storage folder.
-    -->
-    <OutputType>WinExe</OutputType>
-  </PropertyGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-      <Content Remove="Assets\dlss_presets.json" />
-      <Content Remove="Assets\dlss_d_presets.json" />
-      <Content Remove="Assets\dlss_g_presets.json" />
-      <Content Remove="Assets\ea_app_titles.json" />
-      <Compile Remove="Data\GitHub\GitHubTypes.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)'=='Release_Portable'">
-    <EmbeddedResource Update="Assets\static_manifest.json" />
-    <EmbeddedResource Update="Assets\dlss_presets.json" />
-    <EmbeddedResource Update="Assets\dlss_d_presets.json" />
-    <EmbeddedResource Update="Assets\dlss_g_presets.json" />
-    <EmbeddedResource Update="Assets\ea_app_titles.json" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-    <None Remove="Assets\BadgeLogo.scale-100.png" />
-    <None Remove="Assets\BadgeLogo.scale-125.png" />
-    <None Remove="Assets\BadgeLogo.scale-150.png" />
-    <None Remove="Assets\BadgeLogo.scale-200.png" />
-    <None Remove="Assets\BadgeLogo.scale-400.png" />
-    <None Remove="Assets\LargeTile.scale-100.png" />
-    <None Remove="Assets\LargeTile.scale-125.png" />
-    <None Remove="Assets\LargeTile.scale-150.png" />
-    <None Remove="Assets\LargeTile.scale-200.png" />
-    <None Remove="Assets\LargeTile.scale-400.png" />
-    <None Remove="Assets\SmallTile.scale-100.png" />
-    <None Remove="Assets\SmallTile.scale-125.png" />
-    <None Remove="Assets\SmallTile.scale-150.png" />
-    <None Remove="Assets\SmallTile.scale-200.png" />
-    <None Remove="Assets\SmallTile.scale-400.png" />
-    <None Remove="Assets\SplashScreen.scale-100.png" />
-    <None Remove="Assets\SplashScreen.scale-125.png" />
-    <None Remove="Assets\SplashScreen.scale-150.png" />
-    <None Remove="Assets\SplashScreen.scale-200.png" />
-    <None Remove="Assets\SplashScreen.scale-400.png" />
-    <None Remove="Assets\Square150x150Logo.scale-100.png" />
-    <None Remove="Assets\Square150x150Logo.scale-125.png" />
-    <None Remove="Assets\Square150x150Logo.scale-150.png" />
-    <None Remove="Assets\Square150x150Logo.scale-200.png" />
-    <None Remove="Assets\Square150x150Logo.scale-400.png" />
-    <None Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
-    <None Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
-    <None Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
-    <None Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-32.png" />
-    <None Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-48.png" />
-    <None Remove="Assets\Square44x44Logo.altform-unplated_targetsize-16.png" />
-    <None Remove="Assets\Square44x44Logo.altform-unplated_targetsize-24.png" />
-    <None Remove="Assets\Square44x44Logo.altform-unplated_targetsize-256.png" />
-    <None Remove="Assets\Square44x44Logo.altform-unplated_targetsize-32.png" />
-    <None Remove="Assets\Square44x44Logo.altform-unplated_targetsize-48.png" />
-    <None Remove="Assets\Square44x44Logo.scale-100.png" />
-    <None Remove="Assets\Square44x44Logo.scale-125.png" />
-    <None Remove="Assets\Square44x44Logo.scale-150.png" />
-    <None Remove="Assets\Square44x44Logo.scale-200.png" />
-    <None Remove="Assets\Square44x44Logo.scale-400.png" />
-    <None Remove="Assets\Square44x44Logo.targetsize-16.png" />
-    <None Remove="Assets\Square44x44Logo.targetsize-24.png" />
-    <None Remove="Assets\Square44x44Logo.targetsize-256.png" />
-    <None Remove="Assets\Square44x44Logo.targetsize-32.png" />
-    <None Remove="Assets\Square44x44Logo.targetsize-48.png" />
-    <None Remove="Assets\StoreLogo.scale-100.png" />
-    <None Remove="Assets\StoreLogo.scale-125.png" />
-    <None Remove="Assets\StoreLogo.scale-150.png" />
-    <None Remove="Assets\StoreLogo.scale-200.png" />
-    <None Remove="Assets\StoreLogo.scale-400.png" />
-    <None Remove="Assets\Wide310x150Logo.scale-100.png" />
-    <None Remove="Assets\Wide310x150Logo.scale-125.png" />
-    <None Remove="Assets\Wide310x150Logo.scale-150.png" />
-    <None Remove="Assets\Wide310x150Logo.scale-200.png" />
-    <None Remove="Assets\Wide310x150Logo.scale-400.png" />
-    <None Remove="DiagnosticsWindow.xaml" />
-    <None Remove="DLSS Swapper_TemporaryKey.pfx" />
-    <None Remove="FailToLaunchWindow.xaml" />
-    <None Remove="global.json" />
-    <None Remove="Pages\AcknowledgementsPage.xaml" />
-    <None Remove="Pages\NetworkTesterWindow.xaml" />
-    <None Remove="CopyPriFile.targets" />
-    <None Remove="Themes\FakeContentDialogStyle.xaml" />
-    <None Remove="TranslationToolboxWindow.xaml" />
-    <None Remove="UserControls\DLLPickerControl.xaml" />
-    <None Remove="UserControls\GameControl.xaml" />
-    <None Remove="UserControls\GameHistoryControl.xaml" />
-    <None Remove="UserControls\ImportDLLSummaryControl.xaml" />
-    <None Remove="UserControls\ImportSystemDisabledView.xaml" />
-    <None Remove="UserControls\ManuallyAddGameControl.xaml" />
-    <None Remove="UserControls\MultipleDLLsFoundControl.xaml" />
-    <None Remove="UserControls\NewDLLsControl.xaml" />
-    <None Remove="UserControls\NGXModelImporter.xaml" />
-    <None Remove="UserControls\ProxySettingsControl.xaml" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
+  <ItemGroup>
     <EmbeddedResource Include="Acknowledgements\**\notes.md" />
     <EmbeddedResource Include="Acknowledgements\**\license.txt" />
+    <Content Remove="Assets\static_manifest.json" />
     <EmbeddedResource Include="Assets\static_manifest.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
+    <!--
+      Read from disk next to the executable (NVAPIHelper, EAAppLibrary), so copied rather than embedded.
+    -->
+    <Content Update="Assets\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Assets\Fonts\Segoe-Fluent-Icons.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Assets\icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Assets\icon_256.png" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      Translations are read at runtime from Translations/<language>/Resources.resw next to the
+      executable, by ResourceHelper on Linux and by the .resw-backed ResourceLoader on Windows.
+    -->
+    <Content Include="Translations\**\*.resw" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <EmbeddedResource Include="Assets\static_manifest.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-  </ItemGroup>
-
-
-
-    <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-        <Content Update="Assets\BadgeLogo.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\BadgeLogo.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\BadgeLogo.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\BadgeLogo.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\BadgeLogo.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Fonts\Segoe-Fluent-Icons.ttf">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\icon.ico">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\icon_256.png">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\LargeTile.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\LargeTile.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\LargeTile.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\LargeTile.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\LargeTile.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SmallTile.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SmallTile.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SmallTile.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SmallTile.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SmallTile.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SplashScreen.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SplashScreen.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SplashScreen.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SplashScreen.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\SplashScreen.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square150x150Logo.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square150x150Logo.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square150x150Logo.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square150x150Logo.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square150x150Logo.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-lightunplated_targetsize-32.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-lightunplated_targetsize-48.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-unplated_targetsize-16.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-unplated_targetsize-24.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-unplated_targetsize-256.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-unplated_targetsize-32.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.altform-unplated_targetsize-48.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.targetsize-16.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.targetsize-24.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.targetsize-256.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.targetsize-32.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Square44x44Logo.targetsize-48.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\StoreLogo.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\StoreLogo.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\StoreLogo.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\StoreLogo.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\StoreLogo.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Wide310x150Logo.scale-100.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Wide310x150Logo.scale-125.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Wide310x150Logo.scale-150.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Wide310x150Logo.scale-200.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\Wide310x150Logo.scale-400.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-    <EmbeddedResource Update="Assets\dlss_presets.json" />
-    <EmbeddedResource Update="Assets\dlss_d_presets.json" />
-    <EmbeddedResource Update="Assets\dlss_g_presets.json" />
-    <EmbeddedResource Update="Assets\ea_app_titles.json" />
-    <EmbeddedResource Update="Assets\static_manifest.json" />
-    <None Update="Asssets\icon_256.png">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-        <Page Update="UserControls\NGXModelImporter.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\ProxySettingsControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\GameHistoryControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="TranslationToolboxWindow.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="Pages\AcknowledgementsPage.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\ImportDLLSummaryControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\ImportSystemDisabledView.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="DiagnosticsWindow.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="Pages\NetworkTesterWindow.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="FailToLaunchWindow.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\MultipleDLLsFoundControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\NewDLLsControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\DLLPickerControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="Themes\FakeContentDialogStyle.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\GameControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-        <Page Update="UserControls\ManuallyAddGameControl.xaml">
-          <Generator>MSBuild:Compile</Generator>
-        </Page>
-    </ItemGroup>
-
-  <!-- Let the unit test project exercise the internal helpers (DLLManager, DLLAssetTypes, ...). -->
   <ItemGroup>
-    <InternalsVisibleTo Include="Kronos.Tests" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
     <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />
     <PackageReference Include="AsyncAwaitBestPractices.MVVM" Version="10.0.0" />
     <PackageReference Include="ByteSize" Version="2.1.2" />
-    <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.260416-build.2580" />
+    <!--
+      CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock is gone: it ships only net*-windows assets
+      and has no Uno build. src/Compat/MarkdownTextBlock.cs stands in for it until phase 2.
+    -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
+    <!--
+      The Uno build of the same DataGrid: same CommunityToolkit.WinUI.UI.Controls namespace, so
+      TranslationToolboxWindow.xaml compiles unchanged. The WinAppSDK package (7.1.2) is windows-only.
+    -->
+    <PackageReference Include="Uno.CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.206" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
@@ -650,96 +248,30 @@
     <PackageReference Include="CommunityToolkit.WinUI.Helpers" Version="8.2.251219" />
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
     <!--
-    WebView2 is referenced but used by nothing. There is no WebView2 control, no CoreWebView2, no XAML
-    element and no call site anywhere in src/. Kronos does not host a browser.
-
-    It is here because Microsoft.WindowsAppSDK.WinUI depends on Microsoft.Web.WebView2 >= 1.0.3179.45,
-    and 1.0.3179.45 is unlisted on nuget.org. NuGet will not use an unlisted version to satisfy a
-    transitive *range* from a remote source, so with this line removed the restore fails outright:
-
-      error NU1102: Unable to find package Microsoft.Web.WebView2 with version (>= 1.0.3179.45)
-
-    A direct reference at a listed version lifts the resolved version above the unlisted one. That is
-    the whole reason for it. PrivateAssets stops it flowing to consumers, but it is still restored and
-    still ships - WinAppSDK needs the assembly present.
-
-    Do not "clean this up" without checking that. A test in WindowsVersionSupportTests fails if the
-    reference is removed, and explains why it has to stay.
+    Microsoft.Web.WebView2 is gone. It was referenced only to lift WinAppSDK's transitive dependency past
+    an unlisted version (NU1102), and nothing in src/ used it. Under Uno it is actively harmful: its
+    CoreWebView2 collides with Uno.UI's own type of the same name in the generated bindable metadata
+    (CS0433), so it had to go in phase 1 rather than phase 2.
     -->
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.298">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260529003" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="4.1.2" />
     <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
     <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="SourceGear.sqlite3" Version="3.50.4.5" />
     <PackageReference Include="sqlite-net-e" Version="1.11.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.9" />
     <PackageReference Include="System.Management" Version="10.0.9" />
     <PackageReference Include="ValveKeyValue" Version="0.70.0.499" />
     <PackageReference Include="WinUI.TableView" Version="1.4.1" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
-    <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <PackageReference Include="AsyncAwaitBestPractices" Version="10.0.0" />
-    <PackageReference Include="ByteSize" Version="2.1.2" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="FuzzySharp" Version="2.0.2" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.2" />
-    <PackageReference Include="Serilog" Version="4.3.1" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="sqlite-net-e" Version="1.11.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-    <PackageReference Include="System.Management" Version="10.0.9" />
-    <PackageReference Include="ValveKeyValue" Version="0.70.0.499" />
-    <PackageReference Include="YamlDotNet" Version="18.1.0" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
-  </ItemGroup>
-
-  <!--
-  Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
-  Tools extension to be activated for this project even if the Windows App SDK Nuget
-  package has not yet been restored.
-  -->
-  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <ProjectCapability Include="Msix" />
-  </ItemGroup>
-
-  <!--
-  Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
-  Explorer "Package and Publish" context menu entry to be enabled for this project even if
-  the Windows App SDK Nuget package has not yet been restored.
-  -->
-  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
-
-  <!--
-  <ItemGroup Condition="'$(Configuration)'=='Release'">
-    <NativeLibrary Include="../extras/RTSSHooksCompatibility/RTSSHooksCompatibility.obj" />
-  </ItemGroup>
-  -->
-
-  <!-- Copy all "Resources.resw" files in the "Translations" folder to the output folder. -->
-  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0'">
-    <Content Include="Translations\**\*.resw">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <Import Project="CopyPriFile.targets" Condition="'$(TargetFramework)'=='net10.0-windows10.0.26100.0' And '$(PublishSingleFile)'!='true'" />
 
 </Project>

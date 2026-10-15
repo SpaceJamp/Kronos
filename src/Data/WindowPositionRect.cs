@@ -72,7 +72,8 @@ public class WindowPositionRect
             Y = 0;
         }
 
-        return new RectInt32(X, Y, Width, Height);
+        // Initialiser rather than constructor: Uno's RectInt32 has no four-argument constructor.
+        return new RectInt32 { X = X, Y = Y, Width = Width, Height = Height };
     }
 
     public void UpdatePosition(PointInt32 position)

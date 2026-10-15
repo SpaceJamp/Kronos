@@ -151,25 +151,19 @@ public class WindowsVersionSupportTests
     // ------------------------------------------------------------------ WebView2
 
     [Fact]
-    public void TheWebView2ReferenceIsThereOnlyBecauseWinAppSdkNeedsIt()
+    public void TheWebView2ReferenceIsGoneWithWinAppSdk()
     {
-        // Kronos does not use WebView2 - see the next test - but the reference cannot be removed, and the
-        // reason is not obvious enough to be left to memory.
+        // Kronos does not use WebView2 - see the next test. The reference existed only because
+        // Microsoft.WindowsAppSDK.WinUI depended on Microsoft.Web.WebView2 >= 1.0.3179.45, an unlisted
+        // version NuGet would not resolve transitively (NU1102), so a direct reference had to lift it.
         //
-        // Microsoft.WindowsAppSDK.WinUI depends on Microsoft.Web.WebView2 >= 1.0.3179.45, and that exact
-        // version is unlisted on nuget.org. NuGet will not use an unlisted version to satisfy a transitive
-        // *range* from a remote source. With the direct reference removed, restore fails outright with
-        // NU1102 - so anyone tidying it away meets a hard build break rather than a warning.
-        //
-        // This was tried, on the reasonable grounds that an unused reference is dead weight. It is dead
-        // weight that cannot be deleted until WinAppSDK stops asking for it.
+        // Under Uno it is worse than dead weight: Uno.UI defines its own CoreWebView2, and with the
+        // package referenced the generated bindable metadata fails with CS0433, an ambiguous type. So it
+        // must not come back, and neither must the WinAppSDK package that once made it necessary.
         var project = File.ReadAllText(ReadRepoFile("src", "Kronos.csproj"));
 
-        Assert.Contains("Microsoft.Web.WebView2", project, StringComparison.Ordinal);
-
-        // And the reason has to be written down, because the reference looks like a bug and is not.
-        Assert.Contains("NU1102", project, StringComparison.Ordinal);
-        Assert.Contains("unlisted", project, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotMatch(@"<PackageReference\s+Include=""Microsoft\.Web\.WebView2""", project);
+        Assert.DoesNotMatch(@"<PackageReference\s+Include=""Microsoft\.WindowsAppSDK""", project);
     }
 
     [Fact]
