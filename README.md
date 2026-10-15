@@ -62,8 +62,8 @@ compile errors. The plan, in phases that each end with something runnable, is in
 | 1 | Project onto `Uno.Sdk` 6.7.30, single `net10.0-desktop` target | **Done.** All 28 XAML files compile unchanged. |
 | 2 | Replace the remaining Windows-only packages | **Done.** |
 | 3 | Dialogs, pickers and images | **Done.** A DLSS swap was run end to end through the UI and verified on disk. |
-| 4 | `build.ps1`, `publish-release.ps1`, release notes | **Next.** The scripts still target WinUI; build this branch with `dotnet build src/Kronos.csproj -r win-x64`. |
-| 5 | Cut `main` over to Uno | Not started. |
+| 4 | `build.ps1`, `build.sh`, `publish-release.ps1` | **Done.** The scripts build `net10.0-desktop`, and the portable zip is a self-contained Release build with `PORTABLE` defined, needing no Windows App Runtime. |
+| 5 | Cut `main` over to Uno | **Next.** |
 
 Known gaps on Windows, found while testing phase 3:
 
@@ -73,8 +73,11 @@ Known gaps on Windows, found while testing phase 3:
   logs an error on startup. Downloads still work.
 - **Window state:** the window can reopen minimised after a forced close, and `RepaintWindow` still
   uses an invalid window handle.
-- **Not yet verified:** whether the Uno build runs without the Windows App Runtime installed, and
-  whether it renders on a real Linux desktop.
+- **Windows App Runtime:** the portable build ships none of its files and loads none of its modules
+  (checked on a running build). It has not yet been run on a machine that has never had the runtime
+  installed.
+- **Not yet verified:** whether the app renders on a real Linux desktop. The Linux build does not
+  compile yet.
 
 ### The original evaluation
 
@@ -104,13 +107,15 @@ Full detail, including what it does *not* solve, is in
 
 One deployment consequence is already known: Uno's text engine loads ICU directly, so
 `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` does **not** work — unlike in a plain .NET app. Any Linux
-distro targeted needs `libicu`. Conversely, Uno drops the Windows App Runtime, which would remove the
-"install the App Runtime or Kronos exits silently" problem described under [Getting it](#getting-it).
+distro targeted needs `libicu`. Conversely, Uno drops the Windows App Runtime, which removes the
+"install the App Runtime or Kronos exits silently" problem described under [Getting it](#getting-it):
+the Uno build on this branch carries its own UI framework instead.
 
 ## Ownership of the Linux work
 
-**The Linux port is authored, owned and maintained by this repository's maintainer. It is not
-upstream's work, and upstream DLSS Swapper holds no rights over it.**
+**The Linux port, and the move of the whole user interface from WinUI 3 to Uno Platform, are
+authored, owned and maintained by this repository's maintainer. Neither is upstream's work, and
+upstream DLSS Swapper holds no rights over either.**
 
 This matters because the two projects are easy to confuse: they share a name, a licence and a large
 amount of shared code. Concretely:
@@ -118,6 +123,11 @@ amount of shared code. Concretely:
 - The Linux CLI, its `Program.cs` entry point, the cross-platform core that was extracted to serve it
   (`UiDispatcher`, `Http`, the shared `Storage` and `Database` layers, the Linux `Updater`), and the
   `build.sh` script were **written for this repository**.
+- The **Uno Platform migration** was done for this repository too: the evaluation spike, the
+  windowing port, the move to a single `net10.0-desktop` target, the replacement of every
+  Windows-only UI package, the dialog, picker and image fixes, and the build and release pipeline
+  that now publishes a portable build with no Windows App Runtime. It is what lets Windows and
+  Linux share one GUI codebase. Upstream DLSS Swapper is still a WinUI 3 application.
 - `NOTICE` records the same thing formally: *Kronos modifications copyright (c) 2024-2026 SpaceJamp*,
   including Linux CLI support, with upstream's own copyright notices preserved untouched.
 - Anything here that traces back to DLSS Swapper is still beeradmoore's, and is credited as such under
@@ -128,8 +138,8 @@ amount of shared code. Concretely:
 > is licensed under [GPL-3.0](LICENSE), which is what makes those contributions possible in the first
 > place. Copyright in a GPL project identifies who wrote and may relicense a given piece of work; it
 > does not withdraw the licence, and GPL-3.0 §5(a) requires only that the modifications be stated —
-> which [What changed](#what-changed) and `NOTICE` both do. This section exists so the Linux work is
-> not mistaken for something upstream shipped or could speak for.
+> which [What changed](#what-changed) and `NOTICE` both do. This section exists so the Linux work and
+> the Uno migration are not mistaken for something upstream shipped or could speak for.
 
 ## Requirements
 
@@ -169,11 +179,12 @@ software.
 [Releases page](https://github.com/SpaceJamp/Kronos/releases). Unzip anywhere and run `Kronos.exe`.
 No installer, no console window, and no .NET runtime required.
 
-> **Needs the Windows App Runtime.** This is an unpackaged WinUI application, so it resolves
-> `Microsoft.UI.Xaml.dll` from the Windows App Runtime rather than carrying a copy. If `Kronos.exe`
-> exits immediately without showing a window, install the
+> **Released builds need the Windows App Runtime.** The releases so far are the unpackaged WinUI
+> application from `main`, which resolves `Microsoft.UI.Xaml.dll` from the Windows App Runtime rather
+> than carrying a copy. If `Kronos.exe` exits immediately without showing a window, install the
 > [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) —
-> upstream's signed installer installs it as part of setup.
+> upstream's signed installer installs it as part of setup. The Uno build on this branch does not
+> need it: it carries its own UI framework.
 
 > **These builds are unsigned.** Expect SmartScreen to warn; that is inherent to distributing
 > binaries without signing credentials, not a sign of tampering. GitHub publishes a SHA256 for
@@ -204,33 +215,38 @@ The Linux port has no store detection yet — see [Platform support](#platform-s
 
 ```powershell
 # Build
-dotnet build ".\src\Kronos.csproj" -f net10.0-windows10.0.26100.0 -c Release
+dotnet build ".\src\Kronos.csproj" -f net10.0-desktop -c Debug -r win-x64
 
-# Test (654 tests)
-dotnet test ".\Kronos.sln" -c Release
+# Test (658 tests)
+dotnet test ".\tests\Kronos.Tests\Kronos.Tests.csproj" -r win-x64
 
 # Self-contained portable build → Output/win-x64-portable-<timestamp>/
-.\build.ps1 -Target Windows
+.\build.ps1 -Target Windows -LicenseKey <your ImageSharp key>
 ```
 
-Or build the solution directly: `dotnet build ".\Kronos.sln" -c Release`.
+**Release builds need your ImageSharp licence key**, Debug builds do not: ImageSharp refuses to
+compile into any configuration whose name does not start with `Debug` without one. See
+[The ImageSharp licence key](#the-imagesharp-licence-key).
 
-All four configurations (`Debug`, `Release`, `Debug_Portable`, `Release_Portable`) build. `Debug`
-writes to a separate `DEBUG` folder under `%LOCALAPPDATA%\Kronos`, and the `Portable`
-configurations keep all data inside the build output, so neither touches a real installation.
+The configurations are `Debug`, `Release` and `Debug_Portable`. `Debug` writes to a separate `DEBUG`
+folder under `%LOCALAPPDATA%\Kronos`, and the portable builds keep all data inside the build output,
+so neither touches a real installation. The portable release build is `Release` with
+`-p:KronosPortable=true`, which defines `PORTABLE`; it replaces the old `Release_Portable`
+configuration, which existed only because Windows App SDK could not publish unpackaged otherwise.
 
 **x64 only, for the project as well as the output.** `<Platforms>` is `x64` and the runtime is
 `win-x64`. Do not add a 32-bit configuration; see the warning at the top.
 
-`build.ps1` publishes the `Release_Portable` configuration, which is the one designed to run without
-package identity. It then **launches the binary it just published** and fails if it exits during the
-first twelve seconds, or if `Kronos.pri` is missing — a build that produces something which dies on
-startup is not a build worth shipping, and neither failure is visible from the exit codes alone.
+`build.ps1` restores, builds and publishes that portable Release build, always in the same
+configuration. A Debug restore followed by a Release build fails on Uno with `UNOB0019`. It then checks
+that `Kronos.exe`, `Uno.UI.dll`, `Assets` and `Translations` are all there, and **launches the binary
+it just published**, failing if it exits during the first twelve seconds. A build that produces
+something which dies on startup is not a build worth shipping, and that failure is not visible from
+the exit codes alone.
 
 ### Linux
 
 ```bash
-# CLI
 ./build.sh
 # → Output/linux-x64-<timestamp>/Kronos
 
@@ -238,9 +254,15 @@ startup is not a build worth shipping, and neither failure is visible from the e
 .\build.ps1 -Target Linux
 ```
 
+> [!WARNING]
+> **On this branch the Linux build does not compile yet.** Both scripts now build the same Uno
+> project for `linux-x64`, and the data layer still has 49 errors from Windows-only code that the old
+> `net10.0` Linux CLI target used to exclude. The scripts fail at the build step rather than skipping
+> it. The CLI commands below describe `main`.
+
 Output is self-contained — no .NET runtime needed on the target machine.
 
-**The .NET 10 SDK is installed for you if it is missing.** The project targets `net10.0`, which
+**The .NET 10 SDK is installed for you if it is missing.** The project targets `net10.0-desktop`, which
 needs the .NET 10 SDK specifically — an installed .NET 8 or 9 will not build it. `build.sh` checks
 for the right major version and, if it is not there, downloads Microsoft's official
 [`dotnet-install.sh`](https://dot.net/v1/dotnet-install.sh) and installs into `~/.dotnet`. That is a
@@ -423,7 +445,7 @@ cleared on failure instead of leaving buttons permanently disabled.
 
 **Maintainability.** Per-DLL-type logic is driven from one table
 ([`src/Data/DLLAssetTypeInfo.cs`](src/Data/DLLAssetTypeInfo.cs)) instead of nine parallel if/else
-chains. There is an xUnit suite in [`tests/`](tests/) — 654 tests covering backup decisions, swap
+chains. There is an xUnit suite in [`tests/`](tests/) — 658 tests covering backup decisions, swap
 versioning, mass-update scope, release parsing, the games page markup and the build scripts. There is
 no CI, so run it yourself before pushing: `dotnet test ".\Kronos.sln" -c Release`.
 
