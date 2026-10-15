@@ -127,6 +127,15 @@ public class SettingsPageModelTranslationProperties : LocalizedViewModelBase
     public string LoggingText => ResourceHelper.GetString("SettingsPage_Logging");
 
     [TranslationProperty]
+    public string RenderingText => ResourceHelper.GetString("SettingsPage_Rendering");
+
+    [TranslationProperty]
+    public string RenderingCurrentlyUsingText => ResourceHelper.GetString("SettingsPage_Rendering_CurrentlyUsing");
+
+    [TranslationProperty]
+    public string RenderingInfo => ResourceHelper.GetString("SettingsPage_Rendering_Info");
+
+    [TranslationProperty]
     public string AboutText => ResourceHelper.GetString("SettingsPage_About");
 
     [TranslationProperty]

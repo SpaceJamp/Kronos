@@ -292,6 +292,28 @@ public class Settings
 #endif
 
 
+    RendererPreference _rendererPreference = RendererPreference.Vulkan;
+
+    /// <summary>
+    /// The GPU API the UI is drawn with. Read once, before the UI starts (see UnoProgram), so a change
+    /// applies the next time Kronos starts. Either way, Kronos draws on the CPU if the GPU cannot be used.
+    /// </summary>
+    public RendererPreference RendererPreference
+    {
+        get { return _rendererPreference; }
+        set
+        {
+            if (_rendererPreference != value)
+            {
+                _rendererPreference = value;
+                if (_autoSave)
+                {
+                    SaveJson();
+                }
+            }
+        }
+    }
+
     int _gridViewItemWidth = 200;
     public int GridViewItemWidth
     {

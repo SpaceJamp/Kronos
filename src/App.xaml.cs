@@ -243,6 +243,7 @@ public sealed partial class App : Application
         var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         Logger.Info($"App launch - v{versionString}", null);
         Logger.Info($"StoragePath: {Storage.StoragePath}");
+        Helpers.RenderingDiagnostics.LogRendererSoon();
 
         // Check if its the first launch of the app from a new version.
         var lastLaunchVersion = Settings.Instance.LastLaunchVersion;

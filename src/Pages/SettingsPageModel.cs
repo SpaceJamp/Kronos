@@ -101,6 +101,22 @@ public partial class SettingsPageModel : ObservableObject
         new ComboBoxOption("SettingsPage_Logging_Error", (int)Kronos.LoggingLevel.Error),
     };
 
+    /// <summary>The GPU API Kronos draws with from its next start. See UnoProgram.ConfigureRenderer.</summary>
+    [ObservableProperty]
+    public partial ComboBoxOption RendererPreferenceOption { get; set; }
+
+    public RefreshableObservableCollection<ComboBoxOption> RendererOptions { get; init; } = new RefreshableObservableCollection<ComboBoxOption>()
+    {
+        new ComboBoxOption("SettingsPage_Rendering_Vulkan", (int)RendererPreference.Vulkan),
+        new ComboBoxOption("SettingsPage_Rendering_OpenGL", (int)RendererPreference.OpenGL),
+    };
+
+    /// <summary>
+    /// What this run is actually drawing with - the chosen GPU API, or the CPU if the GPU could not be
+    /// used. Read from Uno, not from the setting, so a fallback to the CPU is visible here.
+    /// </summary>
+    public string ActiveRendererText => ResourceHelper.GetString($"SettingsPage_Rendering_Active_{RenderingDiagnostics.GetActiveRenderer()}");
+
     [ObservableProperty]
     public partial bool IsCheckingForUpdates { get; set; } = false;
 
@@ -118,6 +134,8 @@ public partial class SettingsPageModel : ObservableObject
         {
             DLSSOnScreenIndicatorOptions.RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             LoggingLevelOptions.RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            RendererOptions.RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(nameof(ActiveRendererText));
 
             foreach (var dlssPresetOption in DlssPresetOptions)
             {
@@ -170,6 +188,9 @@ public partial class SettingsPageModel : ObservableObject
 
         var loggingLevel = Settings.Instance.LoggingLevel;
         LoggingLevel = LoggingLevelOptions.FirstOrDefault(x => x.Value == (int)loggingLevel) ?? LoggingLevelOptions.Last();
+
+        var rendererPreference = Settings.Instance.RendererPreference;
+        RendererPreferenceOption = RendererOptions.FirstOrDefault(x => x.Value == (int)rendererPreference) ?? RendererOptions[0];
 
         IgnoredPaths = new ObservableCollection<string>(Settings.Instance.IgnoredPaths);
 
@@ -310,6 +331,13 @@ public partial class SettingsPageModel : ObservableObject
         else if (e.PropertyName == nameof(OnlyShowDownloadedDlls))
         {
             Settings.Instance.OnlyShowDownloadedDlls = OnlyShowDownloadedDlls;
+        }
+        else if (e.PropertyName == nameof(RendererPreferenceOption))
+        {
+            if (RendererPreferenceOption is not null)
+            {
+                Settings.Instance.RendererPreference = (RendererPreference)RendererPreferenceOption.Value;
+            }
         }
         else if (e.PropertyName == nameof(LoggingLevel))
         {

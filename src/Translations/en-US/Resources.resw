@@ -1065,6 +1065,33 @@ Because of this we recommend using caution for multiplayer games.</value>
     <value>{0} enabled</value>
     <comment>{0} is the game library name (eg. Steam, GOG)</comment>
   </data>
+  <data name="SettingsPage_Rendering" xml:space="preserve">
+    <value>Rendering</value>
+  </data>
+  <data name="SettingsPage_Rendering_Vulkan" xml:space="preserve">
+    <value>Vulkan (recommended)</value>
+  </data>
+  <data name="SettingsPage_Rendering_OpenGL" xml:space="preserve">
+    <value>OpenGL</value>
+  </data>
+  <data name="SettingsPage_Rendering_CurrentlyUsing" xml:space="preserve">
+    <value>Currently drawing with:</value>
+  </data>
+  <data name="SettingsPage_Rendering_Info" xml:space="preserve">
+    <value>Kronos draws on your graphics card with the API chosen here. If the graphics card cannot be used, it draws on the CPU instead. A change takes effect the next time Kronos starts.</value>
+  </data>
+  <data name="SettingsPage_Rendering_Active_Vulkan" xml:space="preserve">
+    <value>Vulkan (GPU)</value>
+  </data>
+  <data name="SettingsPage_Rendering_Active_OpenGL" xml:space="preserve">
+    <value>OpenGL (GPU)</value>
+  </data>
+  <data name="SettingsPage_Rendering_Active_Software" xml:space="preserve">
+    <value>CPU (software rendering)</value>
+  </data>
+  <data name="SettingsPage_Rendering_Active_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
   <data name="SettingsPage_Logging" xml:space="preserve">
     <value>Logging</value>
   </data>
