@@ -27,6 +27,76 @@ internal class FileSystemHelper
 
     const int ERROR_CANCELLED = unchecked((int)0x800704c7);
 
+    /// <summary>
+    /// Reads an item's file system path and frees the string the shell allocated for it.
+    /// </summary>
+    /// <remarks>
+    /// GetDisplayName hands back a CoTaskMem string that the caller owns. It was previously copied
+    /// with ToString() and never freed, so every path picked through a dialog leaked.
+    /// </remarks>
+    static unsafe string GetFileSystemPath(IShellItem item)
+    {
+        PWSTR filename = default;
+        try
+        {
+            item.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, &filename);
+            return filename.ToString();
+        }
+        finally
+        {
+            if (filename.Value is not null)
+            {
+                Marshal.FreeCoTaskMem((nint)filename.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds the native filter specs for SetFileTypes. Release with <see cref="FreeFilterSpecs"/>.
+    /// </summary>
+    static unsafe COMDLG_FILTERSPEC[] CreateFilterSpecs(IReadOnlyList<FileFilter>? filters)
+    {
+        if (filters is null || filters.Count == 0)
+        {
+            filters = new List<FileFilter>()
+            {
+                new FileFilter("All files", "*.*")
+            }.AsReadOnly();
+        }
+
+        var extensions = new COMDLG_FILTERSPEC[filters.Count];
+        for (var i = 0; i < filters.Count; ++i)
+        {
+            extensions[i].pszSpec = (char*)Marshal.StringToHGlobalUni(filters[i].Spec);
+            extensions[i].pszName = (char*)Marshal.StringToHGlobalUni(filters[i].Name);
+        }
+        return extensions;
+    }
+
+    /// <summary>
+    /// Frees the HGlobal strings allocated by <see cref="CreateFilterSpecs"/>. These were previously
+    /// never freed, leaking two strings per filter every time a file dialog opened.
+    /// </summary>
+    static unsafe void FreeFilterSpecs(COMDLG_FILTERSPEC[]? extensions)
+    {
+        if (extensions is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < extensions.Length; ++i)
+        {
+            if (extensions[i].pszSpec.Value is not null)
+            {
+                Marshal.FreeHGlobal((nint)extensions[i].pszSpec.Value);
+            }
+            if (extensions[i].pszName.Value is not null)
+            {
+                Marshal.FreeHGlobal((nint)extensions[i].pszName.Value);
+            }
+        }
+    }
+
     internal static string OpenFolder(nint hWnd, string? defaultPath = null, string? okButtonLabel = null)
     {
         try
@@ -64,13 +134,7 @@ internal class FileSystemHelper
 
             folderOpenDialog.GetResult(out var ppsi);
 
-            unsafe
-            {
-                PWSTR filename;
-                ppsi.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, &filename);
-                var pathName = filename.ToString();
-                return pathName;
-            }
+            return GetFileSystemPath(ppsi);
         }
         catch (COMException ex) when (ex.HResult == ERROR_CANCELLED)
         {
@@ -96,6 +160,7 @@ internal class FileSystemHelper
 
     static List<string> OpenFileInternal(nint hWnd, bool pickMultiple, IReadOnlyList<FileFilter>? filters, string? defaultPath = null, string? defaultExtension = null, string? okButtonLabel = null)
     {
+        COMDLG_FILTERSPEC[]? extensions = null;
         try
         {
             var hResult = PInvoke.CoCreateInstance<IFileOpenDialog>(typeof(FileOpenDialog).GUID, null, CLSCTX.CLSCTX_INPROC_SERVER, out var fileOpenDialog);
@@ -104,28 +169,7 @@ internal class FileSystemHelper
                 Marshal.ThrowExceptionForHR(hResult);
             }
 
-
-            if (filters is null || filters.Count == 0)
-            {
-                filters = new List<FileFilter>()
-                {
-                    new FileFilter("All files", "*.*")
-                }.AsReadOnly();
-            }
-
-            var extensions = new COMDLG_FILTERSPEC[filters.Count];
-
-            for (var i = 0; i < filters.Count; ++i)
-            {
-                unsafe
-                {
-                    COMDLG_FILTERSPEC extension;
-                    extension.pszSpec = (char*)Marshal.StringToHGlobalUni(filters[i].Spec);
-                    extension.pszName = (char*)Marshal.StringToHGlobalUni(filters[i].Name);
-                    extensions[i] = extension;
-                }
-            }
-
+            extensions = CreateFilterSpecs(filters);
             fileOpenDialog.SetFileTypes(extensions);
 
 
@@ -175,23 +219,17 @@ internal class FileSystemHelper
             {
                 fileOpenDialog.GetResults(out var ppsiArray);
 
-                unsafe
+                ppsiArray.GetCount(out uint count);
+                for (uint i = 0; i < count; ++i)
                 {
-                    ppsiArray.GetCount(out uint count);
-                    for (uint i = 0; i < count; ++i)
+                    ppsiArray.GetItemAt(i, out var ppsi);
+
+                    if (ppsi is null)
                     {
-                        ppsiArray.GetItemAt(i, out var ppsi);
-
-                        if (ppsi is null)
-                        {
-                            throw new Exception("Failed to get result from file open dialog.");
-                        }
-
-                        PWSTR filename;
-                        ppsi.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, &filename);
-                        var pathName = filename.ToString();
-                        results.Add(pathName);
+                        throw new Exception("Failed to get result from file open dialog.");
                     }
+
+                    results.Add(GetFileSystemPath(ppsi));
                 }
             }
             else
@@ -203,13 +241,7 @@ internal class FileSystemHelper
                     throw new Exception("Failed to get result from file open dialog.");
                 }
 
-                unsafe
-                {
-                    PWSTR filename;
-                    ppsi.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, &filename);
-                    var pathName = filename.ToString();
-                    results.Add(pathName);
-                }
+                results.Add(GetFileSystemPath(ppsi));
             }
 
             return results;
@@ -219,11 +251,16 @@ internal class FileSystemHelper
             // NOOP
             return new List<string>();
         }
+        finally
+        {
+            FreeFilterSpecs(extensions);
+        }
     }
 
 
     internal static string SaveFile(nint hWnd, IReadOnlyList<FileFilter>? filters, string? defaultPath = null, string? defaultFileName = null, string? defaultExtension = null, string? okButtonLabel = null)
     {
+        COMDLG_FILTERSPEC[]? extensions = null;
         try
         {
             var hResult = PInvoke.CoCreateInstance<IFileSaveDialog>(typeof(FileSaveDialog).GUID, null, CLSCTX.CLSCTX_INPROC_SERVER, out var fileSaveDialog);
@@ -232,28 +269,7 @@ internal class FileSystemHelper
                 Marshal.ThrowExceptionForHR(hResult);
             }
 
-
-            if (filters is null || filters.Count == 0)
-            {
-                filters = new List<FileFilter>()
-                {
-                    new FileFilter("All files", "*.*")
-                }.AsReadOnly();
-            }
-
-            var extensions = new COMDLG_FILTERSPEC[filters.Count];
-
-            for (var i = 0; i < filters.Count; ++i)
-            {
-                unsafe
-                {
-                    COMDLG_FILTERSPEC extension;
-                    extension.pszSpec = (char*)Marshal.StringToHGlobalUni(filters[i].Spec);
-                    extension.pszName = (char*)Marshal.StringToHGlobalUni(filters[i].Name);
-                    extensions[i] = extension;
-                }
-            }
-
+            extensions = CreateFilterSpecs(filters);
             fileSaveDialog.SetFileTypes(extensions);
 
 
@@ -296,18 +312,16 @@ internal class FileSystemHelper
 
             fileSaveDialog.GetResult(out var ppsi);
 
-            unsafe
-            {
-                PWSTR filename;
-                ppsi.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, &filename);
-                var pathName = filename.ToString();
-                return pathName;
-            }
+            return GetFileSystemPath(ppsi);
         }
         catch (COMException ex) when (ex.HResult == ERROR_CANCELLED)
         {
             // NOOP
             return string.Empty;
+        }
+        finally
+        {
+            FreeFilterSpecs(extensions);
         }
     }
 

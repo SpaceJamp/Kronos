@@ -121,6 +121,21 @@ public class EqualityTests
     }
 
     [Fact]
+    public void Game_ObjectEqualsAgreesWithTypedEquals()
+    {
+        // Equals(object) used to be reference equality while GetHashCode was ID-based, so two
+        // copies of the same game hashed alike but did not compare equal through object.
+        object a = new FakeSteamGame("1938090");
+        object b = new FakeSteamGame("1938090");
+
+        Assert.True(a.Equals(b));
+        Assert.True(object.Equals(a, b));
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+        Assert.False(a.Equals(new FakeSteamGame("1")));
+        Assert.False(a.Equals("steam_1938090"));
+    }
+
+    [Fact]
     public void Game_CompareToAgreesWithEquals()
     {
         // CompareTo used to order by Title, so two different games that both had no title compared

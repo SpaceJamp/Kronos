@@ -1934,6 +1934,16 @@ public abstract partial class Game : ObservableObject, IComparable<Game>, IEquat
         return string.Equals(ID, other.ID, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <remarks>
+    /// Without this override, object.Equals fell back to reference equality while GetHashCode was
+    /// ID-based, so the two disagreed for anything that compares through object - non-generic
+    /// collections, Object.Equals(a, b), and WinUI's selection and item lookups.
+    /// </remarks>
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as Game);
+    }
+
     public override int GetHashCode()
     {
         return StringComparer.OrdinalIgnoreCase.GetHashCode(ID ?? string.Empty);

@@ -243,18 +243,12 @@ internal static class WinTrust
 
             WVTPolicyGUID = new Guid(WINTRUST_ACTION_GENERIC_VERIFY_V2);
 
+            // The constructor sets every other field. This used to be an object initializer repeating
+            // all of them, which made it look as though it overrode dwUIContext with something invalid;
+            // 0 is WinTrustDataUIContext.Execute, the same value the constructor sets.
             WinTrustData = new WinTrustData(FileData)
             {
-                cbStruct = (UInt32)Marshal.SizeOf<WinTrustData>(),
-                pPolicyCallbackData = IntPtr.Zero,
-                pSIPClientData = IntPtr.Zero,
-                dwUIChoice = WinTrustDataUIChoice.None,
-                fdwRevocationChecks = WinTrustDataRevocationChecks.None,
-                dwUnionChoice = WinTrustDataChoice.File,
                 dwStateAction = WinTrustDataStateAction.Verify,
-                hWVTStateData = IntPtr.Zero,
-                pwszURLReference = null,
-                dwUIContext = 0,
             };
 
             lStatus = WinVerifyTrust(IntPtr.Zero, WVTPolicyGUID, ref WinTrustData);

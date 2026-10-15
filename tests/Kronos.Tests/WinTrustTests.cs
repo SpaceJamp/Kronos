@@ -19,11 +19,9 @@ public class WinTrustTests
     /// Signed files that should always verify on Windows.
     /// </summary>
     /// <remarks>
-    /// Deliberately only .dll files. Signed .exe files currently fail to verify through this code
-    /// path even though Windows reports them as Valid - see
-    /// <see cref="VerifyEmbeddedSignature_KnownSignedExecutablesCurrentlyFailToVerify"/>, which
-    /// pins that behaviour down. This app only ever imports dlls, so it does not affect the
-    /// import flow, but it is a real and separate bug worth recording rather than hiding.
+    /// These dlls carry an embedded Authenticode signature as well as a catalog entry, so the
+    /// embedded check accepts them. Files signed only through a catalog are rejected by design -
+    /// see <see cref="VerifyEmbeddedSignature_RejectsCatalogOnlySignedExecutables"/>.
     /// </remarks>
     static IEnumerable<string> KnownSignedFiles()
     {
@@ -50,17 +48,14 @@ public class WinTrustTests
     }
 
     [Fact]
-    public void VerifyEmbeddedSignature_KnownSignedExecutablesCurrentlyFailToVerify()
+    public void VerifyEmbeddedSignature_RejectsCatalogOnlySignedExecutables()
     {
-        // Windows reports these as Valid signed binaries, but this implementation returns false
-        // for them. Confirmed to predate the interop changes in this fork: stashing them and
-        // re-running produces exactly the same results, so it is an inherited bug.
-        //
-        // The likely cause is the object initializer in VerifyEmbeddedSignature, which overrides
-        // dwUIContext (set to the invalid value 0) and repeats every other field the constructor
-        // already assigned. Not fixed here because the import flow only handles dlls and the root
-        // cause has not been confirmed. This test exists so the behaviour is visible rather than
-        // silently regressing further.
+        // This was once recorded as a bug: Get-AuthenticodeSignature reports these as Valid, yet
+        // this returns Invalid. It is correct behaviour. Get-AuthenticodeSignature reports their
+        // SignatureType as Catalog, and they have no embedded certificate at all
+        // (X509Certificate.CreateFromSignedFile throws on them, while it returns "CN=Microsoft
+        // Windows" for kernel32.dll). VerifyEmbeddedSignature checks only the embedded signature,
+        // which is what an imported DLSS dll carries, so a catalog-only file must not pass.
         var executables = new[]
         {
             Path.Combine(Environment.SystemDirectory, "cmd.exe"),

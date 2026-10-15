@@ -88,16 +88,15 @@ Stated plainly, because the AI-assisted fixes above are not all equally proven:
   decision level, but actually overwriting a DLL inside a game install, and resetting it, has not
   been run.
 - **Known bugs remain.** Kronos fixes a substantial number of defects but not all of them. See the
-  conversation history and the code for the ones still outstanding, notably unmanaged memory leaks
-  in `FileSystemHelper.cs`, and a `Game.Equals` implementation with no matching `GetHashCode`.
+  conversation history and the code for the ones still outstanding.
 
-  One inherited bug was found while testing the `WinTrust` fix and is pinned by a test rather than
-  fixed: signed `.exe` files such as `cmd.exe` are reported as `Valid` by Windows but rejected by
-  `VerifyEmbeddedSignature`. Stashing the interop changes and re-running produced identical results,
-  so it predates the work done here. The suspected cause is the object initializer in
-  `VerifyEmbeddedSignature`, which overrides `dwUIContext` with the invalid value `0` and otherwise
-  repeats what the constructor had already done, but that was not confirmed. It does not affect the
-  import flow, which only handles `.dll` files.
+  Three items previously listed here are now settled. The unmanaged leaks in `FileSystemHelper.cs`
+  (filter-spec strings and `GetDisplayName` results, never freed) are fixed, though the file dialogs
+  are still compile-verified rather than clicked. `Game` now overrides `Equals(object)` to agree with
+  its ID-based `GetHashCode`. And the "signed `.exe` rejected by `VerifyEmbeddedSignature`" bug
+  turned out not to be one: `cmd.exe` and `notepad.exe` are catalog-signed with no embedded
+  signature, so an embedded-signature check is right to reject them. The `dwUIContext = 0` suspected
+  of causing it is `Execute`, a valid value.
 - **Kronos is unsigned**, so Windows SmartScreen will warn.
 
 ## Licensing
