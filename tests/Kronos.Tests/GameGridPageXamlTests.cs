@@ -68,6 +68,21 @@ public class GameGridPageXamlTests
                 && (string?)e.Attribute(Xaml + "DataType") is { } dataType
                 && dataType.EndsWith(":Game", StringComparison.Ordinal));
 
+        // The grid view's tile is a page resource its library sections share, referenced as
+        // ItemTemplate="{StaticResource ...}" rather than written inline. Follow the reference.
+        if (itemTemplate is null)
+        {
+            var reference = view.Descendants()
+                .Select(e => (string?)e.Attribute("ItemTemplate"))
+                .FirstOrDefault(v => v is not null && v.StartsWith("{StaticResource ", StringComparison.Ordinal));
+            if (reference is not null)
+            {
+                var key = reference["{StaticResource ".Length..].TrimEnd('}').Trim();
+                itemTemplate = page.Descendants()
+                    .SingleOrDefault(e => e.Name.LocalName == "DataTemplate" && (string?)e.Attribute(Xaml + "Key") == key);
+            }
+        }
+
         Assert.True(itemTemplate is not null, $"No item template for a Game found in {resourceKey}.");
 
         return itemTemplate!.Descendants().First(e => e.Name.LocalName == "Grid");

@@ -179,7 +179,7 @@ public sealed partial class GameGridPage : Page
         {
             var delta = e.GetCurrentPoint((UIElement)sender).Properties.MouseWheelDelta;
 
-            if (sender is GridView gridView)
+            if (sender is GridView or ScrollViewer)
             {
                 double scaleAmount = delta > 0 ? 1.05 : 0.95;
                 var newWidth = (int)(ViewModel.GridViewItemWidth * scaleAmount);
