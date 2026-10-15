@@ -97,6 +97,12 @@
         "resolved": "1.12.4",
         "contentHash": "ljqvBabvFwKoLniuoQKO8b5bJfJweKLs4fUNS/V5dsvpo0A8MlJqxxn9XVmP2DaskbUXty6IYaWAi1SArGIMeQ=="
       },
+      "Markdig": {
+        "type": "Direct",
+        "requested": "[1.4.0, )",
+        "resolved": "1.4.0",
+        "contentHash": "lLhaiI/mNDTNzgLqnmknhf4LjgTqOAyjx5+GNz0X3AxYMxUhmFppF2WVMdER+SDqwhE5wUF1pzs/cuLwFxs7xA=="
+      },
       "Microsoft.Extensions.Logging.Console": {
         "type": "Direct",
         "requested": "[10.0.12, )",
@@ -248,16 +254,6 @@
         "contentHash": "8mfTzHLlMHCqFE1+iFGzxRCeCb2gDqvRQtZthuksYB+z546QZaFCiagbJ2KXHe7dy5ZpCUg/usaIqc2DxiemPw==",
         "dependencies": {
           "System.CodeDom": "10.0.9"
-        }
-      },
-      "Uno.CommunityToolkit.WinUI.UI.Controls.DataGrid": {
-        "type": "Direct",
-        "requested": "[7.1.206, )",
-        "resolved": "7.1.206",
-        "contentHash": "u7Yfwk/ByzzgvhjzND7719pugGVDmVtuWrCu4qHFxsMwXtDnL91YhbDIe2/qJIdCs1x2wb/MJjsv/gv40j8cQQ==",
-        "dependencies": {
-          "System.ComponentModel.Annotations": "4.5.0",
-          "Uno.WinUI": "5.0.19"
         }
       },
       "Uno.Fonts.OpenSans": {
@@ -744,11 +740,6 @@
         "type": "Transitive",
         "resolved": "10.0.9",
         "contentHash": "scH7O8oAuOMyZKOEiOQB3ZVz6x9XkrZNKNeWVCxdvkJHSy4SYXyinGK0o2Rn5LiGh+ovezziT2WCdqWKa7WMKA=="
-      },
-      "System.ComponentModel.Annotations": {
-        "type": "Transitive",
-        "resolved": "4.5.0",
-        "contentHash": "UxYQ3FGUOtzJ7LfSdnYSFd7+oEv6M8NgUatatIN2HxNtDdlcvFAf+VIq4Of9cDMJEJC0aSRv/x898RYhB4Yppg=="
       },
       "System.IO.Hashing": {
         "type": "Transitive",

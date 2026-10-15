@@ -1,10 +1,12 @@
 using System;
 using Kronos.Helpers;
+using Kronos.Language;
 using Kronos.UserControls;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace Kronos;
 
@@ -76,19 +78,27 @@ public sealed partial class TranslationToolboxWindow : Window
                 }
                 else
                 {
-                    var currentColumn = MainDataGrid.CurrentColumn;
-                    var currentRowIndex = MainDataGrid.SelectedIndex;
+                    // The row this TextBox is in, rather than SelectedIndex: typing into a cell does not
+                    // necessarily select its row.
+                    var currentRowIndex = textBox.DataContext is TranslationRow row
+                        ? ViewModel.TranslationRows.IndexOf(row)
+                        : MainTableView.SelectedIndex;
                     var newRowIndex = currentRowIndex + 1;
                     if (newRowIndex < ViewModel.TranslationRows.Count)
                     {
-                        // TODO: Ensure we don't crahs of teh end
-                        MainDataGrid.SelectedIndex = newRowIndex;
-                        MainDataGrid.CurrentColumn = currentColumn;
+                        MainTableView.SelectedIndex = newRowIndex;
+                        MainTableView.ScrollIntoView(ViewModel.TranslationRows[newRowIndex]);
 
-                        MainDataGrid.ScrollIntoView(ViewModel.TranslationRows[newRowIndex], currentColumn);
-
-                        MainDataGrid.Focus(FocusState.Programmatic);
-                        MainDataGrid.BeginEdit();
+                        // The DataGrid had CurrentColumn and BeginEdit for this. TableView does not need
+                        // them: the translation cell is always an editable TextBox, so moving to the next
+                        // row is focusing the TextBox in it.
+                        MainTableView.UpdateLayout();
+                        if (MainTableView.ContainerFromIndex(newRowIndex) is DependencyObject container &&
+                            FindDescendant<TextBox>(container) is TextBox nextTextBox)
+                        {
+                            nextTextBox.Focus(FocusState.Programmatic);
+                            nextTextBox.SelectionStart = nextTextBox.Text.Length;
+                        }
                     }
                     else
                     {
@@ -111,6 +121,27 @@ public sealed partial class TranslationToolboxWindow : Window
     void TextBox_LostFocus(object sender, RoutedEventArgs e)
     {
         ViewModel.RecalculateTranslationProgress();
+    }
+
+    /// <summary>The first descendant of type T, depth first, or null.</summary>
+    static T? FindDescendant<T>(DependencyObject parent) where T : class
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is T nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
 

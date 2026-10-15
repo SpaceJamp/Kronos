@@ -6,7 +6,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ByteSizeLib;
-using CommunityToolkit.WinUI.Controls;
 using Kronos.Extensions;
 using Kronos.Helpers;
 using Kronos.UserControls;
@@ -456,11 +455,10 @@ internal class GitHubUpdater
         var currentVerion = App.CurrentApp.GetVersionString();
 
         var yourVersion = ResourceHelper.GetFormattedResourceTemplate("GitHubUpdater_CurrentVersionIsActualTemplate", currentVerion);
-        var contentUpdate = new MarkdownTextBlock()
+        var contentUpdate = new MarkdownView()
         {
             Text = $"{yourVersion}\n\n{gitHubRelease.Body}",
             Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-            Config = new MarkdownConfig(),
         };
 
         await App.CurrentApp.RunOnUIThreadAsync(async () =>
@@ -967,11 +965,10 @@ internal class GitHubUpdater
 
     internal async Task DisplayWhatsNewDialog(GitHubRelease gitHubRelease, XamlRoot xamlRoot)
     {
-        var contentUpdate = new MarkdownTextBlock()
+        var contentUpdate = new MarkdownView()
         {
             Text = gitHubRelease.Body,
             Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-            Config = new MarkdownConfig(),
         };
 
         var dialog = new EasyContentDialog(xamlRoot)

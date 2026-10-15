@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.WinUI.Controls;
 using Kronos.Acknowledgements;
 
 namespace Kronos.Pages;
@@ -18,8 +17,6 @@ public partial class AcknowledgementsPageModel : ObservableObject
 
     [ObservableProperty]
     public partial Acknowledgement? SelectedItem { get; set; }
-
-    public MarkdownConfig MarkdownConfig { get; set; } = new MarkdownConfig();
 
     public AcknowledgementsPageModelTranslationProperties TranslationProperties { get; } = new AcknowledgementsPageModelTranslationProperties();
 

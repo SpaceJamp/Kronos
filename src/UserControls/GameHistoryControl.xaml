@@ -6,7 +6,7 @@
     xmlns:local="using:Kronos.UserControls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:ctWinUI="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:tv="using:WinUI.TableView"
     xmlns:ct_converters="using:CommunityToolkit.WinUI.Converters"
     xmlns:converters="using:Kronos.Converters"
     mc:Ignorable="d">
@@ -23,22 +23,22 @@
         which is before the rows have been read from the database, so the history always appeared
         empty. OneWay keeps a live binding, so rows arriving later are picked up.
         -->
-        <ctWinUI:DataGrid Visibility="{x:Bind ViewModel.HistoryRows, Converter={StaticResource CollectionVisibilityConverter}}" SelectionMode="Single" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All" VerticalAlignment="Stretch" ColumnWidth="*" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.HistoryRows, Mode=OneWay}">
+        <tv:TableView Visibility="{x:Bind ViewModel.HistoryRows, Converter={StaticResource CollectionVisibilityConverter}}" SelectionMode="Single" SelectionUnit="Row" IsReadOnly="True" CanSortColumns="True" GridLinesVisibility="All" VerticalAlignment="Stretch" AutoGenerateColumns="False" ItemsSource="{x:Bind ViewModel.HistoryRows, Mode=OneWay}">
 
-            <ctWinUI:DataGrid.Resources>
+            <tv:TableView.Resources>
                 <Style TargetType="TextBlock">
                     <Setter Property="TextWrapping" Value="Wrap" />
                     <Setter Property="IsTextSelectionEnabled" Value="True" />
                 </Style>
-            </ctWinUI:DataGrid.Resources>
+            </tv:TableView.Resources>
 
-            <ctWinUI:DataGrid.Columns>
-                <ctWinUI:DataGridTextColumn Header="{x:Bind ViewModel.TranslationProperties.EventTimeHeader, Mode=OneWay}" Tag="EventTime" Binding="{Binding EventTime}" />
-                <ctWinUI:DataGridTextColumn Header="{x:Bind ViewModel.TranslationProperties.EventTypeHeader, Mode=OneWay}" Tag="EventType" Binding="{Binding EventType, Converter={StaticResource GameHistoryEventTypeToLabelConverter}}" />
-                <ctWinUI:DataGridTextColumn Header="{x:Bind ViewModel.TranslationProperties.AssetTypeHeader, Mode=OneWay}" Tag="AssetType" Binding="{Binding AssetTypeName}" />
-                <ctWinUI:DataGridTextColumn Header="{x:Bind ViewModel.TranslationProperties.VersionHeader, Mode=OneWay}" Tag="Version" Binding="{Binding AssetVersion}" />
-            </ctWinUI:DataGrid.Columns>
-        </ctWinUI:DataGrid>
+            <tv:TableView.Columns>
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.EventTimeHeader, Mode=OneWay}" Tag="EventTime" Binding="{Binding EventTime}" />
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.EventTypeHeader, Mode=OneWay}" Tag="EventType" Binding="{Binding EventType, Converter={StaticResource GameHistoryEventTypeToLabelConverter}}" />
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.AssetTypeHeader, Mode=OneWay}" Tag="AssetType" Binding="{Binding AssetTypeName}" />
+                <tv:TableViewTextColumn Width="*" Header="{x:Bind ViewModel.TranslationProperties.VersionHeader, Mode=OneWay}" Tag="Version" Binding="{Binding AssetVersion}" />
+            </tv:TableView.Columns>
+        </tv:TableView>
 
     </Grid>
 </UserControl>
