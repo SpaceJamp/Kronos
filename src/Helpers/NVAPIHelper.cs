@@ -107,7 +107,11 @@ internal partial class NVAPIHelper : ObservableObject
         // Load DLSS presets
         try
         {
-            var dlssPresetsJsonPath = @"Assets\dlss_presets.json";
+            // The app's own folder, not the working directory. A relative path is resolved against wherever
+            // Kronos was started from, so a shortcut with another "Start in", or the relaunch after a
+            // portable self-update, silently fell back to the built-in default presets, which also lacked
+            // Frame Generation preset C. EAAppLibrary resolves its titles file the same way.
+            var dlssPresetsJsonPath = Path.Combine(AppContext.BaseDirectory, "Assets", "dlss_presets.json");
             if (File.Exists(dlssPresetsJsonPath) == true)
             {
                 var dlssPresetOptions = JsonSerializer.Deserialize(File.ReadAllText(dlssPresetsJsonPath), SourceGenerationContext.Default.ListPresetOption)?.Where(x => x.Used == true)?.ToList();
@@ -154,7 +158,7 @@ internal partial class NVAPIHelper : ObservableObject
         // Load DLSS D presets
         try
         {
-            var dlssDPresetsJsonPath = @"Assets\dlss_d_presets.json";
+            var dlssDPresetsJsonPath = Path.Combine(AppContext.BaseDirectory, "Assets", "dlss_d_presets.json");
             if (File.Exists(dlssDPresetsJsonPath) == true)
             {
                 var dlssDPresetOptions = JsonSerializer.Deserialize(File.ReadAllText(dlssDPresetsJsonPath), SourceGenerationContext.Default.ListPresetOption)?.Where(x => x.Used == true)?.ToList();
@@ -203,7 +207,7 @@ internal partial class NVAPIHelper : ObservableObject
         // Load DLSS G presets
         try
         {
-            var dlssgPresetsJsonPath = @"Assets\dlss_g_presets.json";
+            var dlssgPresetsJsonPath = Path.Combine(AppContext.BaseDirectory, "Assets", "dlss_g_presets.json");
             if (File.Exists(dlssgPresetsJsonPath) == true)
             {
                 var dlssGPresetOptions = JsonSerializer.Deserialize(File.ReadAllText(dlssgPresetsJsonPath), SourceGenerationContext.Default.ListPresetOption)?.Where(x => x.Used == true)?.ToList();
@@ -228,7 +232,8 @@ internal partial class NVAPIHelper : ObservableObject
                 new PresetOption(ResourceHelper.GetString("DLSS_Preset_Default"), 0x00000000),
                 new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "A"), 0x00000001),
                 new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "B"), 0x00000002),
-                //new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "C"), 0x00000003),
+                // Kept in step with Assets/dlss_g_presets.json, where C is enabled.
+                new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "C"), 0x00000003),
                 //new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "D"), 0x00000004),
                 //new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "E"), 0x00000005),
                 //new PresetOption(ResourceHelper.GetFormattedResourceTemplate("DLSS_Preset_Letter", "F"), 0x00000006),

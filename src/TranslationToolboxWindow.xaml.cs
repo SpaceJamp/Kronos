@@ -21,7 +21,8 @@ public sealed partial class TranslationToolboxWindow : Window
     {
         InitializeComponent();
 
-        AppWindow.SetIcon("Assets\\icon.ico");
+        // The app's folder rather than the working directory, which depends on how Kronos was started.
+        AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico"));
 
         ViewModel = new TranslationToolboxWindowModel(this);
 
